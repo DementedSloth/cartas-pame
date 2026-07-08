@@ -320,29 +320,6 @@
       grid-column: 1 / -1;
     }
 
-    /* Estilo del Candado Virtual */
-    .lock-container {
-      text-align: center;
-      padding: 3rem 1rem;
-      color: var(--text-muted);
-    }
-    .lock-icon {
-      font-size: 3.5rem;
-      margin-bottom: 1rem;
-      display: block;
-      animation: pulse-lock 2s infinite ease-in-out;
-    }
-    @keyframes pulse-lock {
-      0% { opacity: 0.4; transform: scale(0.96); }
-      50% { opacity: 0.8; transform: scale(1.04); }
-      100% { opacity: 0.4; transform: scale(0.96); }
-    }
-    .lock-text {
-      font-size: 0.9rem;
-      font-style: italic;
-      letter-spacing: 0.05em;
-    }
-
     /* ══════════════════════════════════════
        ESTILOS DE CARTA
     ══════════════════════════════════════ */
@@ -390,6 +367,7 @@
 
   <div class="container">
 
+    <!-- LOGIN VIEW -->
     <div id="login-view" class="view-section active">
       <div class="header">
         <h1 class="header-title">Cartas para <em>Pame</em></h1>
@@ -404,6 +382,7 @@
       <div class="footer">Fran · 2026</div>
     </div>
 
+    <!-- ADMIN EDITOR VIEW -->
     <div id="admin-view" class="view-section">
       <div class="header">
         <h1 class="header-title" style="color: #60a5fa;">Panel de <em>Editor</em></h1>
@@ -438,6 +417,7 @@
             <option value="style-d">Estilo D (Gótico)</option>
           </select>
 
+          <!-- GALERÍA DE ESTILOS VISUALES -->
           <div class="styles-preview-grid">
             <div id="thumb-style-a" class="style-thumb selected" onclick="selectStyleThumb('style-a')">
               <div class="style-thumb-title">Estilo A</div>
@@ -481,6 +461,7 @@
         <button class="form-btn admin-btn" onclick="saveLetter()">Guardar en la Nube</button>
         <div id="admin-success" class="success-msg"></div>
 
+        <!-- SECCIÓN DE LAS GALERÍAS EN EL EDITOR -->
         <div class="gallery-section">
           <div class="gallery-title-wrapper">
             <label class="form-label" style="color: #4ade80;">Colección Estándar / Programadas</label>
@@ -501,6 +482,7 @@
       <button class="back-btn" onclick="exitAdmin()">← salir del panel</button>
     </div>
 
+    <!-- LETTER VIEW -->
     <div id="letter-view" class="view-section">
       <div id="letter-card-wrapper">
         <div class="letter-card" id="letter-card">
@@ -541,4 +523,277 @@
     }
 
     async function unlock() {
-      const input = document.getElementById('code-input').value
+      const input = document.getElementById('code-input').value.trim().toLowerCase();
+      document.getElementById('error-msg').textContent = '';
+
+      if (!input) return;
+
+      if (input === ADMIN_KEY.toLowerCase()) {
+        currentAdminView = true; 
+        switchView('admin-view');
+        loadGallery();
+        return;
+      }
+
+      currentAdminView = false;
+      await fetchAndDisplayLetter(input);
+    }
+
+    async function fetchAndDisplayLetter(code) {
+      try {
+        const res = await fetch(`${FIREBASE_DB_URL}/cartas/${code}.json`);
+        const carta = await res.json();
+
+        if (!carta) {
+          if (!currentAdminView) {
+            document.getElementById('error-msg').textContent = 'Ese código no existe... o todavía no es el momento.';
+          } else {
+            alert('No se pudo encontrar la carta.');
+          }
+          return;
+        }
+
+        // CONTROL DE FECHA Y BLOQUEOS (Solo para Lectura / Pame)
+        if (!currentAdminView) {
+          if (carta.dateType === 'undefined') {
+            document.getElementById('error-msg').textContent = '¿No es muy pronto, amorcito?';
+            return;
+          }
+          if (carta.dateType === 'scheduled' && carta.releaseDate) {
+            const today = new Date().toISOString().split('T')[0]; 
+            if (today < carta.releaseDate) {
+              document.getElementById('error-msg').textContent = '¿No es muy pronto, amorcito?';
+              return;
+            }
+          }
+        }
+
+        document.getElementById('letter-tag').textContent = carta.tag || '';
+        document.getElementById('letter-title').textContent = carta.title || '';
+        document.getElementById('letter-card-wrapper').className = carta.style || 'style-a';
+
+        const bodyEl = document.getElementById('letter-body');
+        const signEl = document.getElementById('letter-sign');
+        bodyEl.innerHTML = '';
+        signEl.textContent = '';
+
+        renderBodyText(carta.body);
+        signEl.textContent = carta.sign || '';
+
+        switchView('letter-view');
+      } catch (err) {
+        console.error(err);
+        if (!currentAdminView) {
+          document.getElementById('error-msg').textContent = 'Error de conexión con la nube.';
+        } else {
+          alert('Error de conexión al cargar la vista previa.');
+        }
+      }
+    }
+
+    function renderBodyText(text) {
+      const bodyEl = document.getElementById('letter-body');
+      if (!text) return;
+      text.split(/\n+/).forEach(para => {
+        if (para.trim()) {
+          const p = document.createElement('p');
+          p.textContent = para.trim();
+          bodyEl.appendChild(p);
+        }
+      });
+    }
+
+    async function loadGallery() {
+      const standardGrid = document.getElementById('gallery-grid');
+      const undefinedGrid = document.getElementById('gallery-undefined-grid');
+      
+      if (standardGrid) standardGrid.innerHTML = '<div class="gallery-empty">Buscando cartas...</div>';
+      if (undefinedGrid) undefinedGrid.innerHTML = '<div class="gallery-empty">Buscando cartas...</div>';
+
+      try {
+        const res = await fetch(`${FIREBASE_DB_URL}/cartas.json`);
+        const cartas = await res.json();
+
+        if (!cartas || Object.keys(cartas).length === 0) {
+          if (standardGrid) standardGrid.innerHTML = '<div class="gallery-empty">No hay cartas subidas todavía.</div>';
+          if (undefinedGrid) undefinedGrid.innerHTML = '<div class="gallery-empty">No hay cartas indefinidas todavía.</div>';
+          return;
+        }
+
+        if (standardGrid) standardGrid.innerHTML = '';
+        if (undefinedGrid) undefinedGrid.innerHTML = '';
+        
+        let hasStandard = false;
+        let hasUndefined = false;
+
+        Object.keys(cartas).forEach(code => {
+          const carta = cartas[code];
+          const thumb = document.createElement('div');
+          thumb.className = 'gallery-card-thumb';
+          
+          thumb.onclick = () => {
+            setupEditorForEdit(code, carta);
+          };
+
+          const styleLetter = carta.style ? carta.style.replace('style-', '') : 'a';
+          const isUndef = carta.dateType === 'undefined';
+          
+          let icon = '🔓';
+          if (carta.dateType === 'scheduled') icon = '📅';
+          if (carta.dateType === 'undefined') icon = '🔒';
+
+          thumb.innerHTML = `
+            <span class="thumb-code">#${code}</span>
+            <div class="thumb-title">${carta.title || '(Sin título)'}</div>
+            <span class="thumb-style-tag">Estilo ${styleLetter}</span>
+            <span class="thumb-type-icon">${icon}</span>
+          `;
+
+          if (isUndef) {
+            undefinedGrid.appendChild(thumb);
+            hasUndefined = true;
+          } else {
+            standardGrid.appendChild(thumb);
+            hasStandard = true;
+          }
+        });
+
+        if (!hasStandard && standardGrid) standardGrid.innerHTML = '<div class="gallery-empty">No hay cartas estándar en esta sección.</div>';
+        if (!hasUndefined && undefinedGrid) undefinedGrid.innerHTML = '<div class="gallery-empty">No hay cartas indefinidas creadas.</div>';
+
+      } catch (err) {
+        console.error(err);
+        if (standardGrid) standardGrid.innerHTML = '<div class="gallery-empty" style="color: var(--blood)">Error de lectura.</div>';
+      }
+    }
+
+    function setupEditorForEdit(code, carta) {
+      document.getElementById('adm-code').value = code;
+      document.getElementById('adm-style').value = carta.style || 'style-a';
+      updateActiveStyleThumb(carta.style || 'style-a');
+      document.getElementById('adm-tag').value = carta.tag || '';
+      document.getElementById('adm-title').value = carta.title || '';
+      document.getElementById('adm-body').value = carta.body || '';
+      document.getElementById('adm-sign').value = carta.sign || '';
+      
+      const dateType = carta.dateType || 'immediate';
+      document.getElementById('adm-date-type').value = dateType;
+      toggleDateField(dateType);
+      
+      if (dateType === 'scheduled') {
+        document.getElementById('adm-date').value = carta.releaseDate || '';
+      }
+
+      currentAdminView = true; 
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+
+    function selectStyleThumb(styleId) {
+      const selectEl = document.getElementById('adm-style');
+      if (selectEl) selectEl.value = styleId;
+      updateActiveStyleThumb(styleId);
+    }
+
+    function syncStyleSelect(styleId) {
+      updateActiveStyleThumb(styleId);
+    }
+
+    function updateActiveStyleThumb(styleId) {
+      document.querySelectorAll('.style-thumb').forEach(thumb => thumb.classList.remove('selected'));
+      const activeThumb = document.getElementById(`thumb-${styleId}`);
+      if (activeThumb) activeThumb.classList.add('selected');
+    }
+
+    async function saveLetter() {
+      const code = document.getElementById('adm-code').value.trim().toLowerCase();
+      const style = document.getElementById('adm-style').value;
+      const dateType = document.getElementById('adm-date-type').value;
+      const releaseDate = document.getElementById('adm-date').value;
+      const tag = document.getElementById('adm-tag').value.trim();
+      const title = document.getElementById('adm-title').value.trim();
+      const body = document.getElementById('adm-body').value;
+      const sign = document.getElementById('adm-sign').value.trim();
+
+      if (!code || !title || !body) {
+        alert('Completá los campos obligatorios: Código, Título y Contenido.');
+        return;
+      }
+
+      if (dateType === 'scheduled' && !releaseDate) {
+        alert('Por favor, ingresá una fecha válida para la carta programada.');
+        return;
+      }
+
+      const nuevaCarta = { style, dateType, releaseDate, tag, title, body, sign };
+
+      try {
+        const res = await fetch(`${FIREBASE_DB_URL}/cartas/${code}.json`, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(nuevaCarta)
+        });
+
+        if (!res.ok) throw new Error('Error al guardar');
+
+        const msg = document.getElementById('admin-success');
+        if (msg) {
+          msg.textContent = `¡Carta "#${code}" sincronizada con éxito!`;
+          setTimeout(() => { msg.textContent = ''; }, 3000);
+        }
+
+        document.getElementById('adm-code').value = '';
+        document.getElementById('adm-title').value = '';
+        document.getElementById('adm-body').value = '';
+        document.getElementById('adm-date').value = '';
+        document.getElementById('adm-date-type').value = 'immediate';
+        toggleDateField('immediate');
+        
+        loadGallery();
+      } catch (err) {
+        console.error(err);
+        alert('No se pudo guardar la carta en la nube.');
+      }
+    }
+
+    function switchView(viewId) {
+      const loginView = document.getElementById('login-view');
+      const adminView = document.getElementById('admin-view');
+      const letterView = document.getElementById('letter-view');
+
+      if (loginView) loginView.style.display = (viewId === 'login-view') ? 'block' : 'none';
+      
+      if (adminView) {
+        if (viewId === 'admin-view') adminView.classList.add('active');
+        else adminView.classList.remove('active');
+      }
+
+      if (letterView) {
+        if (viewId === 'letter-view') letterView.classList.add('active');
+        else letterView.classList.remove('active');
+      }
+
+      window.scrollTo(0, 0);
+    }
+
+    function goBackFromLetter() {
+      if (currentAdminView) {
+        switchView('admin-view');
+      } else {
+        switchView('login-view');
+        document.getElementById('code-input').value = '';
+      }
+      const wrapper = document.getElementById('letter-card-wrapper');
+      if (wrapper) wrapper.className = '';
+    }
+
+    function exitAdmin() {
+      switchView('login-view');
+      document.getElementById('code-input').value = '';
+    }
+
+    document.getElementById('code-input').addEventListener('keydown', e => {
+      if (e.key === 'Enter') unlock();
+    });
+  </script>
+</body>
+</html>
