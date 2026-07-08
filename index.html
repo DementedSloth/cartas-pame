@@ -1,251 +1,454 @@
 <!DOCTYPE html>
 <html lang="es">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Cartas para Pame</title>
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600&family=Lora:ital,wght@0,400;0,600;1,400&display=swap" rel="stylesheet">
-    
-    <style>
-        :root {
-            --bg-color: #0d0b0f;
-            --surface-color: #13101a;
-            --accent-purple: #7c3f6e;
-            --accent-light: #a0587e;
-            --gold: #c9a96e;
-            --text-color: #e8ddd0;
-        }
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Cartas para Pame</title>
+  <link href="https://fonts.googleapis.com/css2?family=Lora:ital,wght@0,400;0,500;1,400&family=Inter:wght@300;400;500&family=Playfair+Display:ital,wght@0,400;1,400&family=Space+Mono:ital@0;1&display=swap" rel="stylesheet" />
+  <style>
+    :root {
+      --bg: #0d0b0f;
+      --surface: #13101a;
+      --border: #2a1f35;
+      --accent: #7c3f6e;
+      --accent-soft: #a0587e;
+      --gold: #c9a96e;
+      --text: #e8ddd0;
+      --text-muted: #8a7a6e;
+      --blood: #8b2a3a;
+      --admin-bg: #0f172a;
+      --admin-border: #1e293b;
+    }
 
-        body {
-            background-color: var(--bg-color);
-            color: var(--text-color);
-            font-family: 'Inter', sans-serif;
-            margin: 0;
-            padding: 20px;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            min-height: 100vh;
-            overflow-x: hidden;
-            position: relative;
-        }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
 
-        /* Elementos atmosféricos de fondo */
-        .background-decorations {
-            position: absolute;
-            top: 0; left: 0; width: 100%; height: 100%;
-            pointer-events: none;
-            z-index: 1;
-        }
-        .moon {
-            position: absolute;
-            top: 40px;
-            right: 40px;
-            font-size: 3rem;
-            opacity: 0.2;
-            filter: drop-shadow(0 0 10px var(--gold));
-        }
-        .bat {
-            position: absolute;
-            font-size: 1.5rem;
-            opacity: 0.15;
-        }
-        .bat-1 { top: 15%; left: 10%; transform: rotate(-15deg); }
-        .bat-2 { top: 45%; right: 12%; transform: rotate(20deg); }
-        .bat-3 { top: 80%; left: 15%; transform: rotate(-5deg); }
+    body {
+      background-color: var(--bg);
+      color: var(--text);
+      font-family: 'Inter', sans-serif;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 2rem 1rem;
+      position: relative;
+      overflow-x: hidden;
+    }
 
-        /* Contenedor Principal */
-        .container {
-            position: relative;
-            z-index: 10;
-            width: 100%;
-            max-width: 600px;
-            text-align: center;
-            margin-top: 60px;
-        }
+    .bat {
+      position: fixed;
+      opacity: 0.07;
+      pointer-events: none;
+      fill: var(--accent-soft);
+    }
+    .bat-tl { top: 3%; left: 2%; width: 90px; transform: rotate(-20deg); }
+    .bat-tr { top: 5%; right: 4%; width: 60px; transform: rotate(15deg) scaleX(-1); }
+    .bat-bl { bottom: 6%; left: 5%; width: 50px; transform: rotate(10deg); }
+    .bat-br { bottom: 4%; right: 3%; width: 75px; transform: rotate(-10deg) scaleX(-1); }
 
-        h1 {
-            font-family: 'Lora', serif;
-            font-weight: 400;
-            font-size: 2.5rem;
-            color: var(--text-color);
-            margin-bottom: 30px;
-            letter-spacing: 1px;
-        }
-        h1 em {
-            font-family: 'Lora', serif;
-            font-style: italic;
-            color: var(--accent-light);
-        }
+    .moon {
+      position: fixed;
+      top: -40px;
+      right: 80px;
+      width: 120px;
+      height: 120px;
+      border-radius: 50%;
+      background: radial-gradient(circle at 40% 40%, #f5e6c8, #c9a96e88);
+      box-shadow: 0 0 60px 20px #c9a96e22;
+      opacity: 0.13;
+      pointer-events: none;
+    }
 
-        /* Formulario de entrada */
-        .unlock-box {
-            background: var(--surface-color);
-            padding: 30px;
-            border-radius: 8px;
-            border: 1px solid var(--accent-purple);
-            box-shadow: 0 10px 30px rgba(0,0,0,0.5);
-            margin-bottom: 40px;
-        }
+    .container {
+      max-width: 560px;
+      width: 100%;
+      position: relative;
+      z-index: 1;
+    }
 
-        input[type="text"] {
-            background: #08060a;
-            border: 1px solid var(--accent-purple);
-            color: var(--gold);
-            padding: 12px 20px;
-            font-size: 1.1rem;
-            border-radius: 4px;
-            width: 80%;
-            max-width: 250px;
-            text-align: center;
-            font-family: 'Inter', sans-serif;
-            letter-spacing: 2px;
-            outline: none;
-            transition: all 0.3s ease;
-        }
-        input[type="text"]:focus {
-            border-color: var(--gold);
-            box-shadow: 0 0 8px rgba(201, 169, 110, 0.3);
-        }
+    .header {
+      text-align: center;
+      margin-bottom: 2.5rem;
+    }
 
-        button {
-            background: var(--accent-purple);
-            color: var(--text-color);
-            border: 1px solid var(--accent-light);
-            padding: 12px 24px;
-            font-size: 1rem;
-            border-radius: 4px;
-            margin-top: 15px;
-            cursor: pointer;
-            font-weight: 600;
-            transition: all 0.3s ease;
-        }
-        button:hover {
-            background: var(--accent-light);
-            color: #fff;
-            box-shadow: 0 0 12px var(--accent-light);
-        }
+    .header-title {
+      font-family: 'Lora', serif;
+      font-size: 2rem;
+      font-weight: 400;
+      color: var(--text);
+    }
 
-        /* Contenedor de la carta (Oculto al inicio) */
-        .letter-card {
-            display: none;
-            background: var(--surface-color);
-            padding: 40px 30px;
-            border-radius: 4px;
-            border: 2px solid var(--gold);
-            box-shadow: 0 15px 40px rgba(0,0,0,0.7);
-            text-align: left;
-            position: relative;
-        }
-        /* Ornamentos góticos simulados en las esquinas */
-        .letter-card::before {
-            content: "✦";
-            position: absolute;
-            top: 10px; left: 10px;
-            color: var(--gold);
-            font-size: 1.2rem;
-        }
-        .letter-card::after {
-            content: "✦";
-            position: absolute;
-            top: 10px; right: 10px;
-            color: var(--gold);
-            font-size: 1.2rem;
-        }
+    .header-title em {
+      font-style: italic;
+      color: var(--accent-soft);
+    }
 
-        .letter-title {
-            font-family: 'Lora', serif;
-            color: var(--gold);
-            font-size: 1.5rem;
-            margin-top: 0;
-            margin-bottom: 25px;
-            border-bottom: 1px dashed var(--accent-purple);
-            padding-bottom: 10px;
-        }
+    /* ─── FORM ─── */
+    .form-wrapper {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 4px;
+      padding: 2rem;
+    }
 
-        .letter-content {
-            font-family: 'Lora', serif;
-            font-size: 1.1rem;
-            line-height: 1.8;
-            white-space: pre-line; /* Mantiene los saltos de línea */
-        }
+    .form-label {
+      display: block;
+      font-size: 0.7rem;
+      letter-spacing: 0.25em;
+      text-transform: uppercase;
+      color: var(--text-muted);
+      margin-bottom: 0.75rem;
+    }
 
-        .error-msg {
-            color: #d9534f;
-            margin-top: 10px;
-            font-size: 0.9rem;
-            display: none;
-        }
-    </style>
+    .form-input, .form-textarea, .form-select {
+      width: 100%;
+      background: var(--bg);
+      border: 1px solid var(--border);
+      border-radius: 3px;
+      padding: 0.75rem 1rem;
+      color: var(--text);
+      font-family: 'Inter', sans-serif;
+      font-size: 1rem;
+      outline: none;
+      transition: border-color 0.2s;
+    }
+    .form-textarea {
+      resize: vertical;
+      min-height: 150px;
+      font-size: 0.95rem;
+      line-height: 1.5;
+    }
+    .form-input:focus, .form-textarea:focus, .form-select:focus { border-color: var(--accent); }
+    .form-input::placeholder, .form-textarea::placeholder { color: var(--text-muted); opacity: 0.4; font-style: italic; }
+
+    .form-btn {
+      width: 100%;
+      margin-top: 1.2rem;
+      padding: 0.85rem;
+      background: transparent;
+      border: 1px solid var(--accent);
+      border-radius: 3px;
+      color: var(--accent-soft);
+      font-family: 'Inter', sans-serif;
+      font-size: 0.72rem;
+      letter-spacing: 0.25em;
+      text-transform: uppercase;
+      cursor: pointer;
+      transition: background 0.2s, color 0.2s;
+    }
+    .form-btn:hover { background: var(--accent); color: var(--text); }
+
+    .error-msg {
+      margin-top: 0.8rem;
+      font-style: italic;
+      font-size: 0.85rem;
+      color: var(--blood);
+      text-align: center;
+      min-height: 1.2rem;
+    }
+
+    .success-msg {
+      margin-top: 0.8rem;
+      font-style: italic;
+      font-size: 0.85rem;
+      color: #7adf7a;
+      text-align: center;
+    }
+
+    .footer {
+      margin-top: 2rem;
+      text-align: center;
+      font-size: 0.78rem;
+      color: var(--text-muted);
+      opacity: 0.4;
+    }
+
+    /* ─── PANELS VIEW CONTROL ─── */
+    .view-section { display: none; }
+    .view-section.active { display: block; }
+
+    .back-btn {
+      display: inline-block;
+      margin-top: 1.8rem;
+      background: transparent;
+      border: none;
+      color: var(--text-muted);
+      font-family: 'Inter', sans-serif;
+      font-size: 0.7rem;
+      letter-spacing: 0.2em;
+      text-transform: uppercase;
+      cursor: pointer;
+      padding: 0;
+      transition: color 0.2s;
+    }
+    .back-btn:hover { color: var(--text); }
+
+    /* ─── EDITOR ADMIN ─── */
+    .admin-wrapper {
+      background: var(--admin-bg);
+      border: 1px solid var(--admin-border);
+      border-radius: 4px;
+      padding: 2rem;
+    }
+    .admin-group {
+      margin-bottom: 1.2rem;
+    }
+    .admin-btn {
+      border-color: #3b82f6;
+      color: #60a5fa;
+    }
+    .admin-btn:hover {
+      background: #3b82f6;
+      color: white;
+    }
+
+    /* ══════════════════════════════════════
+       ESTILOS DE CARTA
+    ══════════════════════════════════════ */
+    .style-a .letter-card { padding: 0; background: transparent; border: none; }
+    .style-a .letter-tag { font-size: 0.68rem; letter-spacing: 0.3em; text-transform: uppercase; color: var(--text-muted); margin-bottom: 2rem; display: block; }
+    .style-a .letter-title { font-family: 'Lora', serif; font-size: 2rem; font-weight: 400; font-style: italic; color: var(--text); margin-bottom: 2.5rem; line-height: 1.2; border-bottom: 1px solid var(--border); padding-bottom: 1.5rem; }
+    .style-a .letter-body { font-family: 'Lora', serif; font-size: 1.05rem; line-height: 2; color: #d4c9bc; }
+    .style-a .letter-body p { margin-bottom: 1.4rem; }
+    .style-a .letter-sign { margin-top: 2.5rem; font-family: 'Lora', serif; font-style: italic; font-size: 1rem; color: var(--accent-soft); text-align: right; }
+
+    .style-b .letter-card { background: #1a1208; border: none; border-radius: 2px; padding: 2.5rem 2.2rem; position: relative; box-shadow: inset 0 0 40px #00000055, 0 4px 24px #00000088; }
+    .style-b .letter-card::before { content: ''; position: absolute; inset: 0; background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='300' height='300'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='300' height='300' filter='url(%23n)' opacity='0.04'/%3E%3C/svg%3E"); opacity: 0.3; pointer-events: none; border-radius: 2px; }
+    .style-b .letter-tag { font-family: 'Playfair Display', serif; font-size: 0.7rem; letter-spacing: 0.2em; text-transform: uppercase; color: #8a7040; margin-bottom: 1rem; display: block; }
+    .style-b .letter-title { font-family: 'Playfair Display', serif; font-size: 1.6rem; font-style: italic; color: #e8d8a0; margin-bottom: 1.8rem; line-height: 1.3; }
+    .style-b .letter-body { font-family: 'Lora', serif; font-size: 1rem; line-height: 1.95; color: #c8b888; }
+    .style-b .letter-body p { margin-bottom: 1.2rem; }
+    .style-b .letter-sign { margin-top: 2rem; font-family: 'Playfair Display', serif; font-style: italic; font-size: 1.1rem; color: #8a7040; text-align: right; }
+
+    .style-c .letter-card { background: #080c08; border: 1px solid #1a3a1a; border-radius: 3px; padding: 2.2rem; position: relative; }
+    .style-c .letter-card::before { content: '> carta_'; position: absolute; top: 0.8rem; left: 1rem; font-family: 'Space Mono', monospace; font-size: 0.65rem; color: #2a6a2a; letter-spacing: 0.1em; }
+    .style-c .letter-tag { font-family: 'Space Mono', monospace; font-size: 0.65rem; color: #3a8a3a; margin-bottom: 1.5rem; margin-top: 1rem; display: block; letter-spacing: 0.05em; }
+    .style-c .letter-title { font-family: 'Space Mono', monospace; font-size: 1.1rem; font-style: italic; color: #7adf7a; margin-bottom: 2rem; line-height: 1.4; }
+    .style-c .letter-body { font-family: 'Space Mono', monospace; font-size: 0.85rem; line-height: 1.9; color: #a0c8a0; }
+    .style-c .letter-body p { margin-bottom: 1rem; }
+    .style-c .letter-sign { margin-top: 2rem; font-family: 'Space Mono', monospace; font-size: 0.85rem; color: #3a8a3a; text-align: right; }
+
+    .style-d .letter-card { background: #100818; border: 1px solid #3a1f4a; outline: 3px solid #1e0f2a; outline-offset: 4px; border-radius: 2px; padding: 2.5rem 2rem; position: relative; }
+    .style-d .letter-card::before { content: '✦'; position: absolute; top: -0.9rem; left: 50%; transform: translateX(-50%); background: var(--bg); padding: 0 0.5rem; color: var(--gold); font-size: 1rem; opacity: 0.5; }
+    .style-d .letter-tag { font-size: 0.65rem; letter-spacing: 0.35em; text-transform: uppercase; color: var(--gold); opacity: 0.5; margin-bottom: 1.2rem; display: block; text-align: center; }
+    .style-d .letter-title { font-family: 'Playfair Display', serif; font-size: 1.55rem; font-style: italic; color: var(--text); margin-bottom: 1.8rem; line-height: 1.3; text-align: center; padding-bottom: 1.2rem; border-bottom: 1px solid #3a1f4a; }
+    .style-d .letter-body { font-family: 'Lora', serif; font-size: 1rem; line-height: 1.95; color: #ccc0d8; }
+    .style-d .letter-body p { margin-bottom: 1.2rem; }
+    .style-d .letter-sign { margin-top: 2rem; font-family: 'Playfair Display', serif; font-style: italic; font-size: 1rem; color: var(--accent-soft); text-align: right; }
+    .style-d .letter-sign::before { content: '✦ '; opacity: 0.4; font-style: normal; }
+
+  </style>
 </head>
 <body>
 
-    <div class="background-decorations">
-        <div class="moon">🌙</div>
-        <div class="bat bat-1">🦇</div>
-        <div class="bat-2 bat">🦇</div>
-        <div class="bat-3 bat">🦇</div>
+  <svg class="bat bat-tl" viewBox="0 0 100 50" xmlns="http://www.w3.org/2000/svg"><path d="M50 25 C30 10 5 5 0 20 C10 20 20 25 25 30 C15 28 8 35 10 42 C18 35 28 32 35 35 C38 40 42 45 50 45 C58 45 62 40 65 35 C72 32 82 35 90 42 C92 35 85 28 75 30 C80 25 90 20 100 20 C95 5 70 10 50 25Z"/></svg>
+  <svg class="bat bat-tr" viewBox="0 0 100 50" xmlns="http://www.w3.org/2000/svg"><path d="M50 25 C30 10 5 5 0 20 C10 20 20 25 25 30 C15 28 8 35 10 42 C18 35 28 32 35 35 C38 40 42 45 50 45 C58 45 62 40 65 35 C72 32 82 35 90 42 C92 35 85 28 75 30 C80 25 90 20 100 20 C95 5 70 10 50 25Z"/></svg>
+  <svg class="bat bat-bl" viewBox="0 0 100 50" xmlns="http://www.w3.org/2000/svg"><path d="M50 25 C30 10 5 5 0 20 C10 20 20 25 25 30 C15 28 8 35 10 42 C18 35 28 32 35 35 C38 40 42 45 50 45 C58 45 62 40 65 35 C72 32 82 35 90 42 C92 35 85 28 75 30 C80 25 90 20 100 20 C95 5 70 10 50 25Z"/></svg>
+  <svg class="bat bat-br" viewBox="0 0 100 50" xmlns="http://www.w3.org/2000/svg"><path d="M50 25 C30 10 5 5 0 20 C10 20 20 25 25 30 C15 28 8 35 10 42 C18 35 28 32 35 35 C38 40 42 45 50 45 C58 45 62 40 65 35 C72 32 82 35 90 42 C92 35 85 28 75 30 C80 25 90 20 100 20 C95 5 70 10 50 25Z"/></svg>
+  <div class="moon"></div>
+
+  <div class="container">
+
+    <div id="login-view" class="view-section active">
+      <div class="header">
+        <h1 class="header-title">Cartas para <em>Pame</em></h1>
+      </div>
+
+      <div class="form-wrapper">
+        <label class="form-label" for="code-input">Código de la carta</label>
+        <input id="code-input" class="form-input" type="text" placeholder="escribí el código..." autocomplete="off" spellcheck="false" />
+        <button class="form-btn" onclick="unlock()">Abrir carta</button>
+        <div class="error-msg" id="error-msg"></div>
+      </div>
+      <div class="footer">Fran · 2026</div>
     </div>
 
-    <div class="container">
-        <h1>Cartas para <em>Pame</em></h1>
+    <div id="admin-view" class="view-section">
+      <div class="header">
+        <h1 class="header-title" style="color: #60a5fa;">Panel de <em>Editor</em></h1>
+      </div>
 
-        <div class="unlock-box" id="unlockBox">
-            <p style="margin-top:0; color: #aaa;">Ingresá el código oculto dentro de tu sobre</p>
-            <input type="text" id="codeId" placeholder="CÓDIGO" autocomplete="off">
-            <br>
-            <button onclick="checkCode()">Abrir carta</button>
-            <div class="error-msg" id="errorMsg">El código no parece ser el correcto... ¿Segura que no te mordió un murciélago?</div>
+      <div class="admin-wrapper">
+        <div class="admin-group">
+          <label class="form-label">Código Desbloqueador</label>
+          <input id="adm-code" class="form-input" type="text" placeholder="ej: triste, dinosaurio..." />
         </div>
 
-        <div class="letter-card" id="letterCard">
-            <div class="letter-title" id="letterTitle"></div>
-            <div class="letter-content" id="letterContent"></div>
+        <div class="admin-group">
+          <label class="form-label">Estilo Visual</label>
+          <select id="adm-style" class="form-select">
+            <option value="style-a">Estilo A (Minimalista)</option>
+            <option value="style-b">Estilo B (Papel viejo)</option>
+            <option value="style-c">Estilo C (Terminal)</option>
+            <option value="style-d">Estilo D (Gótico)</option>
+          </select>
         </div>
+
+        <div class="admin-group">
+          <label class="form-label">Etiqueta superior</label>
+          <input id="adm-tag" class="form-input" type="text" placeholder="ej: para leer cuando..." value="para leer cuando" />
+        </div>
+
+        <div class="admin-group">
+          <label class="form-label">Título</label>
+          <input id="adm-title" class="form-input" type="text" placeholder="ej: estés triste" />
+        </div>
+
+        <div class="admin-group">
+          <label class="form-label">Contenido</label>
+          <textarea id="adm-body" class="form-textarea" placeholder="Escribí acá normal con Enters..."></textarea>
+        </div>
+
+        <div class="admin-group">
+          <label class="form-label">Firma</label>
+          <input id="adm-sign" class="form-input" type="text" value="— Fran" />
+        </div>
+
+        <button class="form-btn admin-btn" onclick="saveLetter()">Guardar en la Nube</button>
+        <div id="admin-success" class="success-msg"></div>
+      </div>
+      <button class="back-btn" onclick="exitAdmin()">← salir del panel</button>
     </div>
 
-    <script>
-        // Base de datos de las cartas (Agrega o modifica acá)
-        const cartas = {
-            "GYM99": {
-                titulo: "Para cuando no tengas ganas de entrenar",
-                contenido: "Pame, si estás leyendo esto tirada en la cama debatiendo con tu almohada: levantate. Pensá en la disciplina que te trajo hasta acá, en lo bien que te sentís después de meter un buen PR y en que la ingeniería en alimentos no es lo único en lo que sos brillante. Yo sé que cansa, pero vos no sos de las que abandonan. Ponete los auriculares, dale play a algo pesado y andá a romperla. Desde acá, te estoy alentando en cada repetición. ¡Metele!"
-            },
-            "TERE12": {
-                titulo: "Para cuando tomes mate o tereré y pienses en mí",
-                contenido: "Seguro estás con el termo al lado, armando ese tereré perfecto que solo vos sabés cebar. Extraño horriblemente compartir esos silencios cómodos con vos. Acordate de lo que me dijiste: 'No necesito un lugar en el que quedarme si puedo llevarte conmigo'. Bueno, me tenés ahí, en cada sorbo. No importa la distancia entre Buenos Aires y Paraguay, estamos bajo la misma luna. Disfrutá tu tarde, mi amor."
-            },
-            "DINO3": {
-                titulo: "Para cuando veas un dinosaurio",
-                contenido: "¡Alerta máxima! Si estás viendo un dinosaurio (espero que sea en un museo, un sticker o un meme, y no un problema biológico grave), este es el recordatorio oficial de que todavía me debés la explicación de cuál es tu tercer dinosaurio favorito y por qué quedó en ese puesto del ranking.\n\nExijo un informe detallado por Discord la próxima vez que hablemos. Te amo, mi gótica paleontóloga."
-            },
-            "VIOLET10": {
-                titulo: "Para el día que vuelvas a Buenos Aires (Enero 2028)",
-                contenido: "Llegó el día. Pasaron los meses, los chats, las películas en Discord y las llamadas eternas de estudio. Si estás leyendo esto, es porque la distancia por fin perdió la batalla.\n\nNos pusimos de novios viendo el episodio 10 de Violet Evergarden, llorando y entendiendo el valor de las palabras a través del tiempo. Hoy las palabras digitales se terminan porque me tenés de nuevo al lado tuyo. Gracias por tu madurez, por tu amor directo y por no dudar ni un segundo. Volviste, volvimos. Vamos a vernos."
-            }
-            // Podés seguir agregando los demás códigos acá de forma idéntica
-        };
+    <div id="letter-view" class="view-section">
+      <div id="letter-card-wrapper">
+        <div class="letter-card" id="letter-card">
+          <span class="letter-tag" id="letter-tag"></span>
+          <h2 class="letter-title" id="letter-title"></h2>
+          <div class="letter-body" id="letter-body"></div>
+          <div class="letter-sign" id="letter-sign"></div>
+        </div>
+      </div>
+      <button class="back-btn" onclick="goBack()">← volver</button>
+    </div>
 
-        function checkCode() {
-            const input = document.getElementById("codeId").value.trim().toUpperCase();
-            const error = document.getElementById("errorMsg");
-            const card = document.getElementById("letterCard");
-            const box = document.getElementById("unlockBox");
-            
-            if (cartas[input]) {
-                error.style.display = "none";
-                box.style.display = "none"; // Oculta el input
-                
-                document.getElementById("letterTitle").innerText = cartas[input].titulo;
-                document.getElementById("letterContent").innerText = cartas[input].contenido;
-                
-                card.style.display = "block"; // Muestra la carta
-            } else {
-                error.style.display = "block";
-            }
+  </div>
+
+  <script>
+    // ─── CONFIGURACIÓN DE TU BASE DE DATOS ───
+    const FIREBASE_DB_URL = "https://cartas-pame-default-rtdb.firebaseio.com/"; 
+    const ADMIN_KEY = "admin123"; // Tu código secreto para abrir el editor
+
+    // Intentar abrir directo por QR en la URL (?c=codigo)
+    window.addEventListener('DOMContentLoaded', () => {
+      const urlParams = new URLSearchParams(window.location.search);
+      const codeParam = urlParams.get('c');
+      if (codeParam) {
+        document.getElementById('code-input').value = codeParam.trim();
+        unlock();
+      }
+    });
+
+    async function unlock() {
+      const input = document.getElementById('code-input').value.trim().toLowerCase();
+      document.getElementById('error-msg').textContent = '';
+
+      // Si pones la clave de admin, va al panel de edición
+      if (input === ADMIN_KEY.toLowerCase()) {
+        switchView('admin-view');
+        return;
+      }
+
+      try {
+        const res = await fetch(`${FIREBASE_DB_URL}/cartas/${input}.json`);
+        const carta = await res.json();
+
+        if (!carta) {
+          document.getElementById('error-msg').textContent = 'Ese código no existe... o todavía no es el momento.';
+          return;
         }
-    </script>
+
+        document.getElementById('letter-tag').textContent = carta.tag;
+        document.getElementById('letter-title').textContent = carta.title;
+        document.getElementById('letter-sign').textContent = carta.sign;
+        document.getElementById('letter-card-wrapper').className = carta.style;
+
+        const bodyEl = document.getElementById('letter-body');
+        bodyEl.innerHTML = '';
+        
+        // PARCHE DEL ENTER: Mapea saltos simples y dobles limpiamente
+        carta.body.split(/\n+/).forEach(para => {
+          if (para.trim()) {
+            const p = document.createElement('p');
+            p.textContent = para.trim();
+            bodyEl.appendChild(p);
+          }
+        });
+
+        switchView('letter-view');
+      } catch (err) {
+        console.error(err);
+        document.getElementById('error-msg').textContent = 'Error de conexión con la nube.';
+      }
+    }
+
+    async function saveLetter() {
+      const code = document.getElementById('adm-code').value.trim().toLowerCase();
+      const style = document.getElementById('adm-style').value;
+      const tag = document.getElementById('adm-tag').value.trim();
+      const title = document.getElementById('adm-title').value.trim();
+      const body = document.getElementById('adm-body').value;
+      const sign = document.getElementById('adm-sign').value.trim();
+
+      if (!code || !title || !body) {
+        alert('Completá los campos obligatorios: Código, Título y Contenido.');
+        return;
+      }
+
+      const nuevaCarta = { style, tag, title, body, sign };
+
+      try {
+        const res = await fetch(`${FIREBASE_DB_URL}/cartas/${code}.json`, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(nuevaCarta)
+        });
+
+        if (!res.ok) throw new Error('Error al guardar');
+
+        const msg = document.getElementById('admin-success');
+        msg.textContent = `¡Carta "${code}" subida a la nube!`;
+        setTimeout(() => { msg.textContent = ''; }, 3000);
+
+        document.getElementById('adm-code').value = '';
+        document.getElementById('adm-title').value = '';
+        document.getElementById('adm-body').value = '';
+      } catch (err) {
+        console.error(err);
+        alert('No se pudo guardar la carta en la nube. Revisá las reglas de Firebase.');
+      }
+    }
+
+    function switchView(viewId) {
+      // Oculta todas las secciones usando display block/none alternado por clases
+      document.getElementById('login-view').style.display = (viewId === 'login-view') ? 'block' : 'none';
+      
+      const adminView = document.getElementById('admin-view');
+      if(viewId === 'admin-view') adminView.classList.add('active');
+      else adminView.classList.remove('active');
+
+      const letterView = document.getElementById('letter-view');
+      if(viewId === 'letter-view') letterView.classList.add('active');
+      else letterView.classList.remove('active');
+
+      window.scrollTo(0, 0);
+    }
+
+    function goBack() {
+      switchView('login-view');
+      document.getElementById('code-input').value = '';
+      document.getElementById('letter-card-wrapper').className = '';
+    }
+
+    function exitAdmin() {
+      switchView('login-view');
+      document.getElementById('code-input').value = '';
+    }
+
+    document.getElementById('code-input').addEventListener('keydown', e => {
+      if (e.key === 'Enter') unlock();
+    });
+  </script>
 </body>
 </html>
