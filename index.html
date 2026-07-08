@@ -1,0 +1,251 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Cartas para Pame</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600&family=Lora:ital,wght@0,400;0,600;1,400&display=swap" rel="stylesheet">
+    
+    <style>
+        :root {
+            --bg-color: #0d0b0f;
+            --surface-color: #13101a;
+            --accent-purple: #7c3f6e;
+            --accent-light: #a0587e;
+            --gold: #c9a96e;
+            --text-color: #e8ddd0;
+        }
+
+        body {
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            font-family: 'Inter', sans-serif;
+            margin: 0;
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            min-height: 100vh;
+            overflow-x: hidden;
+            position: relative;
+        }
+
+        /* Elementos atmosféricos de fondo */
+        .background-decorations {
+            position: absolute;
+            top: 0; left: 0; width: 100%; height: 100%;
+            pointer-events: none;
+            z-index: 1;
+        }
+        .moon {
+            position: absolute;
+            top: 40px;
+            right: 40px;
+            font-size: 3rem;
+            opacity: 0.2;
+            filter: drop-shadow(0 0 10px var(--gold));
+        }
+        .bat {
+            position: absolute;
+            font-size: 1.5rem;
+            opacity: 0.15;
+        }
+        .bat-1 { top: 15%; left: 10%; transform: rotate(-15deg); }
+        .bat-2 { top: 45%; right: 12%; transform: rotate(20deg); }
+        .bat-3 { top: 80%; left: 15%; transform: rotate(-5deg); }
+
+        /* Contenedor Principal */
+        .container {
+            position: relative;
+            z-index: 10;
+            width: 100%;
+            max-width: 600px;
+            text-align: center;
+            margin-top: 60px;
+        }
+
+        h1 {
+            font-family: 'Lora', serif;
+            font-weight: 400;
+            font-size: 2.5rem;
+            color: var(--text-color);
+            margin-bottom: 30px;
+            letter-spacing: 1px;
+        }
+        h1 em {
+            font-family: 'Lora', serif;
+            font-style: italic;
+            color: var(--accent-light);
+        }
+
+        /* Formulario de entrada */
+        .unlock-box {
+            background: var(--surface-color);
+            padding: 30px;
+            border-radius: 8px;
+            border: 1px solid var(--accent-purple);
+            box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+            margin-bottom: 40px;
+        }
+
+        input[type="text"] {
+            background: #08060a;
+            border: 1px solid var(--accent-purple);
+            color: var(--gold);
+            padding: 12px 20px;
+            font-size: 1.1rem;
+            border-radius: 4px;
+            width: 80%;
+            max-width: 250px;
+            text-align: center;
+            font-family: 'Inter', sans-serif;
+            letter-spacing: 2px;
+            outline: none;
+            transition: all 0.3s ease;
+        }
+        input[type="text"]:focus {
+            border-color: var(--gold);
+            box-shadow: 0 0 8px rgba(201, 169, 110, 0.3);
+        }
+
+        button {
+            background: var(--accent-purple);
+            color: var(--text-color);
+            border: 1px solid var(--accent-light);
+            padding: 12px 24px;
+            font-size: 1rem;
+            border-radius: 4px;
+            margin-top: 15px;
+            cursor: pointer;
+            font-weight: 600;
+            transition: all 0.3s ease;
+        }
+        button:hover {
+            background: var(--accent-light);
+            color: #fff;
+            box-shadow: 0 0 12px var(--accent-light);
+        }
+
+        /* Contenedor de la carta (Oculto al inicio) */
+        .letter-card {
+            display: none;
+            background: var(--surface-color);
+            padding: 40px 30px;
+            border-radius: 4px;
+            border: 2px solid var(--gold);
+            box-shadow: 0 15px 40px rgba(0,0,0,0.7);
+            text-align: left;
+            position: relative;
+        }
+        /* Ornamentos góticos simulados en las esquinas */
+        .letter-card::before {
+            content: "✦";
+            position: absolute;
+            top: 10px; left: 10px;
+            color: var(--gold);
+            font-size: 1.2rem;
+        }
+        .letter-card::after {
+            content: "✦";
+            position: absolute;
+            top: 10px; right: 10px;
+            color: var(--gold);
+            font-size: 1.2rem;
+        }
+
+        .letter-title {
+            font-family: 'Lora', serif;
+            color: var(--gold);
+            font-size: 1.5rem;
+            margin-top: 0;
+            margin-bottom: 25px;
+            border-bottom: 1px dashed var(--accent-purple);
+            padding-bottom: 10px;
+        }
+
+        .letter-content {
+            font-family: 'Lora', serif;
+            font-size: 1.1rem;
+            line-height: 1.8;
+            white-space: pre-line; /* Mantiene los saltos de línea */
+        }
+
+        .error-msg {
+            color: #d9534f;
+            margin-top: 10px;
+            font-size: 0.9rem;
+            display: none;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="background-decorations">
+        <div class="moon">🌙</div>
+        <div class="bat bat-1">🦇</div>
+        <div class="bat-2 bat">🦇</div>
+        <div class="bat-3 bat">🦇</div>
+    </div>
+
+    <div class="container">
+        <h1>Cartas para <em>Pame</em></h1>
+
+        <div class="unlock-box" id="unlockBox">
+            <p style="margin-top:0; color: #aaa;">Ingresá el código oculto dentro de tu sobre</p>
+            <input type="text" id="codeId" placeholder="CÓDIGO" autocomplete="off">
+            <br>
+            <button onclick="checkCode()">Abrir carta</button>
+            <div class="error-msg" id="errorMsg">El código no parece ser el correcto... ¿Segura que no te mordió un murciélago?</div>
+        </div>
+
+        <div class="letter-card" id="letterCard">
+            <div class="letter-title" id="letterTitle"></div>
+            <div class="letter-content" id="letterContent"></div>
+        </div>
+    </div>
+
+    <script>
+        // Base de datos de las cartas (Agrega o modifica acá)
+        const cartas = {
+            "GYM99": {
+                titulo: "Para cuando no tengas ganas de entrenar",
+                contenido: "Pame, si estás leyendo esto tirada en la cama debatiendo con tu almohada: levantate. Pensá en la disciplina que te trajo hasta acá, en lo bien que te sentís después de meter un buen PR y en que la ingeniería en alimentos no es lo único en lo que sos brillante. Yo sé que cansa, pero vos no sos de las que abandonan. Ponete los auriculares, dale play a algo pesado y andá a romperla. Desde acá, te estoy alentando en cada repetición. ¡Metele!"
+            },
+            "TERE12": {
+                titulo: "Para cuando tomes mate o tereré y pienses en mí",
+                contenido: "Seguro estás con el termo al lado, armando ese tereré perfecto que solo vos sabés cebar. Extraño horriblemente compartir esos silencios cómodos con vos. Acordate de lo que me dijiste: 'No necesito un lugar en el que quedarme si puedo llevarte conmigo'. Bueno, me tenés ahí, en cada sorbo. No importa la distancia entre Buenos Aires y Paraguay, estamos bajo la misma luna. Disfrutá tu tarde, mi amor."
+            },
+            "DINO3": {
+                titulo: "Para cuando veas un dinosaurio",
+                contenido: "¡Alerta máxima! Si estás viendo un dinosaurio (espero que sea en un museo, un sticker o un meme, y no un problema biológico grave), este es el recordatorio oficial de que todavía me debés la explicación de cuál es tu tercer dinosaurio favorito y por qué quedó en ese puesto del ranking.\n\nExijo un informe detallado por Discord la próxima vez que hablemos. Te amo, mi gótica paleontóloga."
+            },
+            "VIOLET10": {
+                titulo: "Para el día que vuelvas a Buenos Aires (Enero 2028)",
+                contenido: "Llegó el día. Pasaron los meses, los chats, las películas en Discord y las llamadas eternas de estudio. Si estás leyendo esto, es porque la distancia por fin perdió la batalla.\n\nNos pusimos de novios viendo el episodio 10 de Violet Evergarden, llorando y entendiendo el valor de las palabras a través del tiempo. Hoy las palabras digitales se terminan porque me tenés de nuevo al lado tuyo. Gracias por tu madurez, por tu amor directo y por no dudar ni un segundo. Volviste, volvimos. Vamos a vernos."
+            }
+            // Podés seguir agregando los demás códigos acá de forma idéntica
+        };
+
+        function checkCode() {
+            const input = document.getElementById("codeId").value.trim().toUpperCase();
+            const error = document.getElementById("errorMsg");
+            const card = document.getElementById("letterCard");
+            const box = document.getElementById("unlockBox");
+            
+            if (cartas[input]) {
+                error.style.display = "none";
+                box.style.display = "none"; // Oculta el input
+                
+                document.getElementById("letterTitle").innerText = cartas[input].titulo;
+                document.getElementById("letterContent").innerText = cartas[input].contenido;
+                
+                card.style.display = "block"; // Muestra la carta
+            } else {
+                error.style.display = "block";
+            }
+        }
+    </script>
+</body>
+</html>
