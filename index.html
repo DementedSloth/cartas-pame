@@ -358,6 +358,86 @@
     .style-d .letter-sign { margin-top: 2rem; font-family: 'Playfair Display', serif; font-style: italic; font-size: 1rem; color: var(--accent-soft); text-align: right; }
 
     .letter-body p { margin-bottom: 1.2rem; }
+
+    /* ─── LOADING STATE ─── */
+    .form-btn:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+      background: transparent;
+    }
+
+    /* ─── ERROR CON REINTENTO ─── */
+    .error-block {
+      margin-top: 0.8rem;
+      background: #1a0a0a;
+      border: 1px solid #4a1a1a;
+      border-radius: 3px;
+      padding: 0.9rem 1rem;
+      display: none;
+    }
+    .error-block.visible { display: block; }
+    .error-block-msg {
+      font-style: italic;
+      font-size: 0.9rem;
+      color: #df7a7a;
+      margin-bottom: 0.6rem;
+    }
+    .retry-btn {
+      background: transparent;
+      border: 1px solid #6b2a2a;
+      border-radius: 3px;
+      color: #df7a7a;
+      font-family: 'Inter', sans-serif;
+      font-size: 0.7rem;
+      letter-spacing: 0.2em;
+      text-transform: uppercase;
+      padding: 0.4rem 0.9rem;
+      cursor: pointer;
+      transition: background 0.2s;
+    }
+    .retry-btn:hover { background: #3a1010; }
+
+    /* ─── AUTOSAVE INDICATOR ─── */
+    .autosave-indicator {
+      font-size: 0.7rem;
+      color: var(--text-muted);
+      opacity: 0;
+      transition: opacity 0.4s;
+      text-align: right;
+      margin-top: 0.4rem;
+      letter-spacing: 0.1em;
+    }
+    .autosave-indicator.visible { opacity: 0.6; }
+
+    /* ─── PREVIEW MODE ─── */
+    .preview-btn {
+      width: 100%;
+      margin-top: 0.8rem;
+      padding: 0.7rem;
+      background: transparent;
+      border: 1px solid #3a2f4a;
+      border-radius: 3px;
+      color: var(--text-muted);
+      font-family: 'Inter', sans-serif;
+      font-size: 0.7rem;
+      letter-spacing: 0.22em;
+      text-transform: uppercase;
+      cursor: pointer;
+      transition: background 0.2s, color 0.2s, border-color 0.2s;
+    }
+    .preview-btn:hover { background: #2a1f35; color: var(--text); border-color: var(--accent); }
+    .preview-btn.active { background: #2a1f35; color: var(--accent-soft); border-color: var(--accent); }
+
+    /* En modo preview: ocultar toolbar y mostrar solo la carta limpia */
+    .preview-mode .editor-toolbar { display: none; }
+    .preview-mode .form-btn { display: none; }
+    .preview-mode .autosave-indicator { display: none; }
+    .preview-mode .gallery-section { display: none; }
+    .preview-mode .back-btn { display: none; }
+    .preview-mode .card-editor-input { pointer-events: none; }
+    .preview-mode #live-card-container { margin-top: 0; }
+    /* En preview, el pseudo-elemento del style-c muestra texto de vista pame */
+    .preview-mode .style-c .letter-card::before { content: '> carta_pame_'; }
   </style>
 </head>
 <body>
@@ -377,8 +457,12 @@
       <div class="form-wrapper">
         <label class="form-label" for="code-input">Código de la carta</label>
         <input id="code-input" class="form-input" type="text" placeholder="escribí el código..." autocomplete="off" spellcheck="false" />
-        <button class="form-btn" onclick="unlock()">Abrir carta</button>
+        <button class="form-btn" id="unlock-btn" onclick="unlock()">Abrir carta</button>
         <div class="error-msg" id="error-msg"></div>
+        <div class="error-block" id="error-block">
+          <div class="error-block-msg" id="error-block-msg">Ups, hubo un problema de conexión. ¿Probamos de nuevo?</div>
+          <button class="retry-btn" onclick="retryUnlock()">↻ Reintentar</button>
+        </div>
       </div>
       <div class="footer" style="margin-top: 2rem; text-align: center; font-size: 0.78rem; color: var(--text-muted); opacity: 0.4;">Fran · 2026</div>
     </div>
@@ -440,6 +524,8 @@
 
       <button class="form-btn" style="border-color: #3b82f6; color: #60a5fa; margin-top: 2rem;" onclick="saveLetter()">Guardar en la Nube</button>
       <div id="admin-success" class="success-msg"></div>
+      <div class="autosave-indicator" id="autosave-indicator">borrador guardado localmente</div>
+      <button class="preview-btn" id="preview-btn" onclick="togglePreview()">👁 Vista previa — así lo ve Pame</button>
 
       <div class="gallery-section">
         <div class="gallery-title-wrapper">
@@ -480,7 +566,10 @@
     const FIREBASE_DB_URL = BASE_URL_RAW.endsWith('/') ? BASE_URL_RAW.slice(0, -1) : BASE_URL_RAW;
     
     const ADMIN_KEY = "admin123"; 
-    let currentAdminView = false; 
+    let currentAdminView = false;
+    let lastUnlockInput = '';
+    let autosaveTimer = null;
+    let isPreviewMode = false;
 
     window.addEventListener('DOMContentLoaded', () => {
       switchView('login-view');
@@ -490,7 +579,101 @@
         document.getElementById('code-input').value = codeParam.trim();
         unlock();
       }
+      restoreAutosave();
     });
+
+    // ─── AUTOSAVE ───
+    function scheduleAutosave() {
+      clearTimeout(autosaveTimer);
+      autosaveTimer = setTimeout(() => {
+        const draft = {
+          code: document.getElementById('adm-code').value,
+          style: document.getElementById('adm-style').value,
+          dateType: document.getElementById('adm-date-type').value,
+          releaseDate: document.getElementById('adm-date').value,
+          tag: document.getElementById('adm-tag').value,
+          title: document.getElementById('adm-title').value,
+          body: document.getElementById('adm-body').value,
+          sign: document.getElementById('adm-sign').value,
+        };
+        try {
+          localStorage.setItem('cartas_draft', JSON.stringify(draft));
+          const ind = document.getElementById('autosave-indicator');
+          ind.classList.add('visible');
+          setTimeout(() => ind.classList.remove('visible'), 2500);
+        } catch(e) {}
+      }, 5000);
+    }
+
+    function restoreAutosave() {
+      try {
+        const raw = localStorage.getItem('cartas_draft');
+        if (!raw) return;
+        const draft = JSON.parse(raw);
+        if (draft.code) document.getElementById('adm-code').value = draft.code;
+        if (draft.style) { document.getElementById('adm-style').value = draft.style; updateLiveCardStyle(draft.style); }
+        if (draft.dateType) { document.getElementById('adm-date-type').value = draft.dateType; toggleDateField(draft.dateType); }
+        if (draft.releaseDate) document.getElementById('adm-date').value = draft.releaseDate;
+        if (draft.tag) document.getElementById('adm-tag').value = draft.tag;
+        if (draft.title) document.getElementById('adm-title').value = draft.title;
+        if (draft.body) { document.getElementById('adm-body').value = draft.body; autoResizeTextArea(document.getElementById('adm-body')); }
+        if (draft.sign) document.getElementById('adm-sign').value = draft.sign;
+      } catch(e) {}
+    }
+
+    // Adjuntar autosave a todos los campos del editor
+    function attachAutosaveListeners() {
+      ['adm-code','adm-style','adm-date-type','adm-date','adm-tag','adm-title','adm-body','adm-sign'].forEach(id => {
+        const el = document.getElementById(id);
+        if (el) el.addEventListener('input', scheduleAutosave);
+        if (el) el.addEventListener('change', scheduleAutosave);
+      });
+    }
+
+    // ─── LOADING STATE ───
+    function setLoadingState(loading) {
+      const btn = document.getElementById('unlock-btn');
+      if (!btn) return;
+      btn.disabled = loading;
+      btn.textContent = loading ? 'Abriendo...' : 'Abrir carta';
+    }
+
+    // ─── ERROR BLOCK ───
+    function showErrorBlock(msg) {
+      const block = document.getElementById('error-block');
+      const msgEl = document.getElementById('error-block-msg');
+      if (msgEl) msgEl.textContent = msg || 'Ups, hubo un problema de conexión. ¿Probamos de nuevo?';
+      if (block) block.classList.add('visible');
+    }
+
+    function hideErrorBlock() {
+      const block = document.getElementById('error-block');
+      if (block) block.classList.remove('visible');
+    }
+
+    function retryUnlock() {
+      hideErrorBlock();
+      document.getElementById('error-msg').textContent = '';
+      unlock();
+    }
+
+    // ─── PREVIEW MODE ───
+    function togglePreview() {
+      isPreviewMode = !isPreviewMode;
+      const adminView = document.getElementById('admin-view');
+      const btn = document.getElementById('preview-btn');
+      if (isPreviewMode) {
+        adminView.classList.add('preview-mode');
+        btn.classList.add('active');
+        btn.textContent = '✕ Salir de vista previa';
+        // Actualizar contenido live desde los campos
+        updateLiveCardStyle(document.getElementById('adm-style').value);
+      } else {
+        adminView.classList.remove('preview-mode');
+        btn.classList.remove('active');
+        btn.textContent = '👁 Vista previa — así lo ve Pame';
+      }
+    }
 
     function toggleDateField(type) {
       const dateGroup = document.getElementById('scheduled-date-group');
@@ -522,19 +705,24 @@
     async function unlock() {
       const input = document.getElementById('code-input').value.trim().toLowerCase();
       document.getElementById('error-msg').textContent = '';
+      hideErrorBlock();
 
       if (!input) return;
+      lastUnlockInput = input;
 
       if (input === ADMIN_KEY.toLowerCase()) {
-        currentAdminView = true; 
+        currentAdminView = true;
         switchView('admin-view');
         resetEditorForm();
+        attachAutosaveListeners();
         await loadGallery();
         return;
       }
 
       currentAdminView = false;
+      setLoadingState(true);
       await fetchAndDisplayLetter(input);
+      setLoadingState(false);
     }
 
     function resetEditorForm() {
@@ -547,6 +735,7 @@
       document.getElementById('adm-sign').value = '— Fran';
       toggleDateField('immediate');
       updateLiveCardStyle('style-a');
+      try { localStorage.removeItem('cartas_draft'); } catch(e) {}
     }
 
     async function fetchAndDisplayLetter(code) {
@@ -612,9 +801,11 @@
         switchView('letter-view');
       } catch (err) {
         console.error("Error capturado en fetchAndDisplayLetter:", err);
-        alert(`Error de red o conexión: ${err.message}. Revisá la consola o la URL de Firebase.`);
+        setLoadingState(false);
         if (!currentAdminView) {
-          document.getElementById('error-msg').textContent = 'Error de conexión con la nube.';
+          showErrorBlock('Ups, hubo un problema de conexión. ¿Probamos de nuevo?');
+        } else {
+          alert(`Error de red o conexión: ${err.message}.`);
         }
       }
     }
