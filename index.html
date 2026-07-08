@@ -324,11 +324,9 @@
     .thumb-edit-btn:hover { background: var(--accent); border-color: var(--accent-soft); }
     .gallery-empty { color: var(--text-muted); font-size: 0.85rem; font-style: italic; text-align: center; padding: 1rem; grid-column: 1 / -1; opacity: 0.6; }
 
-    /* ══════════════════════════════════════
-       ESTILOS DE CARTA
-    ══════════════════════════════════════ */
+    /* ─── ESTILOS DE CARTA ─── */
     #live-card-container { transition: all 0.4s ease; }
-    .letter-card { transition: all 0.3s ease; }
+    .letter-card { position: relative; transition: all 0.3s ease; }
 
     .style-a .letter-card { padding: 1rem 0; background: transparent; border: none; }
     .style-a .letter-tag { font-size: 0.68rem; letter-spacing: 0.3em; text-transform: uppercase; color: var(--text-muted); margin-bottom: 2rem; display: block; }
@@ -337,25 +335,25 @@
     .style-a .letter-sign { margin-top: 2.5rem; font-family: 'Lora', serif; font-style: italic; font-size: 1rem; color: var(--accent-soft); text-align: right; }
 
     .style-b .letter-card { background: #1a1208; border: none; border-radius: 2px; padding: 2.5rem 2.2rem; position: relative; box-shadow: inset 0 0 40px #00000055, 0 4px 24px #00000088; }
-    .style-b .letter-card::before { content: ''; position: absolute; inset: 0; background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='300' height='300'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='300' height='300' filter='url(%23n)' opacity='0.04'/%3E%3C/svg%3E"); opacity: 0.3; pointer-events: none; border-radius: 2px; }
-    .style-b .letter-tag { font-family: 'Playfair Display', serif; font-size: 0.7rem; letter-spacing: 0.2em; text-transform: uppercase; color: #8a7040; margin-bottom: 1rem; display: block; }
-    .style-b .letter-title { font-family: 'Playfair Display', serif; font-size: 1.6rem; font-style: italic; color: #e8d8a0; margin-bottom: 1.8rem; line-height: 1.3; }
-    .style-b .letter-body { font-family: 'Lora', serif; font-size: 1rem; line-height: 1.95; color: #c8b888; min-height: 180px; }
-    .style-b .letter-sign { margin-top: 2rem; font-family: 'Playfair Display', serif; font-style: italic; font-size: 1.1rem; color: #8a7040; text-align: right; }
+    .style-b .letter-card::before { content: ''; position: absolute; inset: 0; background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='300' height='300'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='300' height='300' filter='url(%23n)' opacity='0.04'/%3E%3C/svg%3E"); opacity: 0.3; pointer-events: none; border-radius: 2px; z-index: 0; }
+    .style-b .letter-tag { font-family: 'Playfair Display', serif; font-size: 0.7rem; letter-spacing: 0.2em; text-transform: uppercase; color: #8a7040; margin-bottom: 1rem; display: block; position: relative; z-index: 1; }
+    .style-b .letter-title { font-family: 'Playfair Display', serif; font-size: 1.6rem; font-style: italic; color: #e8d8a0; margin-bottom: 1.8rem; line-height: 1.3; position: relative; z-index: 1; }
+    .style-b .letter-body { font-family: 'Lora', serif; font-size: 1rem; line-height: 1.95; color: #c8b888; min-height: 180px; position: relative; z-index: 1; }
+    .style-b .letter-sign { margin-top: 2rem; font-family: 'Playfair Display', serif; font-style: italic; font-size: 1.1rem; color: #8a7040; text-align: right; position: relative; z-index: 1; }
 
     .style-c .letter-card { background: #080c08; border: 1px solid #1a3a1a; border-radius: 3px; padding: 2.2rem; position: relative; }
-    .style-c .letter-card::before { content: '> editar_carta_'; position: absolute; top: 0.8rem; left: 1rem; font-family: 'Space Mono', monospace; font-size: 0.65rem; color: #2a6a2a; letter-spacing: 0.1em; }
-    .style-c .letter-tag { font-family: 'Space Mono', monospace; font-size: 0.65rem; color: #3a8a3a; margin-bottom: 1.5rem; margin-top: 1rem; display: block; letter-spacing: 0.05em; }
-    .style-c .letter-title { font-family: 'Space Mono', monospace; font-size: 1.1rem; font-style: italic; color: #7adf7a; margin-bottom: 2rem; line-height: 1.4; }
-    .style-c .letter-body { font-family: 'Space Mono', monospace; font-size: 0.85rem; line-height: 1.9; color: #a0c8a0; min-height: 180px; }
-    .style-c .letter-sign { margin-top: 2rem; font-family: 'Space Mono', monospace; font-size: 0.85rem; color: #3a8a3a; text-align: right; }
+    .style-c .letter-card::before { content: '> editar_carta_'; position: absolute; top: 0.8rem; left: 1rem; font-family: 'Space Mono', monospace; font-size: 0.65rem; color: #2a6a2a; letter-spacing: 0.1em; z-index: 0; }
+    .style-c .letter-tag { font-family: 'Space Mono', monospace; font-size: 0.65rem; color: #3a8a3a; margin-bottom: 1.5rem; margin-top: 1rem; display: block; letter-spacing: 0.05em; position: relative; z-index: 1; }
+    .style-c .letter-title { font-family: 'Space Mono', monospace; font-size: 1.1rem; font-style: italic; color: #7adf7a; margin-bottom: 2rem; line-height: 1.4; position: relative; z-index: 1; }
+    .style-c .letter-body { font-family: 'Space Mono', monospace; font-size: 0.85rem; line-height: 1.9; color: #a0c8a0; min-height: 180px; position: relative; z-index: 1; }
+    .style-c .letter-sign { margin-top: 2rem; font-family: 'Space Mono', monospace; font-size: 0.85rem; color: #3a8a3a; text-align: right; position: relative; z-index: 1; }
 
     .style-d .letter-card { background: #100818; border: 1px solid #3a1f4a; outline: 3px solid #1e0f2a; outline-offset: 4px; border-radius: 2px; padding: 2.5rem 2rem; position: relative; }
-    .style-d .letter-card::before { content: '✦'; position: absolute; top: -0.9rem; left: 50%; transform: translateX(-50%); background: var(--bg); padding: 0 0.5rem; color: var(--gold); font-size: 1rem; opacity: 0.5; }
-    .style-d .letter-tag { font-size: 0.65rem; letter-spacing: 0.35em; text-transform: uppercase; color: var(--gold); opacity: 0.5; margin-bottom: 1.2rem; display: block; text-align: center; }
-    .style-d .letter-title { font-family: 'Playfair Display', serif; font-size: 1.55rem; font-style: italic; color: var(--text); margin-bottom: 1.8rem; line-height: 1.3; text-align: center; padding-bottom: 1.2rem; border-bottom: 1px solid #3a1f4a; }
-    .style-d .letter-body { font-family: 'Lora', serif; font-size: 1rem; line-height: 1.95; color: #ccc0d8; min-height: 180px; }
-    .style-d .letter-sign { margin-top: 2rem; font-family: 'Playfair Display', serif; font-style: italic; font-size: 1rem; color: var(--accent-soft); text-align: right; }
+    .style-d .letter-card::before { content: '✦'; position: absolute; top: -0.9rem; left: 50%; transform: translateX(-50%); background: var(--bg); padding: 0 0.5rem; color: var(--gold); font-size: 1rem; opacity: 0.5; z-index: 0; }
+    .style-d .letter-tag { font-size: 0.65rem; letter-spacing: 0.35em; text-transform: uppercase; color: var(--gold); opacity: 0.5; margin-bottom: 1.2rem; display: block; text-align: center; position: relative; z-index: 1; }
+    .style-d .letter-title { font-family: 'Playfair Display', serif; font-size: 1.55rem; font-style: italic; color: var(--text); margin-bottom: 1.8rem; line-height: 1.3; text-align: center; padding-bottom: 1.2rem; border-bottom: 1px solid #3a1f4a; position: relative; z-index: 1; }
+    .style-d .letter-body { font-family: 'Lora', serif; font-size: 1rem; line-height: 1.95; color: #ccc0d8; min-height: 180px; position: relative; z-index: 1; }
+    .style-d .letter-sign { margin-top: 2rem; font-family: 'Playfair Display', serif; font-style: italic; font-size: 1rem; color: var(--accent-soft); text-align: right; position: relative; z-index: 1; }
 
     .letter-body p { margin-bottom: 1.2rem; }
 
@@ -428,7 +426,6 @@
     .preview-btn:hover { background: #2a1f35; color: var(--text); border-color: var(--accent); }
     .preview-btn.active { background: #2a1f35; color: var(--accent-soft); border-color: var(--accent); }
 
-    /* En modo preview: ocultar toolbar y mostrar solo la carta limpia */
     .preview-mode .editor-toolbar { display: none; }
     .preview-mode .form-btn { display: none; }
     .preview-mode .autosave-indicator { display: none; }
@@ -436,8 +433,99 @@
     .preview-mode .back-btn { display: none; }
     .preview-mode .card-editor-input { pointer-events: none; }
     .preview-mode #live-card-container { margin-top: 0; }
-    /* En preview, el pseudo-elemento del style-c muestra texto de vista pame */
     .preview-mode .style-c .letter-card::before { content: '> carta_pame_'; }
+
+    /* ─── CAPA DE STICKERS E IMÁGENES ─── */
+    .stickers-layer {
+      position: absolute;
+      inset: 0;
+      pointer-events: none;
+      overflow: visible;
+      z-index: 5;
+    }
+    .sticker-wrapper {
+      position: absolute;
+      transform-origin: center center;
+      cursor: move;
+      pointer-events: auto;
+      user-select: none;
+      touch-action: none;
+    }
+    .preview-mode .sticker-wrapper, #letter-view .sticker-wrapper {
+      cursor: default;
+    }
+    .sticker-img {
+      width: 100%;
+      height: auto;
+      display: block;
+      pointer-events: none;
+    }
+    .sticker-control {
+      position: absolute;
+      width: 22px;
+      height: 22px;
+      border-radius: 50%;
+      display: none;
+      align-items: center;
+      justify-content: center;
+      font-size: 11px;
+      font-weight: bold;
+      z-index: 10;
+      cursor: pointer;
+      box-shadow: 0 2px 6px rgba(0,0,0,0.5);
+    }
+    #admin-view:not(.preview-mode) .sticker-wrapper.selected .sticker-control {
+      display: flex;
+    }
+    .control-delete {
+      top: -10px;
+      right: -10px;
+      background: #f43f5e;
+      color: #fff;
+      border: 1.5px solid #fff;
+    }
+    .control-clone {
+      top: -10px;
+      left: -10px;
+      background: #3b82f6;
+      color: #fff;
+      border: 1.5px solid #fff;
+    }
+    .control-copy {
+      bottom: -10px;
+      left: -10px;
+      background: #a855f7;
+      color: #fff;
+      border: 1.5px solid #fff;
+    }
+    .control-rotate {
+      top: -28px;
+      left: calc(50% - 11px);
+      background: #c9a96e;
+      color: #0d0b0f;
+      border: 1.5px solid #fff;
+      cursor: grab;
+    }
+    .control-rotate::after {
+      content: '';
+      position: absolute;
+      top: 20px;
+      left: 9px;
+      width: 2px;
+      height: 8px;
+      background: #fff;
+    }
+    .control-resize {
+      bottom: -10px;
+      right: -10px;
+      background: #4ade80;
+      color: #0d0b0f;
+      border: 1.5px solid #fff;
+      cursor: se-resize;
+    }
+    .preview-mode .sticker-control, #letter-view .sticker-control {
+      display: none !important;
+    }
   </style>
 </head>
 <body>
@@ -469,7 +557,7 @@
 
     <div id="admin-view" class="view-section">
       <div class="header">
-        <h1 class="header-title" style="color: #60a5fa;">Editor de <em>Historias</em></h1>
+        <h1 class="header-title" style="color: #60a5fa;">Editor de <em>Cartas</em></h1>
       </div>
 
       <div class="editor-toolbar">
@@ -503,10 +591,22 @@
             <input id="adm-date" class="form-input" type="date" />
           </div>
         </div>
+
+        <div class="toolbar-row" style="margin-top: 0.5rem;">
+          <div class="toolbar-group" style="grid-column: 1 / -1;">
+            <label class="form-label" style="color: var(--accent-soft);">Decoración y Multimedia</label>
+            <div style="display: flex; gap: 0.8rem; align-items: center; flex-wrap: wrap;">
+              <button class="preview-btn" style="margin-top: 0; flex: 1; border-color: var(--accent); color: var(--text);" onclick="document.getElementById('adm-sticker-file').click()">🖼️ Agregar Sticker / Imagen</button>
+              <span style="font-size: 0.75rem; color: var(--text-muted); font-style: italic;">O pegá una imagen directamente (Ctrl+V)</span>
+              <input type="file" id="adm-sticker-file" accept="image/*" style="display: none;" onchange="uploadStickerFile(this)" />
+            </div>
+          </div>
+        </div>
       </div>
 
       <div id="live-card-container" class="style-a">
         <div class="letter-card">
+          <div class="stickers-layer" id="live-stickers-layer"></div>
           <span class="letter-tag">
             <input id="adm-tag" class="card-editor-input" type="text" placeholder="PARA LEER CUANDO..." value="PARA LEER CUANDO" />
           </span>
@@ -549,6 +649,7 @@
     <div id="letter-view" class="view-section">
       <div id="letter-card-wrapper">
         <div class="letter-card" id="letter-card">
+          <div class="stickers-layer" id="view-stickers-layer"></div>
           <span class="letter-tag" id="letter-tag"></span>
           <h2 class="letter-title" id="letter-title"></h2>
           <div class="letter-body" id="letter-body"></div>
@@ -561,7 +662,6 @@
   </div>
 
   <script>
-    // Limpieza automática para asegurar que la URL base no termine en '/' y rompa las rutas relativas
     const BASE_URL_RAW = "https://cartas-pame-default-rtdb.firebaseio.com";
     const FIREBASE_DB_URL = BASE_URL_RAW.endsWith('/') ? BASE_URL_RAW.slice(0, -1) : BASE_URL_RAW;
     
@@ -570,6 +670,8 @@
     let lastUnlockInput = '';
     let autosaveTimer = null;
     let isPreviewMode = false;
+    let currentStickers = [];
+    let selectedStickerIdx = null;
 
     window.addEventListener('DOMContentLoaded', () => {
       switchView('login-view');
@@ -595,6 +697,7 @@
           title: document.getElementById('adm-title').value,
           body: document.getElementById('adm-body').value,
           sign: document.getElementById('adm-sign').value,
+          stickers: currentStickers
         };
         try {
           localStorage.setItem('cartas_draft', JSON.stringify(draft));
@@ -618,10 +721,10 @@
         if (draft.title) document.getElementById('adm-title').value = draft.title;
         if (draft.body) { document.getElementById('adm-body').value = draft.body; autoResizeTextArea(document.getElementById('adm-body')); }
         if (draft.sign) document.getElementById('adm-sign').value = draft.sign;
+        if (draft.stickers) { currentStickers = draft.stickers; renderStickers(document.getElementById('live-stickers-layer'), currentStickers, true); }
       } catch(e) {}
     }
 
-    // Adjuntar autosave a todos los campos del editor
     function attachAutosaveListeners() {
       ['adm-code','adm-style','adm-date-type','adm-date','adm-tag','adm-title','adm-body','adm-sign'].forEach(id => {
         const el = document.getElementById(id);
@@ -666,7 +769,6 @@
         adminView.classList.add('preview-mode');
         btn.classList.add('active');
         btn.textContent = '✕ Salir de vista previa';
-        // Actualizar contenido live desde los campos
         updateLiveCardStyle(document.getElementById('adm-style').value);
       } else {
         adminView.classList.remove('preview-mode');
@@ -733,6 +835,9 @@
       document.getElementById('adm-title').value = '';
       document.getElementById('adm-body').value = '';
       document.getElementById('adm-sign').value = '— Fran';
+      currentStickers = [];
+      selectedStickerIdx = null;
+      document.getElementById('live-stickers-layer').innerHTML = '';
       toggleDateField('immediate');
       updateLiveCardStyle('style-a');
       try { localStorage.removeItem('cartas_draft'); } catch(e) {}
@@ -797,6 +902,9 @@
           });
         }
         signEl.textContent = carta.sign || '';
+
+        const viewLayer = document.getElementById('view-stickers-layer');
+        renderStickers(viewLayer, carta.stickers || [], false);
 
         switchView('letter-view');
       } catch (err) {
@@ -937,6 +1045,10 @@
         document.getElementById('adm-date').value = carta.releaseDate || '';
       }
 
+      currentStickers = carta.stickers || [];
+      selectedStickerIdx = null;
+      renderStickers(document.getElementById('live-stickers-layer'), currentStickers, true);
+
       updateLiveCardStyle(carta.style || 'style-a');
       document.getElementById('live-card-container').scrollIntoView({ behavior: 'smooth' });
     }
@@ -968,7 +1080,7 @@
         if (checkData !== null) existingViews = checkData;
       } catch(e) {}
 
-      const nuevaCarta = { style, dateType, releaseDate, tag, title, body, sign, views: existingViews };
+      const nuevaCarta = { style, dateType, releaseDate, tag, title, body, sign, views: existingViews, stickers: currentStickers };
 
       try {
         const res = await fetch(`${FIREBASE_DB_URL}/cartas/${code}.json`, {
@@ -988,7 +1100,6 @@
         resetEditorForm();
         await loadGallery();
       } catch (err) {
-        console.error(err);
         alert('Error al intentar guardar en Firebase.');
       }
     }
@@ -1024,6 +1135,299 @@
     document.getElementById('code-input').addEventListener('keydown', e => {
       if (e.key === 'Enter') unlock();
     });
+
+    // ══════════════════════════════════════
+    //   SISTEMA DE MANIPULACIÓN DE STICKERS
+    // ══════════════════════════════════════
+
+    function addStickerToData(base64Src) {
+      const newSticker = {
+        src: base64Src,
+        left: 35,
+        top: 25,
+        width: 30, 
+        rotation: 0
+      };
+      currentStickers.push(newSticker);
+      selectedStickerIdx = currentStickers.length - 1;
+      renderStickers(document.getElementById('live-stickers-layer'), currentStickers, true);
+      scheduleAutosave();
+    }
+
+    function uploadStickerFile(input) {
+      if (input.files && input.files[0]) {
+        const reader = new FileReader();
+        reader.onload = function(e) {
+          addStickerToData(e.target.result);
+        };
+        reader.readAsDataURL(input.files[0]);
+        input.value = '';
+      }
+    }
+
+    window.addEventListener('paste', (e) => {
+      if (!currentAdminView || isPreviewMode) return;
+      
+      const items = (e.clipboardData || e.originalEvent.clipboardData).items;
+      for (let i = 0; i < items.length; i++) {
+        if (items[i].type.indexOf('image') !== -1) {
+          const blob = items[i].getAsFile();
+          const reader = new FileReader();
+          reader.onload = function(evt) {
+            addStickerToData(evt.target.result);
+          };
+          reader.readAsDataURL(blob);
+          break;
+        }
+      }
+    });
+
+    // Clic afuera para limpiar la selección de stickers
+    document.addEventListener('click', (e) => {
+      if (!currentAdminView || isPreviewMode) return;
+      if (!e.target.closest('.sticker-wrapper') && !e.target.closest('#adm-sticker-file') && !e.target.closest('.preview-btn')) {
+        selectedStickerIdx = null;
+        document.querySelectorAll('.sticker-wrapper').forEach(w => w.classList.remove('selected'));
+      }
+    });
+
+    function renderStickers(layerContainer, stickersArray, isEditable) {
+      if (!layerContainer) return;
+      layerContainer.innerHTML = '';
+
+      stickersArray.forEach((st, idx) => {
+        const wrapper = document.createElement('div');
+        wrapper.className = 'sticker-wrapper';
+        if (isEditable && selectedStickerIdx === idx) {
+          wrapper.classList.add('selected');
+        }
+        wrapper.style.left = st.left + '%';
+        wrapper.style.top = st.top + '%';
+        wrapper.style.width = st.width + '%';
+        wrapper.style.transform = `rotate(${st.rotation || 0}deg)`;
+
+        const img = document.createElement('img');
+        img.className = 'sticker-img';
+        img.src = st.src;
+        wrapper.appendChild(img);
+
+        if (isEditable) {
+          // Eliminar
+          const delBtn = document.createElement('div');
+          delBtn.className = 'sticker-control control-delete';
+          delBtn.innerHTML = '✕';
+          delBtn.onclick = (e) => {
+            e.stopPropagation();
+            stickersArray.splice(idx, 1);
+            if (selectedStickerIdx === idx) selectedStickerIdx = null;
+            else if (selectedStickerIdx > idx) selectedStickerIdx--;
+            renderStickers(layerContainer, stickersArray, isEditable);
+            scheduleAutosave();
+          };
+          wrapper.appendChild(delBtn);
+
+          // Copiar / Duplicar
+          const cloneBtn = document.createElement('div');
+          cloneBtn.className = 'sticker-control control-clone';
+          cloneBtn.innerHTML = '＋';
+          cloneBtn.onclick = (e) => {
+            e.stopPropagation();
+            const cloned = {
+              src: st.src,
+              left: Math.min(st.left + 5, 85),
+              top: Math.min(st.top + 5, 85),
+              width: st.width,
+              rotation: st.rotation || 0
+            };
+            stickersArray.push(cloned);
+            selectedStickerIdx = stickersArray.length - 1;
+            renderStickers(layerContainer, stickersArray, isEditable);
+            scheduleAutosave();
+          };
+          wrapper.appendChild(cloneBtn);
+
+          // Copiar al portapapeles del sistema
+          const copyBtn = document.createElement('div');
+          copyBtn.className = 'sticker-control control-copy';
+          copyBtn.innerHTML = '📋';
+          copyBtn.title = 'Copiar al portapapeles';
+          copyBtn.onclick = async (e) => {
+            e.stopPropagation();
+            try {
+              const response = await fetch(st.src);
+              const blob = await response.blob();
+              await navigator.clipboard.write([
+                new ClipboardItem({ [blob.type]: blob })
+              ]);
+              alert("¡Imagen copiada al portapapeles!");
+            } catch (err) {
+              console.error("Error al copiar imagen: ", err);
+              alert("No se pudo copiar la imagen al portapapeles.");
+            }
+          };
+          wrapper.appendChild(copyBtn);
+
+          // Rotar
+          const rotBtn = document.createElement('div');
+          rotBtn.className = 'sticker-control control-rotate';
+          rotBtn.innerHTML = '↻';
+          wrapper.appendChild(rotBtn);
+
+          // Redimensionar
+          const resBtn = document.createElement('div');
+          resBtn.className = 'sticker-control control-resize';
+          resBtn.innerHTML = '⤡';
+          wrapper.appendChild(resBtn);
+
+          setupStickerDragAndTransform(wrapper, st, layerContainer, rotBtn, resBtn, idx);
+        }
+
+        layerContainer.appendChild(wrapper);
+      });
+    }
+
+    function setupStickerDragAndTransform(wrapper, stickerData, layerContainer, rotBtn, resBtn, idx) {
+      wrapper.addEventListener('dragstart', (e) => e.preventDefault());
+
+      // 1. MOVER (DRAG)
+      wrapper.addEventListener('mousedown', startMove);
+      wrapper.addEventListener('touchstart', startMove, { passive: false });
+
+      function startMove(e) {
+        if (e.target.classList.contains('sticker-control')) return;
+        e.preventDefault();
+
+        selectedStickerIdx = idx;
+        document.querySelectorAll('.sticker-wrapper').forEach(w => w.classList.remove('selected'));
+        wrapper.classList.add('selected');
+        wrapper.classList.add('active');
+
+        const clientX = e.touches ? e.touches[0].clientX : e.clientX;
+        const clientY = e.touches ? e.touches[0].clientY : e.clientY;
+
+        const containerRect = layerContainer.getBoundingClientRect();
+        const startX = clientX;
+        const startY = clientY;
+        
+        const initialLeftPx = (stickerData.left / 100) * containerRect.width;
+        const initialTopPx = (stickerData.top / 100) * containerRect.height;
+
+        function doMove(moveEvent) {
+          const mX = moveEvent.touches ? moveEvent.touches[0].clientX : moveEvent.clientX;
+          const mY = moveEvent.touches ? moveEvent.touches[0].clientY : moveEvent.clientY;
+
+          const deltaX = mX - startX;
+          const deltaY = mY - startY;
+
+          stickerData.left = ((initialLeftPx + deltaX) / containerRect.width) * 100;
+          stickerData.top = ((initialTopPx + deltaY) / containerRect.height) * 100;
+
+          wrapper.style.left = stickerData.left + '%';
+          wrapper.style.top = stickerData.top + '%';
+        }
+
+        function stopMove() {
+          wrapper.classList.remove('active');
+          window.removeEventListener('mousemove', doMove);
+          window.removeEventListener('mouseup', stopMove);
+          window.removeEventListener('touchmove', doMove);
+          window.removeEventListener('touchend', stopMove);
+          scheduleAutosave();
+        }
+
+        window.addEventListener('mousemove', doMove);
+        window.addEventListener('mouseup', stopMove);
+        window.addEventListener('touchmove', doMove, { passive: false });
+        window.addEventListener('touchend', stopMove);
+      }
+
+      // 2. REDIMENSIONAR
+      resBtn.addEventListener('mousedown', startResize);
+      resBtn.addEventListener('touchstart', startResize, { passive: false });
+
+      function startResize(e) {
+        e.stopPropagation();
+        e.preventDefault();
+
+        const containerRect = layerContainer.getBoundingClientRect();
+        const wrapperRect = wrapper.getBoundingClientRect();
+        
+        const centerX = wrapperRect.left + wrapperRect.width / 2;
+        const centerY = wrapperRect.top + wrapperRect.height / 2;
+
+        const startClientX = e.touches ? e.touches[0].clientX : e.clientX;
+        const startClientY = e.touches ? e.touches[0].clientY : e.clientY;
+        const startRadius = Math.hypot(startClientX - centerX, startClientY - centerY);
+        const initialWidthPercent = stickerData.width;
+
+        function doResize(moveEvent) {
+          const mX = moveEvent.touches ? moveEvent.touches[0].clientX : moveEvent.clientX;
+          const mY = moveEvent.touches ? moveEvent.touches[0].clientY : moveEvent.clientY;
+          
+          const currentRadius = Math.hypot(mX - centerX, mY - centerY);
+          const ratio = currentRadius / startRadius;
+          
+          let newWidthPercent = initialWidthPercent * ratio;
+          if (newWidthPercent < 5) newWidthPercent = 5;
+          if (newWidthPercent > 100) newWidthPercent = 100;
+
+          stickerData.width = newWidthPercent;
+          wrapper.style.width = stickerData.width + '%';
+        }
+
+        function stopResize() {
+          window.removeEventListener('mousemove', doResize);
+          window.removeEventListener('mouseup', stopResize);
+          window.removeEventListener('touchmove', doResize);
+          window.removeEventListener('touchend', stopResize);
+          scheduleAutosave();
+        }
+
+        window.addEventListener('mousemove', doResize);
+        window.addEventListener('mouseup', stopResize);
+        window.addEventListener('touchmove', doResize, { passive: false });
+        window.addEventListener('touchend', stopResize);
+      }
+
+      // 3. ROTAR
+      rotBtn.addEventListener('mousedown', startRotate);
+      rotBtn.addEventListener('touchstart', startRotate, { passive: false });
+
+      function startRotate(e) {
+        e.stopPropagation();
+        e.preventDefault();
+
+        const wrapperRect = wrapper.getBoundingClientRect();
+        const centerX = wrapperRect.left + wrapperRect.width / 2;
+        const centerY = wrapperRect.top + wrapperRect.height / 2;
+
+        function doRotate(moveEvent) {
+          const mX = moveEvent.touches ? moveEvent.touches[0].clientX : moveEvent.clientX;
+          const mY = moveEvent.touches ? moveEvent.touches[0].clientY : moveEvent.clientY;
+
+          const angleRad = Math.atan2(mY - centerY, mX - centerX);
+          let angleDeg = (angleRad * 180) / Math.PI;
+          
+          angleDeg = (angleDeg + 90) % 360;
+
+          stickerData.rotation = angleDeg;
+          wrapper.style.transform = `rotate(${stickerData.rotation}deg)`;
+        }
+
+        function stopRotate() {
+          window.removeEventListener('mousemove', doRotate);
+          window.removeEventListener('mouseup', stopRotate);
+          window.removeEventListener('touchmove', doRotate);
+          window.removeEventListener('touchend', stopRotate);
+          scheduleAutosave();
+        }
+
+        window.addEventListener('mousemove', doRotate);
+        window.addEventListener('mouseup', stopRotate);
+        window.addEventListener('touchmove', doRotate, { passive: false });
+        window.addEventListener('touchend', stopRotate);
+      }
+    }
   </script>
 </body>
 </html>
