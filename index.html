@@ -18,6 +18,7 @@
       --blood: #8b2a3a;
       --admin-bg: #0f172a;
       --admin-border: #1e293b;
+      --wa-blue: #34b7f1;
     }
 
     * { box-sizing: border-box; margin: 0; padding: 0; }
@@ -153,7 +154,7 @@
       border: none;
       color: var(--text-muted);
       font-family: 'Inter', sans-serif;
-      font-size: 0.7rem;
+      font-size: 0.70rem;
       letter-spacing: 0.2em;
       text-transform: uppercase;
       cursor: pointer;
@@ -164,7 +165,7 @@
     .view-section { display: none; }
     .view-section.active { display: block; }
 
-    /* ─── NUEVA INTERFAZ DE EDITOR INTEGRADO (COMO LA CARTA) ─── */
+    /* ─── INTERFAZ DE EDITOR INTEGRADO ─── */
     .editor-toolbar {
       background: #14121a;
       border: 1px solid #2d2438;
@@ -196,7 +197,6 @@
       padding: 0.6rem 0.8rem;
     }
 
-    /* Inputs mágicos e invisibles dentro de la carta */
     .card-editor-input {
       width: 100%;
       background: transparent;
@@ -241,6 +241,7 @@
       border: 1px solid #2c2238;
       border-radius: 4px;
       padding: 1rem;
+      padding-bottom: 2.2rem;
       cursor: pointer;
       transition: transform 0.2s, border-color 0.2s;
       position: relative;
@@ -272,11 +273,36 @@
       padding: 0.15rem 0.4rem;
       border-radius: 3px;
       position: absolute;
-      bottom: 0.8rem;
+      bottom: 0.6rem;
       right: 0.8rem;
       text-transform: uppercase;
     }
     .thumb-type-icon { position: absolute; top: 0.8rem; right: 2.3rem; font-size: 0.85rem; }
+    
+    .thumb-views-status {
+      position: absolute;
+      bottom: 0.6rem;
+      left: 1rem;
+      font-size: 0.75rem;
+      display: flex;
+      align-items: center;
+      gap: 0.3rem;
+      font-weight: 500;
+      cursor: pointer;
+      padding: 2px 4px;
+      border-radius: 3px;
+      transition: background 0.2s;
+    }
+    .thumb-views-status:hover {
+      background: rgba(255,255,255,0.05);
+    }
+    .status-unseen {
+      color: var(--text-muted);
+      opacity: 0.4;
+    }
+    .status-seen {
+      color: var(--wa-blue);
+    }
     
     .thumb-edit-btn {
       position: absolute;
@@ -299,23 +325,17 @@
     .gallery-empty { color: var(--text-muted); font-size: 0.85rem; font-style: italic; text-align: center; padding: 1rem; grid-column: 1 / -1; opacity: 0.6; }
 
     /* ══════════════════════════════════════
-       ESTILOS DE CARTA (PREVIEW & COMPARTIDOS)
+       ESTILOS DE CARTA
     ══════════════════════════════════════ */
-    #live-card-container {
-      transition: all 0.4s ease;
-    }
-    .letter-card {
-      transition: all 0.3s ease;
-    }
+    #live-card-container { transition: all 0.4s ease; }
+    .letter-card { transition: all 0.3s ease; }
 
-    /* Style A: Minimalista */
     .style-a .letter-card { padding: 1rem 0; background: transparent; border: none; }
     .style-a .letter-tag { font-size: 0.68rem; letter-spacing: 0.3em; text-transform: uppercase; color: var(--text-muted); margin-bottom: 2rem; display: block; }
     .style-a .letter-title { font-family: 'Lora', serif; font-size: 2rem; font-weight: 400; font-style: italic; color: var(--text); margin-bottom: 2.5rem; line-height: 1.2; border-bottom: 1px solid var(--border); padding-bottom: 1.5rem; }
     .style-a .letter-body { font-family: 'Lora', serif; font-size: 1.05rem; line-height: 2; color: #d4c9bc; min-height: 180px; }
     .style-a .letter-sign { margin-top: 2.5rem; font-family: 'Lora', serif; font-style: italic; font-size: 1rem; color: var(--accent-soft); text-align: right; }
 
-    /* Style B: Papel Viejo */
     .style-b .letter-card { background: #1a1208; border: none; border-radius: 2px; padding: 2.5rem 2.2rem; position: relative; box-shadow: inset 0 0 40px #00000055, 0 4px 24px #00000088; }
     .style-b .letter-card::before { content: ''; position: absolute; inset: 0; background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='300' height='300'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='300' height='300' filter='url(%23n)' opacity='0.04'/%3E%3C/svg%3E"); opacity: 0.3; pointer-events: none; border-radius: 2px; }
     .style-b .letter-tag { font-family: 'Playfair Display', serif; font-size: 0.7rem; letter-spacing: 0.2em; text-transform: uppercase; color: #8a7040; margin-bottom: 1rem; display: block; }
@@ -323,7 +343,6 @@
     .style-b .letter-body { font-family: 'Lora', serif; font-size: 1rem; line-height: 1.95; color: #c8b888; min-height: 180px; }
     .style-b .letter-sign { margin-top: 2rem; font-family: 'Playfair Display', serif; font-style: italic; font-size: 1.1rem; color: #8a7040; text-align: right; }
 
-    /* Style C: Terminal */
     .style-c .letter-card { background: #080c08; border: 1px solid #1a3a1a; border-radius: 3px; padding: 2.2rem; position: relative; }
     .style-c .letter-card::before { content: '> editar_carta_'; position: absolute; top: 0.8rem; left: 1rem; font-family: 'Space Mono', monospace; font-size: 0.65rem; color: #2a6a2a; letter-spacing: 0.1em; }
     .style-c .letter-tag { font-family: 'Space Mono', monospace; font-size: 0.65rem; color: #3a8a3a; margin-bottom: 1.5rem; margin-top: 1rem; display: block; letter-spacing: 0.05em; }
@@ -331,7 +350,6 @@
     .style-c .letter-body { font-family: 'Space Mono', monospace; font-size: 0.85rem; line-height: 1.9; color: #a0c8a0; min-height: 180px; }
     .style-c .letter-sign { margin-top: 2rem; font-family: 'Space Mono', monospace; font-size: 0.85rem; color: #3a8a3a; text-align: right; }
 
-    /* Style D: Gótico */
     .style-d .letter-card { background: #100818; border: 1px solid #3a1f4a; outline: 3px solid #1e0f2a; outline-offset: 4px; border-radius: 2px; padding: 2.5rem 2rem; position: relative; }
     .style-d .letter-card::before { content: '✦'; position: absolute; top: -0.9rem; left: 50%; transform: translateX(-50%); background: var(--bg); padding: 0 0.5rem; color: var(--gold); font-size: 1rem; opacity: 0.5; }
     .style-d .letter-tag { font-size: 0.65rem; letter-spacing: 0.35em; text-transform: uppercase; color: var(--gold); opacity: 0.5; margin-bottom: 1.2rem; display: block; text-align: center; }
@@ -339,13 +357,11 @@
     .style-d .letter-body { font-family: 'Lora', serif; font-size: 1rem; line-height: 1.95; color: #ccc0d8; min-height: 180px; }
     .style-d .letter-sign { margin-top: 2rem; font-family: 'Playfair Display', serif; font-style: italic; font-size: 1rem; color: var(--accent-soft); text-align: right; }
 
-    /* Ajustes específicos para cuando la vista de lectura renderiza párrafos p p */
     .letter-body p { margin-bottom: 1.2rem; }
   </style>
 </head>
 <body>
 
-  <!-- Elementos decorativos de fondo -->
   <svg id="fx-bat-1" class="bat bat-tl" viewBox="0 0 100 50" xmlns="http://www.w3.org/2000/svg"><path d="M50 25 C30 10 5 5 0 20 C10 20 20 25 25 30 C15 28 8 35 10 42 C18 35 28 32 35 35 C38 40 42 45 50 45 C58 45 62 40 65 35 C72 32 82 35 90 42 C92 35 85 28 75 30 C80 25 90 20 100 20 C95 5 70 10 50 25Z"/></svg>
   <svg id="fx-bat-2" class="bat bat-tr" viewBox="0 0 100 50" xmlns="http://www.w3.org/2000/svg"><path d="M50 25 C30 10 5 5 0 20 C10 20 20 25 25 30 C15 28 8 35 10 42 C18 35 28 32 35 35 C38 40 42 45 50 45 C58 45 62 40 65 35 C72 32 82 35 90 42 C92 35 85 28 75 30 C80 25 90 20 100 20 C95 5 70 10 50 25Z"/></svg>
   <svg id="fx-bat-3" class="bat bat-bl" viewBox="0 0 100 50" xmlns="http://www.w3.org/2000/svg"><path d="M50 25 C30 10 5 5 0 20 C10 20 20 25 25 30 C15 28 8 35 10 42 C18 35 28 32 35 35 C38 40 42 45 50 45 C58 45 62 40 65 35 C72 32 82 35 90 42 C92 35 85 28 75 30 C80 25 90 20 100 20 C95 5 70 10 50 25Z"/></svg>
@@ -354,7 +370,6 @@
 
   <div class="container">
 
-    <!-- LOGIN VIEW -->
     <div id="login-view" class="view-section active">
       <div class="header">
         <h1 class="header-title">Cartas para <em>Pame</em></h1>
@@ -368,13 +383,11 @@
       <div class="footer" style="margin-top: 2rem; text-align: center; font-size: 0.78rem; color: var(--text-muted); opacity: 0.4;">Fran · 2026</div>
     </div>
 
-    <!-- ADMIN EDITOR VIEW (NUEVA INTERFAZ EN VIVO) -->
     <div id="admin-view" class="view-section">
       <div class="header">
         <h1 class="header-title" style="color: #60a5fa;">Editor de <em>Historias</em></h1>
       </div>
 
-      <!-- Barra técnica de configuración -->
       <div class="editor-toolbar">
         <div class="toolbar-row">
           <div class="toolbar-group">
@@ -408,7 +421,6 @@
         </div>
       </div>
 
-      <!-- LA CARTA EN SÍ MISMA (FUNCIONA COMO FORMULARIO EN VIVO) -->
       <div id="live-card-container" class="style-a">
         <div class="letter-card">
           <span class="letter-tag">
@@ -418,7 +430,7 @@
             <input id="adm-title" class="card-editor-input" type="text" placeholder="Escribí un hermoso título..." />
           </h2>
           <div class="letter-body">
-            <textarea id="adm-body" class="card-editor-input" placeholder="Escribí el cuerpo de tu carta acá... Podés usar Enters normalmente como en un papel real." oninput="autoResizeTextArea(this)"></textarea>
+            <textarea id="adm-body" class="card-editor-input" placeholder="Escribí el cuerpo de tu carta acá..." oninput="autoResizeTextArea(this)"></textarea>
           </div>
           <div class="letter-sign">
             <input id="adm-sign" class="card-editor-input" type="text" placeholder="— Tu Firma" value="— Fran" />
@@ -429,7 +441,6 @@
       <button class="form-btn" style="border-color: #3b82f6; color: #60a5fa; margin-top: 2rem;" onclick="saveLetter()">Guardar en la Nube</button>
       <div id="admin-success" class="success-msg"></div>
 
-      <!-- SECCIÓN SEPARADA DE LAS GALERÍAS -->
       <div class="gallery-section">
         <div class="gallery-title-wrapper">
           <label class="form-label" style="color: #4ade80;">Colección Estándar / Programadas</label>
@@ -449,7 +460,6 @@
       <button class="back-btn" onclick="exitAdmin()">← salir del panel</button>
     </div>
 
-    <!-- LETTER VIEW (LECTURA FINAL DE PAME / PREVIEW CORRIENTE) -->
     <div id="letter-view" class="view-section">
       <div id="letter-card-wrapper">
         <div class="letter-card" id="letter-card">
@@ -465,7 +475,10 @@
   </div>
 
   <script>
-    const FIREBASE_DB_URL = "https://cartas-pame-default-rtdb.firebaseio.com/"; 
+    // Limpieza automática para asegurar que la URL base no termine en '/' y rompa las rutas relativas
+    const BASE_URL_RAW = "https://cartas-pame-default-rtdb.firebaseio.com";
+    const FIREBASE_DB_URL = BASE_URL_RAW.endsWith('/') ? BASE_URL_RAW.slice(0, -1) : BASE_URL_RAW;
+    
     const ADMIN_KEY = "admin123"; 
     let currentAdminView = false; 
 
@@ -481,19 +494,14 @@
 
     function toggleDateField(type) {
       const dateGroup = document.getElementById('scheduled-date-group');
-      if (dateGroup) {
-        dateGroup.style.display = (type === 'scheduled') ? 'block' : 'none';
-      }
-      if (type !== 'scheduled') {
-        document.getElementById('adm-date').value = '';
-      }
+      if (dateGroup) dateGroup.style.display = (type === 'scheduled') ? 'block' : 'none';
+      if (type !== 'scheduled') document.getElementById('adm-date').value = '';
     }
 
     function updateLiveCardStyle(styleId) {
       const container = document.getElementById('live-card-container');
       if (container) container.className = styleId;
 
-      // Ajustes cosméticos generales del body según el estilo activo en el editor
       const bodyBats = document.querySelectorAll('.bat');
       if (styleId === 'style-c') {
         bodyBats.forEach(b => b.style.opacity = '0.01');
@@ -521,7 +529,7 @@
         currentAdminView = true; 
         switchView('admin-view');
         resetEditorForm();
-        loadGallery();
+        await loadGallery();
         return;
       }
 
@@ -543,19 +551,24 @@
 
     async function fetchAndDisplayLetter(code) {
       try {
-        const res = await fetch(`${FIREBASE_DB_URL}/cartas/${code}.json`);
+        const targetUrl = `${FIREBASE_DB_URL}/cartas/${code}.json`;
+        const res = await fetch(targetUrl);
+        
+        if (!res.ok) {
+          throw new Error(`HTTP Error Status: ${res.status}`);
+        }
+        
         const carta = await res.json();
 
         if (!carta) {
           if (!currentAdminView) {
             document.getElementById('error-msg').textContent = 'Ese código no existe... o todavía no es el momento.';
           } else {
-            alert('No se encontró la carta para generar la preview.');
+            alert('No se encontró la carta buscada.');
           }
           return;
         }
 
-        // Bloqueos de fecha válidos solo para Pame leyendo en producción
         if (!currentAdminView) {
           if (carta.dateType === 'undefined') {
             document.getElementById('error-msg').textContent = '¿No es muy pronto, amorcito?';
@@ -568,6 +581,12 @@
               return;
             }
           }
+
+          const currentViews = carta.views || 0;
+          await fetch(`${FIREBASE_DB_URL}/cartas/${code}/views.json`, {
+            method: 'PUT',
+            body: JSON.stringify(currentViews + 1)
+          });
         }
 
         document.getElementById('letter-tag').textContent = carta.tag || '';
@@ -592,10 +611,30 @@
 
         switchView('letter-view');
       } catch (err) {
-        console.error(err);
+        console.error("Error capturado en fetchAndDisplayLetter:", err);
+        alert(`Error de red o conexión: ${err.message}. Revisá la consola o la URL de Firebase.`);
         if (!currentAdminView) {
           document.getElementById('error-msg').textContent = 'Error de conexión con la nube.';
         }
+      }
+    }
+
+    async function resetViewsCounter(code) {
+      if (!confirm(`¿Querés resetear a 0 las vistas de la carta #${code}?`)) return;
+      
+      try {
+        const res = await fetch(`${FIREBASE_DB_URL}/cartas/${code}/views.json`, {
+          method: 'PUT',
+          body: JSON.stringify(0)
+        });
+        if (res.ok) {
+          await loadGallery();
+        } else {
+          alert('No se pudo actualizar el contador en Firebase.');
+        }
+      } catch (err) {
+        console.error(err);
+        alert('Error de conexión al resetear vistas.');
       }
     }
 
@@ -608,6 +647,7 @@
 
       try {
         const res = await fetch(`${FIREBASE_DB_URL}/cartas.json`);
+        if (!res.ok) return;
         const cartas = await res.json();
 
         if (!cartas || Object.keys(cartas).length === 0) {
@@ -627,7 +667,6 @@
           const thumb = document.createElement('div');
           thumb.className = 'gallery-card-thumb';
           
-          // Al tocar la miniatura abre la visualización exacta 1:1 final
           thumb.onclick = () => {
             currentAdminView = true;
             fetchAndDisplayLetter(code);
@@ -635,6 +674,7 @@
 
           const styleLetter = carta.style ? carta.style.replace('style-', '') : 'a';
           const isUndef = carta.dateType === 'undefined';
+          const totalViews = carta.views || 0;
           
           let icon = '🔓';
           if (carta.dateType === 'scheduled') icon = '📅';
@@ -647,11 +687,25 @@
             <span class="thumb-type-icon">${icon}</span>
           `;
 
-          // Botón Lápiz independiente para inyectar datos en la carta editable de arriba
+          const viewsSpan = document.createElement('span');
+          if (totalViews > 0) {
+            viewsSpan.className = 'thumb-views-status status-seen';
+            viewsSpan.innerHTML = `✔️✔️ ${totalViews}`;
+          } else {
+            viewsSpan.className = 'thumb-views-status status-unseen';
+            viewsSpan.innerHTML = `✔️✔️ 0`;
+          }
+          
+          viewsSpan.onclick = (e) => {
+            e.stopPropagation();
+            resetViewsCounter(code);
+          };
+          
+          thumb.appendChild(viewsSpan);
+
           const editBtn = document.createElement('div');
           editBtn.className = 'thumb-edit-btn';
           editBtn.innerHTML = '✏️';
-          editBtn.title = 'Editar directamente';
           editBtn.onclick = (e) => {
             e.stopPropagation();
             setupEditorForEdit(code, carta);
@@ -693,8 +747,6 @@
       }
 
       updateLiveCardStyle(carta.style || 'style-a');
-      
-      // Scrollear suave hasta el inicio de la carta interactiva
       document.getElementById('live-card-container').scrollIntoView({ behavior: 'smooth' });
     }
 
@@ -709,16 +761,23 @@
       const sign = document.getElementById('adm-sign').value.trim();
 
       if (!code || !title || !body) {
-        alert('Por favor completá al menos el Código, el Título y el Cuerpo dentro de la carta.');
+        alert('Por favor completá al menos el Código, el Título y el Cuerpo.');
         return;
       }
 
       if (dateType === 'scheduled' && !releaseDate) {
-        alert('Falta ingresar la fecha de liberación programada.');
+        alert('Falta ingresar la fecha de liberación.');
         return;
       }
 
-      const nuevaCarta = { style, dateType, releaseDate, tag, title, body, sign };
+      let existingViews = 0;
+      try {
+        const checkRes = await fetch(`${FIREBASE_DB_URL}/cartas/${code}/views.json`);
+        const checkData = await checkRes.json();
+        if (checkData !== null) existingViews = checkData;
+      } catch(e) {}
+
+      const nuevaCarta = { style, dateType, releaseDate, tag, title, body, sign, views: existingViews };
 
       try {
         const res = await fetch(`${FIREBASE_DB_URL}/cartas/${code}.json`, {
@@ -736,7 +795,7 @@
         }
 
         resetEditorForm();
-        loadGallery();
+        await loadGallery();
       } catch (err) {
         console.error(err);
         alert('Error al intentar guardar en Firebase.');
