@@ -3,7 +3,7 @@
 // 2) Deja el terreno listo para notificaciones push reales en el futuro
 //    (hoy los toques se muestran mientras la app está abierta; ver index.html).
 
-const CACHE_NAME = 'framecorreo-v1';
+const CACHE_NAME = 'framecorreo-v2'; // v2: el SW ya no intercepta pedidos cross-origin (Firebase/Telegram)
 const APP_SHELL = [
   './',
   './index.html',
@@ -29,6 +29,18 @@ self.addEventListener('activate', (event) => {
 
 self.addEventListener('fetch', (event) => {
   if (event.request.method !== 'GET') return;
+
+  // Clave: NO tocar pedidos que no sean del propio origen (Firebase, Telegram, etc.).
+  // Si dejamos que el Service Worker intercepte esos pedidos, agarra también las
+  // conexiones EventSource (streams que quedan abiertas para siempre) e intenta
+  // meterlas en la cache con cache.put(), que espera a que el stream termine.
+  // Como nunca termina, la conexión en tiempo real queda inestable: a veces
+  // pasa igual, a veces se corta o tarda en reconectar. Por eso la sincronización
+  // "a veces anda, a veces no". Dejando pasar de largo lo que no es same-origin,
+  // esas conexiones quedan intactas y libres de interferencia.
+  const url = new URL(event.request.url);
+  if (url.origin !== self.location.origin) return;
+
   event.respondWith(
     fetch(event.request)
       .then((res) => {
