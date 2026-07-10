@@ -3,8 +3,20 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Cartas para Pame</title>
-  <link href="https://fonts.googleapis.com/css2?family=Lora:ital,wght@0,400;0,500;1,400&family=Inter:wght@300;400;500&family=Playfair+Display:ital,wght@0,400;1,400&family=Space+Mono:ital@0;1&display=swap" rel="stylesheet" />
+  <title>Framecorreo</title>
+
+  <!-- ─── PWA: instalable como "Framecorreo" ─── -->
+  <link rel="manifest" href="manifest.json" />
+  <meta name="theme-color" content="#0d0b0f" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <meta name="apple-mobile-web-app-title" content="Framecorreo" />
+  <link rel="apple-touch-icon" href="apple-touch-icon.png" />
+  <link rel="icon" type="image/png" href="icon-192.png" />
+
+  <link href="https://fonts.googleapis.com/css2?family=Lora:ital,wght@0,400;0,500;1,400&family=Inter:wght@300;400;500&family=Playfair+Display:ital,wght@0,400;1,400&family=Space+Mono:ital@0;1&family=Cinzel:wght@400;600&family=Cormorant+Garamond:ital,wght@0,400;0,600;1,400&family=Dancing+Script:wght@400;600&family=Josefin+Sans:wght@300;400&family=Montserrat:wght@300;400;500&family=Outfit:wght@300;400;500&family=Raleway:wght@300;400;500&display=swap" rel="stylesheet" />
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+  
   <style>
     :root {
       --bg: #0d0b0f;
@@ -15,9 +27,6 @@
       --gold: #c9a96e;
       --text: #e8ddd0;
       --text-muted: #8a7a6e;
-      --blood: #8b2a3a;
-      --admin-bg: #0f172a;
-      --admin-border: #1e293b;
       --wa-blue: #34b7f1;
     }
 
@@ -31,501 +40,488 @@
       display: flex;
       flex-direction: column;
       align-items: center;
-      justify-content: center;
+      justify-content: flex-start;
       padding: 2rem 1rem;
       position: relative;
       overflow-x: hidden;
     }
 
-    .bat {
-      position: fixed;
-      opacity: 0.07;
-      pointer-events: none;
-      fill: var(--accent-soft);
-      transition: opacity 0.3s;
-    }
+    /* ─── FONDOS FX ─── */
+    .bat { position: fixed; opacity: 0.07; pointer-events: none; fill: var(--accent-soft); transition: opacity 0.3s; }
     .bat-tl { top: 3%; left: 2%; width: 90px; transform: rotate(-20deg); }
     .bat-tr { top: 5%; right: 4%; width: 60px; transform: rotate(15deg) scaleX(-1); }
     .bat-bl { bottom: 6%; left: 5%; width: 50px; transform: rotate(10deg); }
     .bat-br { bottom: 4%; right: 3%; width: 75px; transform: rotate(-10deg) scaleX(-1); }
 
     .moon {
-      position: fixed;
-      top: -40px;
-      right: 80px;
-      width: 120px;
-      height: 120px;
-      border-radius: 50%;
-      background: radial-gradient(circle at 40% 40%, #f5e6c8, #c9a96e88);
-      box-shadow: 0 0 60px 20px #c9a96e22;
-      opacity: 0.13;
-      pointer-events: none;
+      position: fixed; top: -40px; right: 80px; width: 120px; height: 120px;
+      border-radius: 50%; background: radial-gradient(circle at 40% 40%, #f5e6c8, #c9a96e88);
+      box-shadow: 0 0 60px 20px #c9a96e22; opacity: 0.13; pointer-events: none;
     }
 
+    /* ─── ESTRUCTURA CONTENEDORES ─── */
     .container {
-      max-width: 560px;
+      max-width: 900px; /* Ampliado para dejar fluir la toolbar */
       width: 100%;
       position: relative;
       z-index: 1;
-    }
-
-    .header {
-      text-align: center;
-      margin-bottom: 2.5rem;
-    }
-
-    .header-title {
-      font-family: 'Lora', serif;
-      font-size: 2rem;
-      font-weight: 400;
-      color: var(--text);
-    }
-
-    .header-title em {
-      font-style: italic;
-      color: var(--accent-soft);
-    }
-
-    /* ─── CONTROLES DE ENTRADA ESTÁNDAR ─── */
-    .form-wrapper {
-      background: var(--surface);
-      border: 1px solid var(--border);
-      border-radius: 4px;
-      padding: 2rem;
-    }
-    .form-label {
-      display: block;
-      font-size: 0.7rem;
-      letter-spacing: 0.25em;
-      text-transform: uppercase;
-      color: var(--text-muted);
-      margin-bottom: 0.75rem;
-    }
-    .form-input, .form-select {
-      width: 100%;
-      background: var(--bg);
-      border: 1px solid var(--border);
-      border-radius: 3px;
-      padding: 0.75rem 1rem;
-      color: var(--text);
-      font-family: 'Inter', sans-serif;
-      font-size: 1rem;
-      outline: none;
-    }
-    .form-input::placeholder { color: var(--text-muted); opacity: 0.4; font-style: italic; }
-
-    .form-btn {
-      width: 100%;
-      margin-top: 1.2rem;
-      padding: 0.85rem;
-      background: transparent;
-      border: 1px solid var(--accent);
-      border-radius: 3px;
-      color: var(--accent-soft);
-      font-family: 'Inter', sans-serif;
-      font-size: 0.72rem;
-      letter-spacing: 0.25em;
-      text-transform: uppercase;
-      cursor: pointer;
-      transition: background 0.2s, color 0.2s;
-    }
-    .form-btn:hover { background: var(--accent); color: var(--text); }
-
-    .error-msg {
-      margin-top: 0.8rem;
-      font-style: italic;
-      font-size: 0.9rem;
-      color: #df7a7a;
-      text-align: center;
-      min-height: 1.2rem;
-    }
-    .success-msg {
-      margin-top: 0.8rem;
-      font-style: italic;
-      font-size: 0.85rem;
-      color: #7adf7a;
-      text-align: center;
-    }
-
-    .back-btn {
-      display: inline-block;
-      margin-top: 1.8rem;
-      background: transparent;
-      border: none;
-      color: var(--text-muted);
-      font-family: 'Inter', sans-serif;
-      font-size: 0.70rem;
-      letter-spacing: 0.2em;
-      text-transform: uppercase;
-      cursor: pointer;
-      transition: color 0.2s;
-    }
-    .back-btn:hover { color: var(--text); }
-
-    .view-section { display: none; }
-    .view-section.active { display: block; }
-
-    /* ─── INTERFAZ DE EDITOR INTEGRADO ─── */
-    .editor-toolbar {
-      background: #14121a;
-      border: 1px solid #2d2438;
-      border-radius: 6px;
-      padding: 1.2rem;
-      margin-bottom: 2rem;
-      box-shadow: 0 4px 20px rgba(0,0,0,0.4);
-    }
-    .toolbar-row {
-      display: grid;
-      grid-template-columns: 1fr 1fr;
-      gap: 1rem;
-      margin-bottom: 0.8rem;
-    }
-    @media(max-width: 480px) {
-      .toolbar-row { grid-template-columns: 1fr; }
-    }
-    .toolbar-group {
       display: flex;
       flex-direction: column;
-    }
-    .toolbar-group .form-label {
-      margin-bottom: 0.4rem;
-    }
-    .toolbar-group .form-input, .toolbar-group .form-select {
-      background: #09070c;
-      border-color: #382c47;
-      font-size: 0.9rem;
-      padding: 0.6rem 0.8rem;
+      align-items: center;
+      margin-top: 4vh;
     }
 
-    .card-editor-input {
-      width: 100%;
-      background: transparent;
-      border: none;
-      outline: none;
-      color: inherit;
-      font-family: inherit;
-      font-size: inherit;
-      font-weight: inherit;
-      font-style: inherit;
-      letter-spacing: inherit;
-      text-transform: inherit;
-      text-align: inherit;
-      resize: none;
-      padding: 0;
-      margin: 0;
-    }
-    .card-editor-input::placeholder {
-      color: inherit;
-      opacity: 0.25;
-      font-style: italic;
+    .view-section { width: 100%; display: none; flex-direction: column; align-items: center; }
+    .view-section.active { display: flex; }
+
+    /* Forzar el ancho central a 560px excepto para la toolbar */
+    .form-wrapper, .header, #live-card-container, #letter-card-wrapper { 
+      width: 100%; max-width: 560px; margin: 0 auto; 
     }
 
-    /* ─── GALERÍAS EN EL EDITOR ─── */
-    .gallery-section {
-      margin-top: 3.5rem;
-      border-top: 1px dashed #382c47;
-      padding-top: 2rem;
-    }
-    .gallery-grid {
-      display: grid;
-      grid-template-columns: 1fr;
-      gap: 1rem;
-      margin-top: 0.6rem;
-      margin-bottom: 1.8rem;
-    }
-    @media(min-width: 480px) {
-      .gallery-grid { grid-template-columns: 1fr 1fr; }
-    }
-    .gallery-card-thumb {
-      background: #14111a;
-      border: 1px solid #2c2238;
-      border-radius: 4px;
-      padding: 1rem;
-      padding-bottom: 2.2rem;
-      cursor: pointer;
-      transition: transform 0.2s, border-color 0.2s;
+    .header { text-align: center; margin-bottom: 2.8rem; }
+    .header-title { font-family: 'Lora', serif; font-size: 2.5rem; font-weight: 400; color: var(--text); letter-spacing: 0.01em; }
+    .header-title em { font-style: italic; color: var(--accent-soft); }
+
+    /* ─── LOGIN & CONTROLES ESTÁNDAR ─── */
+    #login-view .form-wrapper {
+      background: linear-gradient(160deg, var(--surface), #17121e);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 2.6rem 2.2rem;
+      box-shadow: 0 20px 50px -15px rgba(0,0,0,0.7), 0 0 0 1px rgba(201,169,110,0.04) inset;
       position: relative;
     }
-    .gallery-card-thumb:hover {
-      transform: translateY(-2px);
-      border-color: var(--accent);
+    #login-view .form-wrapper::before {
+      content: '';
+      position: absolute; top: 0; left: 12%; right: 12%; height: 1px;
+      background: linear-gradient(90deg, transparent, var(--gold), transparent);
+      opacity: 0.35;
     }
-    .thumb-code {
-      font-family: 'Space Mono', monospace;
-      font-size: 0.75rem;
-      color: var(--accent-soft);
-      display: block;
-      margin-bottom: 0.25rem;
+    .form-wrapper { background: var(--surface); border: 1px solid var(--border); border-radius: 4px; padding: 2rem; }
+    .form-label { display: block; font-size: 0.8rem; letter-spacing: 0.25em; text-transform: uppercase; color: var(--text-muted); margin-bottom: 0.85rem; text-align: center; }
+    .form-input { width: 100%; background: var(--bg); border: 1px solid var(--border); border-radius: 6px; padding: 0.95rem 1.1rem; color: var(--text); font-family: 'Inter', sans-serif; font-size: 1.1rem; letter-spacing: 0.04em; text-align: center; outline: none; transition: border-color 0.2s, box-shadow 0.2s; }
+    .form-input:focus { border-color: var(--accent-soft); box-shadow: 0 0 0 3px rgba(160,88,126,0.15); }
+    .form-input::placeholder { color: var(--text-muted); opacity: 0.4; font-style: italic; }
+
+    .form-btn { width: 100%; margin-top: 1.5rem; padding: 1rem; background: transparent; border: 1px solid var(--accent); border-radius: 6px; color: var(--accent-soft); font-family: 'Inter', sans-serif; font-size: 0.85rem; font-weight: 500; letter-spacing: 0.25em; text-transform: uppercase; cursor: pointer; transition: background 0.2s, color 0.2s, box-shadow 0.2s; }
+    .form-btn:hover { background: var(--accent); color: var(--text); box-shadow: 0 8px 24px -8px rgba(124,63,110,0.6); }
+    .form-btn:disabled { opacity: 0.5; cursor: not-allowed; background: transparent; }
+
+    .error-msg { margin-top: 0.9rem; font-style: italic; font-size: 0.95rem; color: #df7a7a; text-align: center; min-height: 1.2rem; }
+    .success-msg { margin-top: 0.9rem; font-style: italic; font-size: 0.9rem; color: #7adf7a; text-align: center; }
+
+    .back-btn { display: inline-block; margin-top: 1.8rem; background: transparent; border: none; color: var(--text-muted); font-family: 'Inter', sans-serif; font-size: 0.78rem; letter-spacing: 0.2em; text-transform: uppercase; cursor: pointer; transition: color 0.2s; }
+    .back-btn:hover { color: var(--text); }
+
+    .error-block { margin-top: 0.9rem; background: #1a0a0a; border: 1px solid #4a1a1a; border-radius: 6px; padding: 1rem 1.1rem; display: none; }
+    .error-block.visible { display: block; }
+    .error-block-msg { font-style: italic; font-size: 0.95rem; color: #df7a7a; margin-bottom: 0.7rem; }
+    .retry-btn { background: transparent; border: 1px solid #6b2a2a; border-radius: 4px; color: #df7a7a; font-family: 'Inter', sans-serif; font-size: 0.78rem; letter-spacing: 0.2em; text-transform: uppercase; padding: 0.5rem 1rem; cursor: pointer; transition: background 0.2s; }
+    .retry-btn:hover { background: #3a1010; }
+
+    /* ─── FILA DE CÓDIGO + GUARDAR ─── */
+    .code-save-row {
+      display: flex; align-items: center; justify-content: center; gap: 0.7rem;
+      margin: 0 auto 1.4rem auto; width: 100%; max-width: 900px;
     }
-    .thumb-title {
-      font-size: 0.95rem;
-      font-weight: 500;
-      color: var(--text);
-      white-space: nowrap;
-      overflow: hidden;
-      text-overflow: ellipsis;
-      padding-right: 3.5rem;
+    .adm-code-input {
+      flex: 0 1 360px; min-width: 0;
+      background: var(--surface); border: 1px solid var(--border); border-radius: 10px;
+      padding: 0.9rem 1.2rem; color: var(--text); font-family: 'Lora', serif;
+      font-size: 1.05rem; letter-spacing: 0.03em; outline: none; cursor: text;
+      text-align: center;
+      box-shadow: 0 6px 20px -10px rgba(0,0,0,0.6);
+      transition: border-color 0.2s, box-shadow 0.2s;
     }
-    .thumb-style-tag {
-      font-size: 0.65rem;
-      background: #0d0a12;
-      color: var(--text-muted);
-      padding: 0.15rem 0.4rem;
-      border-radius: 3px;
-      position: absolute;
-      bottom: 0.6rem;
-      right: 0.8rem;
-      text-transform: uppercase;
+    .adm-code-input::placeholder { color: var(--text-muted); opacity: 0.5; font-style: italic; }
+    .adm-code-input:focus { border-color: var(--accent-soft); box-shadow: 0 0 0 3px rgba(160,88,126,0.15); }
+    .icon-row-btn {
+      flex-shrink: 0; width: 44px; height: 44px; border-radius: 10px;
+      background: var(--surface); border: 1px solid var(--border); color: var(--text);
+      font-size: 1.05rem; cursor: pointer; display: flex; align-items: center; justify-content: center;
+      transition: background 0.2s, border-color 0.2s;
     }
-    .thumb-type-icon { position: absolute; top: 0.8rem; right: 2.3rem; font-size: 0.85rem; }
-    
-    .thumb-views-status {
-      position: absolute;
-      bottom: 0.6rem;
-      left: 1rem;
-      font-size: 0.75rem;
-      display: flex;
-      align-items: center;
-      gap: 0.3rem;
-      font-weight: 500;
-      cursor: pointer;
-      padding: 2px 4px;
-      border-radius: 3px;
-      transition: background 0.2s;
+    .icon-row-btn:hover { background: var(--accent); border-color: var(--accent-soft); }
+    .save-btn {
+      font-size: 1.15rem; border-color: #3b82f6; color: #60a5fa;
     }
-    .thumb-views-status:hover {
-      background: rgba(255,255,255,0.05);
-    }
-    .status-unseen {
-      color: var(--text-muted);
-      opacity: 0.4;
-    }
-    .status-seen {
-      color: var(--wa-blue);
-    }
-    
-    .thumb-edit-btn {
-      position: absolute;
-      top: 0.5rem;
-      right: 0.5rem;
-      width: 26px;
-      height: 26px;
-      background: #251c30;
-      border: 1px solid #3d2e4f;
-      border-radius: 4px;
+    .save-btn:hover { background: #3b82f6; color: #fff; }
+
+    /* ─── BARRA TIPO GOOGLE DOCS ─── */
+    .docs-toolbar {
+      position: sticky;
+      top: 20px;
+      z-index: 100;
+      background: #100d14;
+      border: 1px solid #2d2438;
+      border-radius: 8px;
+      padding: 0.6rem 1rem;
       display: flex;
       align-items: center;
       justify-content: center;
-      font-size: 0.75rem;
-      cursor: pointer;
-      transition: background 0.2s, border-color 0.2s;
-      z-index: 2;
+      flex-wrap: nowrap; /* Fuerza una sola línea */
+      gap: 0.8rem;
+      box-shadow: 0 8px 32px rgba(0,0,0,0.6);
+      margin: 0 auto 2.5rem auto;
+      width: max-content; /* Ocupa lo que tenga que ocupar */
+      max-width: 95vw; /* Margen de seguridad en móviles chicos */
     }
+
+    .tb-group { display: flex; align-items: center; gap: 0.4rem; flex-shrink: 0; }
+    .tb-sep { width: 1px; height: 24px; background: #2d2438; margin: 0 0.2rem; flex-shrink: 0; }
+
+    /* Controles de la barra */
+    .tb-select, .tb-input-num, .tb-color, .tb-input {
+      background: #09070c; border: 1px solid #2d2438; border-radius: 4px;
+      color: var(--text); font-size: 0.8rem; padding: 0.35rem; outline: none;
+      font-family: 'Inter', sans-serif; cursor: pointer;
+    }
+    .tb-input { cursor: text; }
+    .tb-input-num { width: 45px; text-align: center; cursor: text; }
+    
+    .tb-color {
+      width: 26px; height: 26px; padding: 0; border: 1px solid #4a3c5a;
+      border-radius: 4px; cursor: pointer; background: transparent;
+    }
+    .tb-color::-webkit-color-swatch-wrapper { padding: 0; }
+    .tb-color::-webkit-color-swatch { border: none; border-radius: 3px; }
+
+    .tb-btn {
+      background: transparent; border: 1px solid transparent; border-radius: 4px;
+      color: var(--text-muted); width: 28px; height: 28px; display: flex;
+      align-items: center; justify-content: center; font-size: 0.9rem; cursor: pointer; transition: all 0.2s;
+    }
+    .tb-btn:hover { background: #2a1f35; color: var(--text); }
+
+    /* Ocultar flechita por defecto en webkit para el input combo si queres un look más limpio,
+       pero el datalist ya la provee de forma nativa */
+    input::-webkit-calendar-picker-indicator { opacity: 0.6; cursor: pointer; }
+
+    /* ─── EDITOR (Live Card) ─── */
+    .card-editor-div {
+      width: 100%; background: transparent; border: none; outline: none;
+      color: inherit; font-family: inherit; font-size: inherit; line-height: inherit; min-height: 180px;
+    }
+    .card-editor-div[contenteditable]:empty:before {
+      content: attr(placeholder); color: inherit; opacity: 0.25; font-style: italic; pointer-events: none; display: block;
+    }
+
+    .card-editor-input {
+      width: 100%; background: transparent; border: none; outline: none;
+      color: inherit; font-family: inherit; font-size: inherit; font-weight: inherit;
+      font-style: inherit; letter-spacing: inherit; text-transform: inherit; text-align: inherit;
+      resize: none; padding: 0; margin: 0;
+    }
+    .card-editor-input::placeholder { color: inherit; opacity: 0.25; font-style: italic; }
+
+    /* Placeholder real para los cuadros de texto (título / cuerpo): no hay que borrar nada para escribir */
+    .sticker-text-content[contenteditable]:empty:before {
+      content: attr(placeholder); color: inherit; opacity: 0.4; font-style: italic; pointer-events: none; display: block;
+    }
+
+    /* ─── GALERÍAS ─── */
+    .gallery-section { margin-top: 3.5rem; border-top: 1px dashed #382c47; padding-top: 2rem; width: 100%; max-width: 900px; margin-left: auto; margin-right: auto; }
+
+    .gallery-controls { display: flex; align-items: center; gap: 0.7rem; margin-bottom: 0.9rem; }
+    .hamburger-btn {
+      flex-shrink: 0; width: 42px; height: 42px; border-radius: 6px;
+      background: var(--surface); border: 1px solid var(--border); color: var(--text);
+      font-size: 1.15rem; cursor: pointer; display: flex; align-items: center; justify-content: center;
+      transition: background 0.2s, border-color 0.2s;
+    }
+    .hamburger-btn:hover, .hamburger-btn.active { background: var(--accent); border-color: var(--accent-soft); }
+    .gallery-search-input {
+      flex: 1; min-width: 0; background: var(--surface); border: 1px solid var(--border); border-radius: 6px;
+      padding: 0.7rem 1rem; color: var(--text); font-family: 'Inter', sans-serif; font-size: 0.92rem; outline: none;
+      transition: border-color 0.2s;
+    }
+    .gallery-search-input:focus { border-color: var(--accent-soft); }
+    .gallery-search-input::placeholder { color: var(--text-muted); opacity: 0.6; }
+
+    .gallery-menu-panel {
+      display: none; align-items: center; gap: 0.7rem; flex-wrap: wrap;
+      background: var(--surface); border: 1px solid var(--border); border-radius: 6px;
+      padding: 0.8rem 1rem; margin-bottom: 1.3rem;
+    }
+    .gallery-menu-panel.open { display: flex; }
+    .gallery-menu-panel .opacity-label { font-size: 0.8rem; }
+    .gallery-menu-panel .tb-select { font-size: 0.85rem; padding: 0.45rem 0.5rem; }
+
+    .gallery-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 1rem; margin-top: 0.6rem; margin-bottom: 1.8rem; }
+
+    .gallery-card-thumb { background: #14111a; border: 1px solid #2c2238; border-radius: 8px; padding: 0.85rem; cursor: pointer; transition: transform 0.2s, border-color 0.2s; position: relative; display: flex; flex-direction: column; }
+    .gallery-card-thumb:hover { transform: translateY(-2px); border-color: var(--accent); }
+
+    .thumb-header-row { display: flex; align-items: center; justify-content: space-between; padding-right: 3.6rem; }
+    .thumb-code { font-family: 'Space Mono', monospace; font-size: 0.92rem; color: var(--accent-soft); display: block; }
+    .thumb-type-icon { font-size: 0.92rem; display: inline-flex; align-items: center; justify-content: center; line-height: 1; min-width: 1.4em; text-align: center; }
+    .thumb-tag { font-size: 0.68rem; letter-spacing: 0.15em; text-transform: uppercase; color: var(--text-muted); opacity: 0.75; margin-top: 0.45rem; min-height: 1em; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .thumb-title { font-size: 1rem; font-weight: 500; color: var(--text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; margin-top: 0.2rem; margin-bottom: 0.7rem; }
+
+    .thumb-preview-wrap { position: relative; width: 100%; aspect-ratio: 4 / 5; border-radius: 4px; overflow: hidden; background: #1a1522; flex-shrink: 0; }
+    .gallery-thumb-preview { width: 100%; height: 100%; object-fit: cover; display: block; }
+    .thumb-preview-placeholder { width: 100%; height: 100%; display: flex; align-items: center; justify-content: center; font-size: 1.8rem; opacity: 0.3; }
+
+    .thumb-footer-row { display: flex; align-items: center; justify-content: flex-start; gap: 0.5rem; margin-top: 0.65rem; }
+    .thumb-edited { font-size: 0.68rem; color: var(--text-muted); opacity: 0.6; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; text-align: left; }
+
+    .thumb-views-status { position: absolute; bottom: 0.5rem; left: 0.5rem; font-size: 0.8rem; display: flex; align-items: center; gap: 0.3rem; font-weight: 500; cursor: pointer; padding: 3px 6px; border-radius: 4px; background: rgba(13,10,18,0.75); transition: background 0.2s; z-index: 2; }
+    .thumb-views-status:hover { background: rgba(13,10,18,0.95); }
+    .status-unseen { color: var(--text-muted); opacity: 0.75; }
+    .status-seen { color: var(--wa-blue); }
+
+    /* Editar/Borrar: ocultos por defecto, visibles al hacer hover (mouse) o siempre en pantallas táctiles (sin hover),
+       salvo que la grilla esté en modo selección, donde se ocultan a favor de los checkboxes */
+    .thumb-edit-btn, .thumb-delete-btn { position: absolute; top: 0.6rem; width: 28px; height: 28px; background: #251c30; border: 1px solid #3d2e4f; border-radius: 4px; display: flex; align-items: center; justify-content: center; font-size: 0.8rem; cursor: pointer; transition: background 0.2s, border-color 0.2s, opacity 0.15s; z-index: 2; opacity: 0; pointer-events: none; }
+    .thumb-edit-btn { right: 0.6rem; }
+    .thumb-delete-btn { right: 3.15rem; }
     .thumb-edit-btn:hover { background: var(--accent); border-color: var(--accent-soft); }
-    .gallery-empty { color: var(--text-muted); font-size: 0.85rem; font-style: italic; text-align: center; padding: 1rem; grid-column: 1 / -1; opacity: 0.6; }
+    .thumb-delete-btn:hover { background: #6b2a2a; border-color: #df7a7a; }
+    .gallery-card-thumb:hover .thumb-edit-btn,
+    .gallery-card-thumb:hover .thumb-delete-btn { opacity: 1; pointer-events: auto; }
+    @media (hover: none) {
+      .thumb-edit-btn, .thumb-delete-btn { opacity: 1; pointer-events: auto; }
+    }
+    .gallery-grid.selection-mode .thumb-edit-btn,
+    .gallery-grid.selection-mode .thumb-delete-btn { opacity: 0 !important; pointer-events: none !important; }
+
+    /* Selección en masa (long-press / mantener pulsado) */
+    .thumb-select-check {
+      position: absolute; top: 0.6rem; left: 0.6rem; width: 24px; height: 24px; border-radius: 50%;
+      border: 2px solid rgba(255,255,255,0.5); background: rgba(13,10,18,0.65);
+      display: none; align-items: center; justify-content: center; font-size: 0.8rem; color: #fff;
+      z-index: 3; cursor: pointer;
+    }
+    .gallery-grid.selection-mode .thumb-select-check { display: flex; }
+    .gallery-card-thumb:hover .thumb-select-check { display: flex; }
+    .gallery-card-thumb.selected-for-bulk { outline: 2px solid var(--accent-soft); outline-offset: 2px; }
+    .gallery-card-thumb.selected-for-bulk .thumb-select-check { background: var(--accent); border-color: #fff; }
+
+    .gallery-empty { color: var(--text-muted); font-size: 0.92rem; font-style: italic; text-align: center; padding: 1rem; grid-column: 1 / -1; opacity: 0.6; }
+
+    /* ─── FILTROS DE GALERÍA ─── */
+    .gallery-filter-tabs { display: flex; gap: 0.5rem; flex-wrap: wrap; margin-bottom: 1.1rem; }
+    .gallery-filter-btn {
+      background: var(--surface); border: 1px solid var(--border); color: var(--text-muted);
+      font-family: 'Inter', sans-serif; font-size: 0.75rem; letter-spacing: 0.08em; text-transform: uppercase;
+      padding: 0.5rem 0.95rem; border-radius: 20px; cursor: pointer; transition: all 0.2s;
+    }
+    .gallery-filter-btn:hover { border-color: var(--accent-soft); color: var(--text); }
+    .gallery-filter-btn.active { background: var(--accent); border-color: var(--accent-soft); color: var(--text); }
+
+    /* ─── BARRA DE ACCIONES EN MASA ─── */
+    .bulk-actions-bar {
+      position: fixed; left: 50%; bottom: 20px; transform: translateX(-50%); z-index: 210;
+      display: none; align-items: center; gap: 0.9rem;
+      background: #1a1220; border: 1px solid #3d2e4f; border-radius: 10px; padding: 0.6rem 1.1rem;
+      box-shadow: 0 8px 30px rgba(0,0,0,0.6);
+    }
+    .bulk-actions-bar.visible { display: flex; }
+    .bulk-count { font-size: 0.8rem; color: var(--text-muted); white-space: nowrap; }
+    .bulk-delete-btn { background: transparent; border: 1px solid #6b2a2a; color: #df7a7a; border-radius: 6px; padding: 0.45rem 0.9rem; font-size: 0.78rem; letter-spacing: 0.05em; text-transform: uppercase; cursor: pointer; transition: background 0.2s; }
+    .bulk-delete-btn:hover { background: #3a1010; }
+    .bulk-cancel-btn { background: transparent; border: 1px solid var(--border); color: var(--text-muted); border-radius: 6px; padding: 0.45rem 0.9rem; font-size: 0.78rem; letter-spacing: 0.05em; text-transform: uppercase; cursor: pointer; transition: color 0.2s, border-color 0.2s; }
+    .bulk-cancel-btn:hover { color: var(--text); border-color: var(--text-muted); }
 
     /* ─── ESTILOS DE CARTA ─── */
-    #live-card-container { transition: all 0.4s ease; }
-    .letter-card { position: relative; transition: all 0.3s ease; }
+    #live-card-container { transition: all 0.4s ease; width: 100%; }
+    .letter-card { position: relative; transition: all 0.3s ease; min-height: 700px; overflow: hidden; }
+    /* Límite visible del área de trabajo, solo en el editor (no en la carta final que ve Pame) */
+    .workspace-boundary { position: absolute; inset: 0; pointer-events: none; z-index: 6; outline: 2px dashed rgba(160, 88, 126, 0.6); outline-offset: -2px; }
+    #letter-card-image { width: 100%; display: block; border-radius: inherit; }
+    /* Cuando se muestra la imagen final ya renderizada, el fondo del estilo se quita para que no se dibuje dos veces */
+    #letter-card.showing-image { background: none !important; border: none !important; outline: none !important; box-shadow: none !important; }
+    #letter-card.showing-image::before { content: none !important; display: none !important; }
 
     .style-a .letter-card { padding: 1rem 0; background: transparent; border: none; }
-    .style-a .letter-tag { font-size: 0.68rem; letter-spacing: 0.3em; text-transform: uppercase; color: var(--text-muted); margin-bottom: 2rem; display: block; }
+    .style-a .letter-tag { font-size: 0.75rem; letter-spacing: 0.3em; text-transform: uppercase; color: var(--text-muted); margin-bottom: 2rem; display: block; }
     .style-a .letter-title { font-family: 'Lora', serif; font-size: 2rem; font-weight: 400; font-style: italic; color: var(--text); margin-bottom: 2.5rem; line-height: 1.2; border-bottom: 1px solid var(--border); padding-bottom: 1.5rem; }
     .style-a .letter-body { font-family: 'Lora', serif; font-size: 1.05rem; line-height: 2; color: #d4c9bc; min-height: 180px; }
     .style-a .letter-sign { margin-top: 2.5rem; font-family: 'Lora', serif; font-style: italic; font-size: 1rem; color: var(--accent-soft); text-align: right; }
 
     .style-b .letter-card { background: #1a1208; border: none; border-radius: 2px; padding: 2.5rem 2.2rem; position: relative; box-shadow: inset 0 0 40px #00000055, 0 4px 24px #00000088; }
     .style-b .letter-card::before { content: ''; position: absolute; inset: 0; background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='300' height='300'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='300' height='300' filter='url(%23n)' opacity='0.04'/%3E%3C/svg%3E"); opacity: 0.3; pointer-events: none; border-radius: 2px; z-index: 0; }
-    .style-b .letter-tag { font-family: 'Playfair Display', serif; font-size: 0.7rem; letter-spacing: 0.2em; text-transform: uppercase; color: #8a7040; margin-bottom: 1rem; display: block; position: relative; z-index: 1; }
+    .style-b .letter-tag { font-family: 'Playfair Display', serif; font-size: 0.78rem; letter-spacing: 0.2em; text-transform: uppercase; color: #8a7040; margin-bottom: 1rem; display: block; position: relative; z-index: 1; }
     .style-b .letter-title { font-family: 'Playfair Display', serif; font-size: 1.6rem; font-style: italic; color: #e8d8a0; margin-bottom: 1.8rem; line-height: 1.3; position: relative; z-index: 1; }
     .style-b .letter-body { font-family: 'Lora', serif; font-size: 1rem; line-height: 1.95; color: #c8b888; min-height: 180px; position: relative; z-index: 1; }
     .style-b .letter-sign { margin-top: 2rem; font-family: 'Playfair Display', serif; font-style: italic; font-size: 1.1rem; color: #8a7040; text-align: right; position: relative; z-index: 1; }
 
     .style-c .letter-card { background: #080c08; border: 1px solid #1a3a1a; border-radius: 3px; padding: 2.2rem; position: relative; }
-    .style-c .letter-card::before { content: '> editar_carta_'; position: absolute; top: 0.8rem; left: 1rem; font-family: 'Space Mono', monospace; font-size: 0.65rem; color: #2a6a2a; letter-spacing: 0.1em; z-index: 0; }
-    .style-c .letter-tag { font-family: 'Space Mono', monospace; font-size: 0.65rem; color: #3a8a3a; margin-bottom: 1.5rem; margin-top: 1rem; display: block; letter-spacing: 0.05em; position: relative; z-index: 1; }
+    .style-c .letter-card::before { content: '> editar_carta_'; position: absolute; top: 0.8rem; left: 1rem; font-family: 'Space Mono', monospace; font-size: 0.72rem; color: #2a6a2a; letter-spacing: 0.1em; z-index: 0; }
+    .style-c .letter-tag { font-family: 'Space Mono', monospace; font-size: 0.72rem; color: #3a8a3a; margin-bottom: 1.5rem; margin-top: 1rem; display: block; letter-spacing: 0.05em; position: relative; z-index: 1; }
     .style-c .letter-title { font-family: 'Space Mono', monospace; font-size: 1.1rem; font-style: italic; color: #7adf7a; margin-bottom: 2rem; line-height: 1.4; position: relative; z-index: 1; }
     .style-c .letter-body { font-family: 'Space Mono', monospace; font-size: 0.85rem; line-height: 1.9; color: #a0c8a0; min-height: 180px; position: relative; z-index: 1; }
     .style-c .letter-sign { margin-top: 2rem; font-family: 'Space Mono', monospace; font-size: 0.85rem; color: #3a8a3a; text-align: right; position: relative; z-index: 1; }
 
     .style-d .letter-card { background: #100818; border: 1px solid #3a1f4a; outline: 3px solid #1e0f2a; outline-offset: 4px; border-radius: 2px; padding: 2.5rem 2rem; position: relative; }
     .style-d .letter-card::before { content: '✦'; position: absolute; top: -0.9rem; left: 50%; transform: translateX(-50%); background: var(--bg); padding: 0 0.5rem; color: var(--gold); font-size: 1rem; opacity: 0.5; z-index: 0; }
-    .style-d .letter-tag { font-size: 0.65rem; letter-spacing: 0.35em; text-transform: uppercase; color: var(--gold); opacity: 0.5; margin-bottom: 1.2rem; display: block; text-align: center; position: relative; z-index: 1; }
+    .style-d .letter-tag { font-size: 0.72rem; letter-spacing: 0.35em; text-transform: uppercase; color: var(--gold); opacity: 0.5; margin-bottom: 1.2rem; display: block; text-align: center; position: relative; z-index: 1; }
     .style-d .letter-title { font-family: 'Playfair Display', serif; font-size: 1.55rem; font-style: italic; color: var(--text); margin-bottom: 1.8rem; line-height: 1.3; text-align: center; padding-bottom: 1.2rem; border-bottom: 1px solid #3a1f4a; position: relative; z-index: 1; }
     .style-d .letter-body { font-family: 'Lora', serif; font-size: 1rem; line-height: 1.95; color: #ccc0d8; min-height: 180px; position: relative; z-index: 1; }
     .style-d .letter-sign { margin-top: 2rem; font-family: 'Playfair Display', serif; font-style: italic; font-size: 1rem; color: var(--accent-soft); text-align: right; position: relative; z-index: 1; }
 
     .letter-body p { margin-bottom: 1.2rem; }
 
-    /* ─── LOADING STATE ─── */
-    .form-btn:disabled {
-      opacity: 0.5;
-      cursor: not-allowed;
-      background: transparent;
-    }
-
-    /* ─── ERROR CON REINTENTO ─── */
-    .error-block {
-      margin-top: 0.8rem;
-      background: #1a0a0a;
-      border: 1px solid #4a1a1a;
-      border-radius: 3px;
-      padding: 0.9rem 1rem;
-      display: none;
-    }
-    .error-block.visible { display: block; }
-    .error-block-msg {
-      font-style: italic;
-      font-size: 0.9rem;
-      color: #df7a7a;
-      margin-bottom: 0.6rem;
-    }
-    .retry-btn {
-      background: transparent;
-      border: 1px solid #6b2a2a;
-      border-radius: 3px;
-      color: #df7a7a;
-      font-family: 'Inter', sans-serif;
-      font-size: 0.7rem;
-      letter-spacing: 0.2em;
-      text-transform: uppercase;
-      padding: 0.4rem 0.9rem;
-      cursor: pointer;
-      transition: background 0.2s;
-    }
-    .retry-btn:hover { background: #3a1010; }
-
-    /* ─── AUTOSAVE INDICATOR ─── */
-    .autosave-indicator {
-      font-size: 0.7rem;
-      color: var(--text-muted);
-      opacity: 0;
-      transition: opacity 0.4s;
-      text-align: right;
-      margin-top: 0.4rem;
-      letter-spacing: 0.1em;
-    }
+    /* ─── AUTOSAVE ─── */
+    .autosave-indicator { font-size: 0.78rem; color: var(--text-muted); opacity: 0; transition: opacity 0.4s; text-align: right; margin-top: 0.4rem; letter-spacing: 0.1em; width: 100%; max-width: 560px; margin-left: auto; margin-right: auto;}
     .autosave-indicator.visible { opacity: 0.6; }
 
-    /* ─── PREVIEW MODE ─── */
-    .preview-btn {
-      width: 100%;
-      margin-top: 0.8rem;
-      padding: 0.7rem;
-      background: transparent;
-      border: 1px solid #3a2f4a;
-      border-radius: 3px;
-      color: var(--text-muted);
-      font-family: 'Inter', sans-serif;
-      font-size: 0.7rem;
-      letter-spacing: 0.22em;
-      text-transform: uppercase;
-      cursor: pointer;
-      transition: background 0.2s, color 0.2s, border-color 0.2s;
-    }
-    .preview-btn:hover { background: #2a1f35; color: var(--text); border-color: var(--accent); }
-    .preview-btn.active { background: #2a1f35; color: var(--accent-soft); border-color: var(--accent); }
-
-    .preview-mode .editor-toolbar { display: none; }
-    .preview-mode .form-btn { display: none; }
-    .preview-mode .autosave-indicator { display: none; }
-    .preview-mode .gallery-section { display: none; }
-    .preview-mode .back-btn { display: none; }
-    .preview-mode .card-editor-input { pointer-events: none; }
-    .preview-mode #live-card-container { margin-top: 0; }
-    .preview-mode .style-c .letter-card::before { content: '> carta_pame_'; }
-
     /* ─── CAPA DE STICKERS E IMÁGENES ─── */
-    .stickers-layer {
-      position: absolute;
-      inset: 0;
-      pointer-events: none;
-      overflow: visible;
-      z-index: 5;
+    .stickers-layer { position: absolute; inset: 0; pointer-events: none; overflow: visible; z-index: 5; }
+    .sticker-wrapper { position: absolute; transform-origin: center center; cursor: default; pointer-events: auto; user-select: none; touch-action: none; }
+    #letter-view .sticker-wrapper { cursor: default; }
+    .sticker-img { width: 100%; height: auto; display: block; pointer-events: none; }
+    
+    .sticker-text-content { width: 100%; height: 100%; outline: none; cursor: text; padding: 4px; }
+    #admin-view .sticker-wrapper.selected .sticker-text-content { border: 1px dashed rgba(255,255,255,0.2); }
+
+    .sticker-control { position: absolute; width: 22px; height: 22px; border-radius: 50%; display: none; align-items: center; justify-content: center; font-size: 11px; font-weight: bold; z-index: 10; cursor: pointer; box-shadow: 0 2px 6px rgba(0,0,0,0.5); }
+    #admin-view .sticker-wrapper.selected .sticker-control { display: flex; }
+    
+    .control-move { top: -10px; left: -10px; background: #64748b; color: #fff; border: 1.5px solid #fff; cursor: move; }
+    .control-delete { top: -10px; right: -10px; background: #f43f5e; color: #fff; border: 1.5px solid #fff; }
+    .control-clone { bottom: -10px; left: -10px; background: #3b82f6; color: #fff; border: 1.5px solid #fff; }
+    .control-copy { bottom: -10px; left: calc(50% - 11px); background: #a855f7; color: #fff; border: 1.5px solid #fff; }
+    .control-rotate { top: -28px; left: calc(50% - 11px); background: #c9a96e; color: #0d0b0f; border: 1.5px solid #fff; cursor: grab; }
+    .control-rotate::after { content: ''; position: absolute; top: 20px; left: 9px; width: 2px; height: 8px; background: #fff; }
+    .control-resize { bottom: -10px; right: -10px; background: #4ade80; color: #0d0b0f; border: 1.5px solid #fff; cursor: se-resize; }
+    #letter-view .sticker-control { display: none !important; }
+
+    /* ─── PANEL DE PROPIEDADES: CAPAS + OPACIDAD (fijo bajo la barra de herramientas) ─── */
+    .sticker-props-bar {
+      position: fixed; left: 50%; bottom: 20px; transform: translateX(-50%); z-index: 199;
+      display: none; align-items: center; justify-content: center; gap: 0.6rem;
+      background: #100d14; border: 1px solid #2d2438; border-radius: 10px;
+      padding: 0.5rem 1rem; margin: 0;
+      width: max-content; max-width: 95vw;
+      box-shadow: 0 10px 30px rgba(0,0,0,0.6);
     }
-    .sticker-wrapper {
-      position: absolute;
-      transform-origin: center center;
-      cursor: move;
-      pointer-events: auto;
-      user-select: none;
-      touch-action: none;
+    .sticker-props-bar.visible { display: flex; }
+    .props-bar-label { font-size: 0.72rem; letter-spacing: 0.1em; text-transform: uppercase; color: var(--text-muted); white-space: nowrap; }
+    .layer-btn {
+      width: 26px; height: 26px; border-radius: 4px; background: #251c30; border: 1px solid #3d2e4f;
+      color: var(--text); font-size: 12px; display: flex; align-items: center; justify-content: center;
+      cursor: pointer; flex-shrink: 0;
     }
-    .preview-mode .sticker-wrapper, #letter-view .sticker-wrapper {
-      cursor: default;
+    .layer-btn:hover { background: var(--accent); }
+    .opacity-label { font-size: 0.75rem; color: var(--text-muted); white-space: nowrap; }
+    .opacity-slider { width: 90px; height: 14px; cursor: pointer; flex-shrink: 0; }
+
+    /* ═══════════════ PIZARRA COMPARTIDA (DIBUJO) ═══════════════ */
+    .draw-wrapper {
+      width: 100%; max-width: 560px; margin: 1.6rem auto 0;
+      background: linear-gradient(160deg, var(--surface), #17121e);
+      border: 1px solid var(--border); border-radius: 10px;
+      padding: 1.2rem 1.2rem 1.4rem;
+      box-shadow: 0 20px 50px -15px rgba(0,0,0,0.7), 0 0 0 1px rgba(201,169,110,0.04) inset;
     }
-    .sticker-img {
-      width: 100%;
-      height: auto;
-      display: block;
-      pointer-events: none;
+    .draw-header { display: flex; align-items: baseline; justify-content: space-between; margin-bottom: 0.8rem; }
+    .draw-title { font-family: 'Lora', serif; font-style: italic; font-size: 1.05rem; color: var(--accent-soft); }
+    .draw-sub { font-size: 0.68rem; letter-spacing: 0.15em; text-transform: uppercase; color: var(--text-muted); opacity: 0.6; }
+    .draw-canvas-box {
+      width: 100%; aspect-ratio: 5 / 3; border-radius: 8px; overflow: hidden;
+      background: #0a080d; border: 1px solid var(--border); touch-action: none; position: relative;
     }
-    .sticker-control {
-      position: absolute;
-      width: 22px;
-      height: 22px;
-      border-radius: 50%;
-      display: none;
-      align-items: center;
-      justify-content: center;
-      font-size: 11px;
-      font-weight: bold;
-      z-index: 10;
-      cursor: pointer;
-      box-shadow: 0 2px 6px rgba(0,0,0,0.5);
+    #draw-canvas { width: 100%; height: 100%; display: block; cursor: crosshair; }
+    .draw-toolbar { display: flex; align-items: center; gap: 0.6rem; margin-top: 0.9rem; flex-wrap: wrap; }
+    .draw-colors { display: flex; gap: 0.4rem; align-items: center; flex-wrap: wrap; }
+    .draw-swatch {
+      width: 22px; height: 22px; border-radius: 50%; border: 2px solid transparent; cursor: pointer;
+      flex-shrink: 0; transition: transform 0.15s, border-color 0.15s; padding: 0;
     }
-    #admin-view:not(.preview-mode) .sticker-wrapper.selected .sticker-control {
-      display: flex;
+    .draw-swatch:hover { transform: scale(1.12); }
+    .draw-swatch.active { border-color: var(--gold); transform: scale(1.15); }
+    .draw-swatch-custom {
+      width: 22px; height: 22px; border-radius: 50%; padding: 0; border: 2px solid var(--border);
+      background: conic-gradient(red, yellow, lime, cyan, blue, magenta, red); cursor: pointer; flex-shrink: 0;
     }
-    .control-delete {
-      top: -10px;
-      right: -10px;
-      background: #f43f5e;
-      color: #fff;
-      border: 1.5px solid #fff;
+    .draw-size-wrap { display: flex; align-items: center; gap: 0.4rem; margin-left: auto; }
+    .draw-size { width: 78px; accent-color: var(--accent-soft); cursor: pointer; }
+    .draw-tool-btn {
+      width: 30px; height: 30px; border-radius: 6px; background: #1c1624; border: 1px solid var(--border);
+      color: var(--text); font-size: 0.85rem; display: flex; align-items: center; justify-content: center;
+      cursor: pointer; flex-shrink: 0; transition: background 0.15s, border-color 0.15s;
     }
-    .control-clone {
-      top: -10px;
-      left: -10px;
-      background: #3b82f6;
-      color: #fff;
-      border: 1.5px solid #fff;
+    .draw-tool-btn:hover { background: var(--accent); border-color: var(--accent); }
+    .draw-tool-btn.active { background: var(--accent); border-color: var(--gold); color: var(--text); }
+    .draw-sync-note { font-size: 0.68rem; color: var(--text-muted); opacity: 0.55; text-align: center; margin-top: 0.6rem; }
+    .draw-sync-note.saving { opacity: 0.9; color: var(--accent-soft); }
+
+    /* ═══════════════ BOTÓN "DAR UN TOQUE" ═══════════════ */
+    .touch-fab {
+      position: fixed; right: 1.1rem; bottom: 1.1rem; z-index: 500;
+      width: 56px; height: 56px; border-radius: 50%;
+      background: linear-gradient(160deg, var(--accent), var(--accent-dark, #5e2f52));
+      border: 1px solid var(--gold); color: var(--text); font-size: 1.5rem;
+      display: flex; align-items: center; justify-content: center; cursor: pointer;
+      box-shadow: 0 10px 30px -8px rgba(124,63,110,0.8);
+      transition: transform 0.15s;
     }
-    .control-copy {
-      bottom: -10px;
-      left: -10px;
-      background: #a855f7;
-      color: #fff;
-      border: 1.5px solid #fff;
+    .touch-fab:hover { transform: scale(1.06); }
+    .touch-fab.pulse { animation: touchPulse 1.4s ease-out 2; }
+    @keyframes touchPulse {
+      0% { box-shadow: 0 0 0 0 rgba(160,88,126,0.7); }
+      70% { box-shadow: 0 0 0 18px rgba(160,88,126,0); }
+      100% { box-shadow: 0 0 0 0 rgba(160,88,126,0); }
     }
-    .control-rotate {
-      top: -28px;
-      left: calc(50% - 11px);
-      background: #c9a96e;
-      color: #0d0b0f;
-      border: 1.5px solid #fff;
-      cursor: grab;
+    .touch-menu {
+      position: fixed; right: 1.1rem; bottom: 4.6rem; z-index: 500;
+      display: none; flex-direction: column; gap: 0.5rem;
+      background: linear-gradient(160deg, var(--surface), #17121e);
+      border: 1px solid var(--border); border-radius: 10px; padding: 0.7rem;
+      box-shadow: 0 20px 50px -15px rgba(0,0,0,0.8); min-width: 190px;
     }
-    .control-rotate::after {
-      content: '';
-      position: absolute;
-      top: 20px;
-      left: 9px;
-      width: 2px;
-      height: 8px;
-      background: #fff;
+    .touch-menu.visible { display: flex; }
+    .touch-opt {
+      background: transparent; border: 1px solid var(--border); border-radius: 6px;
+      color: var(--text); padding: 0.6rem 0.8rem; text-align: left; font-size: 0.88rem;
+      cursor: pointer; transition: background 0.15s, border-color 0.15s; font-family: 'Inter', sans-serif;
     }
-    .control-resize {
-      bottom: -10px;
-      right: -10px;
-      background: #4ade80;
-      color: #0d0b0f;
-      border: 1.5px solid #fff;
-      cursor: se-resize;
+    .touch-opt:hover { background: var(--accent); border-color: var(--accent-soft); }
+
+    /* ═══════════════ TOAST DE TOQUE RECIBIDO ═══════════════ */
+    .toque-toast {
+      position: fixed; top: 1rem; left: 50%; transform: translateX(-50%) translateY(-140%);
+      z-index: 900; background: linear-gradient(160deg, var(--surface), #17121e);
+      border: 1px solid var(--gold); border-radius: 10px; padding: 0.9rem 1.3rem;
+      box-shadow: 0 20px 50px -15px rgba(0,0,0,0.8); display: flex; align-items: center; gap: 0.7rem;
+      transition: transform 0.4s cubic-bezier(.34,1.56,.64,1); max-width: 90vw;
     }
-    .preview-mode .sticker-control, #letter-view .sticker-control {
-      display: none !important;
+    .toque-toast.visible { transform: translateX(-50%) translateY(0); }
+    .toque-toast-emoji { font-size: 1.5rem; }
+    .toque-toast-text { font-size: 0.9rem; color: var(--text); }
+    .toque-toast-from { display: block; font-size: 0.68rem; letter-spacing: 0.1em; text-transform: uppercase; color: var(--accent-soft); margin-top: 0.1rem; }
+
+    /* ═══════════════ MODAL IDENTIDAD (¿quién sos?) ═══════════════ */
+    .identity-overlay {
+      position: fixed; inset: 0; background: rgba(5,4,7,0.82); z-index: 1000;
+      display: none; align-items: center; justify-content: center; padding: 1.2rem;
     }
+    .identity-overlay.visible { display: flex; }
+    .identity-box {
+      background: linear-gradient(160deg, var(--surface), #17121e); border: 1px solid var(--border);
+      border-radius: 10px; padding: 1.8rem 1.6rem; text-align: center; max-width: 320px;
+      box-shadow: 0 20px 50px -15px rgba(0,0,0,0.8);
+    }
+    .identity-box p { font-size: 0.95rem; color: var(--text); margin-bottom: 1.2rem; font-family: 'Lora', serif; }
+    .identity-btns { display: flex; gap: 0.7rem; justify-content: center; }
+    .identity-btn {
+      flex: 1; padding: 0.75rem 0.5rem; background: transparent; border: 1px solid var(--accent);
+      border-radius: 6px; color: var(--accent-soft); cursor: pointer; font-family: 'Inter', sans-serif;
+      font-size: 0.85rem; letter-spacing: 0.08em; transition: background 0.15s, color 0.15s;
+    }
+    .identity-btn:hover { background: var(--accent); color: var(--text); }
+
+    /* ═══════════════ INSTALAR APP ═══════════════ */
+    .install-btn {
+      display: none; align-items: center; gap: 0.45rem; margin: 0 auto 1.1rem; width: max-content;
+      background: transparent; border: 1px solid var(--border); border-radius: 20px;
+      padding: 0.5rem 1rem; color: var(--text-muted); font-size: 0.76rem; letter-spacing: 0.06em;
+      cursor: pointer; transition: border-color 0.2s, color 0.2s;
+    }
+    .install-btn.visible { display: flex; }
+    .install-btn:hover { border-color: var(--gold); color: var(--gold); }
   </style>
 </head>
 <body>
@@ -539,9 +535,10 @@
   <div class="container">
 
     <div id="login-view" class="view-section active">
-      <div class="header">
-        <h1 class="header-title">Cartas para <em>Pame</em></h1>
-      </div>
+      <div class="header" style="margin-bottom: 1.2rem;"></div>
+
+      <button class="install-btn" id="install-btn" onclick="installApp()">📲 Instalar Framecorreo</button>
+
       <div class="form-wrapper">
         <label class="form-label" for="code-input">Código de la carta</label>
         <input id="code-input" class="form-input" type="text" placeholder="escribí el código..." autocomplete="off" spellcheck="false" />
@@ -552,113 +549,202 @@
           <button class="retry-btn" onclick="retryUnlock()">↻ Reintentar</button>
         </div>
       </div>
-      <div class="footer" style="margin-top: 2rem; text-align: center; font-size: 0.78rem; color: var(--text-muted); opacity: 0.4;">Fran · 2026</div>
+
+      <!-- ─── Pizarra compartida: la pueden dibujar los dos ─── -->
+      <div class="draw-wrapper" id="draw-wrapper">
+        <div class="draw-header">
+          <span class="draw-title">un dibujito para vos</span>
+          <span class="draw-sub" id="draw-sub">compartido</span>
+        </div>
+        <div class="draw-canvas-box">
+          <canvas id="draw-canvas"></canvas>
+        </div>
+        <div class="draw-toolbar">
+          <div class="draw-colors" id="draw-colors">
+            <button type="button" class="draw-swatch active" style="background:#e8ddd0" data-color="#e8ddd0" title="Marfil"></button>
+            <button type="button" class="draw-swatch" style="background:#c9a96e" data-color="#c9a96e" title="Dorado"></button>
+            <button type="button" class="draw-swatch" style="background:#a0587e" data-color="#a0587e" title="Rosa"></button>
+            <button type="button" class="draw-swatch" style="background:#e05656" data-color="#e05656" title="Rojo"></button>
+            <button type="button" class="draw-swatch" style="background:#5fb3d9" data-color="#5fb3d9" title="Celeste"></button>
+            <button type="button" class="draw-swatch" style="background:#7fd18f" data-color="#7fd18f" title="Verde"></button>
+            <input type="color" id="draw-color-custom" class="draw-swatch-custom" title="Elegir color" value="#e8ddd0" />
+          </div>
+          <div class="draw-size-wrap">
+            <input type="range" id="draw-size" class="draw-size" min="2" max="26" value="6" title="Grosor" />
+          </div>
+          <button type="button" class="draw-tool-btn" id="draw-eraser-btn" title="Borrador">🧽</button>
+          <button type="button" class="draw-tool-btn" id="draw-undo-btn" title="Deshacer">↺</button>
+          <button type="button" class="draw-tool-btn" id="draw-clear-btn" title="Borrar todo">🗑️</button>
+        </div>
+        <div class="draw-sync-note" id="draw-sync-note">se guarda solo, y aparece del otro lado ✦</div>
+      </div>
+
+      <div class="footer" style="margin-top: 2.2rem; text-align: center; font-size: 0.85rem; color: var(--text-muted); opacity: 0.45;">Fran · 2026</div>
     </div>
 
     <div id="admin-view" class="view-section">
-      <div class="header">
-        <h1 class="header-title" style="color: #60a5fa;">Editor de <em>Cartas</em></h1>
+
+      <div class="code-save-row" id="code-save-row">
+        <button type="button" class="icon-row-btn" onclick="exitAdmin()" title="Salir del panel">←</button>
+        <div class="tb-group">
+          <input list="codes-list" id="adm-code" class="adm-code-input" placeholder="Código de la carta..." autocomplete="off" title="Código de la carta" />
+          <datalist id="codes-list"></datalist>
+        </div>
+        <button id="save-btn" class="icon-row-btn save-btn" onclick="saveLetter()" title="Guardar">💾</button>
       </div>
 
-      <div class="editor-toolbar">
-        <div class="toolbar-row">
-          <div class="toolbar-group">
-            <label class="form-label" style="color: #60a5fa;">Código Desbloqueador</label>
-            <input id="adm-code" class="form-input" type="text" placeholder="ej: dinosaurio, mimos..." />
-          </div>
-          <div class="toolbar-group">
-            <label class="form-label">Estilo de la Carta</label>
-            <select id="adm-style" class="form-select" onchange="updateLiveCardStyle(this.value)">
-              <option value="style-a">Estilo A (Minimalista)</option>
-              <option value="style-b">Estilo B (Papel viejo)</option>
-              <option value="style-c">Estilo C (Terminal)</option>
-              <option value="style-d">Estilo D (Gótico)</option>
-            </select>
-          </div>
+      <div class="docs-toolbar" id="docs-toolbar">
+
+        <div class="tb-group">
+          <select id="adm-font-select" class="tb-select" onchange="execCmd('fontName', this.value)" title="Fuente">
+             <option value="Lora">Lora</option>
+             <option value="Inter">Inter</option>
+             <option value="Playfair Display">Playfair</option>
+             <option value="Cormorant Garamond">Cormorant</option>
+             <option value="Cinzel">Cinzel</option>
+             <option value="Montserrat">Montserrat</option>
+             <option value="Raleway">Raleway</option>
+             <option value="Josefin Sans">Josefin</option>
+             <option value="Outfit">Outfit</option>
+             <option value="Dancing Script">Dancing Script</option>
+          </select>
+          <input type="color" id="adm-color" class="tb-color" value="#e8ddd0" onchange="execCmd('foreColor', this.value)" title="Color del texto">
         </div>
 
-        <div class="toolbar-row">
-          <div class="toolbar-group">
-            <label class="form-label">Disponibilidad</label>
-            <select id="adm-date-type" class="form-select" onchange="toggleDateField(this.value)">
-              <option value="immediate">Inmediata (Disponible ya)</option>
-              <option value="scheduled">Programada (Fecha exacta)</option>
-              <option value="undefined">Fecha Indefinida (Candado absoluto)</option>
-            </select>
-          </div>
-          <div class="toolbar-group" id="scheduled-date-group" style="display: none;">
-            <label class="form-label">Fecha de Apertura</label>
-            <input id="adm-date" class="form-input" type="date" />
-          </div>
+        <div class="tb-sep"></div>
+
+        <div class="tb-group">
+          <button class="tb-btn" onclick="execCmd('bold')" title="Negrita" style="font-weight: bold;">N</button>
+          <button class="tb-btn" onclick="execCmd('italic')" title="Cursiva" style="font-style: italic;">C</button>
+          <button class="tb-btn" onclick="execCmd('underline')" title="Subrayado" style="text-decoration: underline;">S</button>
         </div>
 
-        <div class="toolbar-row" style="margin-top: 0.5rem;">
-          <div class="toolbar-group" style="grid-column: 1 / -1;">
-            <label class="form-label" style="color: var(--accent-soft);">Decoración y Multimedia</label>
-            <div style="display: flex; gap: 0.8rem; align-items: center; flex-wrap: wrap;">
-              <button class="preview-btn" style="margin-top: 0; flex: 1; border-color: var(--accent); color: var(--text);" onclick="document.getElementById('adm-sticker-file').click()">🖼️ Agregar Sticker / Imagen</button>
-              <span style="font-size: 0.75rem; color: var(--text-muted); font-style: italic;">O pegá una imagen directamente (Ctrl+V)</span>
-              <input type="file" id="adm-sticker-file" accept="image/*" style="display: none;" onchange="uploadStickerFile(this)" />
-            </div>
-          </div>
+        <div class="tb-sep"></div>
+
+        <div class="tb-group">
+          <input type="file" id="adm-sticker-file" accept="image/*" style="display: none;" onchange="uploadStickerFile(this)" />
+          <button class="tb-btn" onclick="document.getElementById('adm-sticker-file').click()" title="Insertar Imagen">🖼️</button>
+          <button class="tb-btn" onclick="addTextSticker()" title="Agregar Cuadro de Texto" style="font-weight: bold;">Aa</button>
+        </div>
+
+        <div class="tb-sep"></div>
+
+        <div class="tb-group">
+          <select id="adm-style" class="tb-select" onchange="updateLiveCardStyle(this.value)" title="Estilo de la carta">
+              <option value="style-a">Estilo A</option>
+              <option value="style-b">Estilo B</option>
+              <option value="style-c">Estilo C</option>
+              <option value="style-d">Estilo D</option>
+          </select>
+          <select id="adm-date-type" class="tb-select" onchange="toggleDateField(this.value)" title="Disponibilidad">
+              <option value="immediate">Inmediata</option>
+              <option value="scheduled">Programada</option>
+              <option value="undefined">Borrador</option>
+          </select>
+          <input id="adm-date" class="tb-input" type="date" style="display:none;" />
+        </div>
+
+      </div>
+
+      <div class="sticker-props-bar" id="sticker-props-bar">
+        <span class="props-bar-label">Elemento seleccionado</span>
+        <div class="tb-group">
+          <button type="button" class="layer-btn" id="props-layer-down" title="Enviar atrás">⬇</button>
+          <button type="button" class="layer-btn" id="props-layer-up" title="Traer al frente">⬆</button>
+        </div>
+        <div class="tb-sep"></div>
+        <div class="tb-group">
+          <span class="opacity-label">Opacidad</span>
+          <input type="range" class="opacity-slider" id="props-opacity" min="0.1" max="1" step="0.05" value="1" title="Opacidad">
         </div>
       </div>
 
       <div id="live-card-container" class="style-a">
         <div class="letter-card">
           <div class="stickers-layer" id="live-stickers-layer"></div>
-          <span class="letter-tag">
-            <input id="adm-tag" class="card-editor-input" type="text" placeholder="PARA LEER CUANDO..." value="PARA LEER CUANDO" />
-          </span>
-          <h2 class="letter-title">
-            <input id="adm-title" class="card-editor-input" type="text" placeholder="Escribí un hermoso título..." />
-          </h2>
-          <div class="letter-body">
-            <textarea id="adm-body" class="card-editor-input" placeholder="Escribí el cuerpo de tu carta acá..." oninput="autoResizeTextArea(this)"></textarea>
-          </div>
-          <div class="letter-sign">
-            <input id="adm-sign" class="card-editor-input" type="text" placeholder="— Tu Firma" value="— Fran" />
-          </div>
+          <div class="workspace-boundary" id="workspace-boundary-guide"></div>
         </div>
       </div>
 
-      <button class="form-btn" style="border-color: #3b82f6; color: #60a5fa; margin-top: 2rem;" onclick="saveLetter()">Guardar en la Nube</button>
       <div id="admin-success" class="success-msg"></div>
       <div class="autosave-indicator" id="autosave-indicator">borrador guardado localmente</div>
-      <button class="preview-btn" id="preview-btn" onclick="togglePreview()">👁 Vista previa — así lo ve Pame</button>
 
       <div class="gallery-section">
-        <div class="gallery-title-wrapper">
-          <label class="form-label" style="color: #4ade80;">Colección Estándar / Programadas</label>
+        <div class="gallery-controls">
+          <button type="button" class="hamburger-btn" id="gallery-menu-btn" onclick="toggleGalleryMenu()" title="Ordenar cartas">☰</button>
+          <input type="text" id="gallery-search" class="gallery-search-input" placeholder="Buscar por código, título o etiqueta..." autocomplete="off" oninput="applyGalleryFilters()" />
         </div>
+
+        <div class="gallery-menu-panel" id="gallery-menu-panel">
+          <span class="opacity-label">Ordenar por</span>
+          <select id="gallery-sort-field" class="tb-select" onchange="applyGalleryFilters()">
+            <option value="updatedAt">Fecha de modificación</option>
+            <option value="createdAt">Fecha de creación</option>
+          </select>
+          <select id="gallery-sort-dir" class="tb-select" onchange="applyGalleryFilters()">
+            <option value="desc">Más nuevo primero</option>
+            <option value="asc">Más viejo primero</option>
+          </select>
+        </div>
+
+        <div class="gallery-filter-tabs" id="gallery-filter-tabs">
+          <button type="button" class="gallery-filter-btn active" data-filter="all" onclick="setGalleryFilter('all')">Todas</button>
+          <button type="button" class="gallery-filter-btn" data-filter="immediate" onclick="setGalleryFilter('immediate')">Inmediatas</button>
+          <button type="button" class="gallery-filter-btn" data-filter="scheduled" onclick="setGalleryFilter('scheduled')">Programadas</button>
+          <button type="button" class="gallery-filter-btn" data-filter="undefined" onclick="setGalleryFilter('undefined')">Borradores</button>
+        </div>
+
         <div id="gallery-grid" class="gallery-grid">
           <div class="gallery-empty">Cargando colección...</div>
         </div>
-
-        <div class="gallery-title-wrapper" style="margin-top: 1.5rem;">
-          <label class="form-label" style="color: #f43f5e;">Colección con Fecha Indefinida</label>
-        </div>
-        <div id="gallery-undefined-grid" class="gallery-grid">
-          <div class="gallery-empty">Cargando colección...</div>
-        </div>
       </div>
 
-      <button class="back-btn" onclick="exitAdmin()">← salir del panel</button>
+    </div>
+
+    <div class="bulk-actions-bar" id="bulk-actions-bar">
+      <span class="bulk-count" id="bulk-count-label">0 seleccionadas</span>
+      <button type="button" class="bulk-delete-btn" onclick="bulkDeleteSelected()">🗑️ Eliminar</button>
+      <button type="button" class="bulk-cancel-btn" onclick="exitSelectionMode()">Cancelar</button>
     </div>
 
     <div id="letter-view" class="view-section">
       <div id="letter-card-wrapper">
         <div class="letter-card" id="letter-card">
+          <img id="letter-card-image" style="display:none;" alt="Carta" />
           <div class="stickers-layer" id="view-stickers-layer"></div>
-          <span class="letter-tag" id="letter-tag"></span>
-          <h2 class="letter-title" id="letter-title"></h2>
-          <div class="letter-body" id="letter-body"></div>
-          <div class="letter-sign" id="letter-sign"></div>
         </div>
       </div>
       <button class="back-btn" onclick="goBackFromLetter()">← volver</button>
     </div>
 
+  </div>
+
+  <!-- ─── Botón flotante: dar un toque ─── -->
+  <button type="button" class="touch-fab" id="touch-fab" title="Dar un toque">👋</button>
+  <div class="touch-menu" id="touch-menu">
+    <button type="button" class="touch-opt" onclick="sendToque('extraño')">💭 Te extraño</button>
+    <button type="button" class="touch-opt" onclick="sendToque('hablame')">💬 Hablame</button>
+    <button type="button" class="touch-opt" onclick="sendToque('toque')">👉 Solo un toque</button>
+  </div>
+
+  <!-- ─── Toast: llegó un toque ─── -->
+  <div class="toque-toast" id="toque-toast">
+    <span class="toque-toast-emoji" id="toque-toast-emoji">👋</span>
+    <span class="toque-toast-text">
+      <span id="toque-toast-text"></span>
+      <span class="toque-toast-from" id="toque-toast-from"></span>
+    </span>
+  </div>
+
+  <!-- ─── Modal: ¿quién sos? (para saber a quién avisarle el toque) ─── -->
+  <div class="identity-overlay" id="identity-overlay">
+    <div class="identity-box">
+      <p>¿Quién sos vos? 💌</p>
+      <div class="identity-btns">
+        <button type="button" class="identity-btn" onclick="setIdentity('fran')">Fran</button>
+        <button type="button" class="identity-btn" onclick="setIdentity('pame')">Pame</button>
+      </div>
+    </div>
   </div>
 
   <script>
@@ -669,9 +755,10 @@
     let currentAdminView = false;
     let lastUnlockInput = '';
     let autosaveTimer = null;
-    let isPreviewMode = false;
     let currentStickers = [];
     let selectedStickerIdx = null;
+    let allCodesCache = [];
+    let allCartasData = {};
 
     window.addEventListener('DOMContentLoaded', () => {
       switchView('login-view');
@@ -682,21 +769,58 @@
         unlock();
       }
       restoreAutosave();
+
+      initIdentity();
+      initInstallPrompt();
+      registerServiceWorker();
+      initDrawBoard();
+      initToques();
+      initTouchFab();
     });
+
+    // ─── COMANDOS DE FORMATO (RICH TEXT) ───
+    // El input de color (y otros controles) le roban el foco al texto y el navegador
+    // pierde la selección antes de aplicar el comando. Por eso guardamos la última
+    // selección hecha dentro de un cuadro de texto y la restauramos antes de cada comando.
+    let savedTextRange = null;
+
+    document.addEventListener('selectionchange', () => {
+      const sel = window.getSelection();
+      if (!sel || sel.rangeCount === 0) return;
+      const node = sel.anchorNode;
+      const el = node && (node.nodeType === 3 ? node.parentElement : node);
+      if (el && el.closest && el.closest('.sticker-text-content[contenteditable="true"]')) {
+        savedTextRange = sel.getRangeAt(0).cloneRange();
+      }
+    });
+
+    function restoreSavedSelection() {
+      if (!savedTextRange) return;
+      const container = savedTextRange.startContainer.nodeType === 3 ? savedTextRange.startContainer.parentElement : savedTextRange.startContainer;
+      const editableEl = container && container.closest ? container.closest('.sticker-text-content') : null;
+      if (editableEl) editableEl.focus();
+      const sel = window.getSelection();
+      sel.removeAllRanges();
+      sel.addRange(savedTextRange);
+    }
+
+    function execCmd(command, value = null) {
+      restoreSavedSelection();
+      document.execCommand(command, false, value);
+      scheduleAutosave();
+    }
 
     // ─── AUTOSAVE ───
     function scheduleAutosave() {
       clearTimeout(autosaveTimer);
       autosaveTimer = setTimeout(() => {
+        syncTextStickersContent();
+
         const draft = {
           code: document.getElementById('adm-code').value,
           style: document.getElementById('adm-style').value,
           dateType: document.getElementById('adm-date-type').value,
           releaseDate: document.getElementById('adm-date').value,
-          tag: document.getElementById('adm-tag').value,
-          title: document.getElementById('adm-title').value,
-          body: document.getElementById('adm-body').value,
-          sign: document.getElementById('adm-sign').value,
           stickers: currentStickers
         };
         try {
@@ -705,7 +829,20 @@
           ind.classList.add('visible');
           setTimeout(() => ind.classList.remove('visible'), 2500);
         } catch(e) {}
+
+        // Además de guardar localmente, subimos automáticamente como Borrador
+        // a la nube, para no perder cambios si no se apreta "Guardar" a mano.
+        autosaveDraftToCloud();
       }, 5000);
+    }
+
+    function syncTextStickersContent() {
+      currentStickers.forEach((st, idx) => {
+        if (st.type === 'text') {
+          const node = document.getElementById(`sticker-text-${idx}`);
+          if (node) st.content = node.innerHTML;
+        }
+      });
     }
 
     function restoreAutosave() {
@@ -717,21 +854,40 @@
         if (draft.style) { document.getElementById('adm-style').value = draft.style; updateLiveCardStyle(draft.style); }
         if (draft.dateType) { document.getElementById('adm-date-type').value = draft.dateType; toggleDateField(draft.dateType); }
         if (draft.releaseDate) document.getElementById('adm-date').value = draft.releaseDate;
-        if (draft.tag) document.getElementById('adm-tag').value = draft.tag;
-        if (draft.title) document.getElementById('adm-title').value = draft.title;
-        if (draft.body) { document.getElementById('adm-body').value = draft.body; autoResizeTextArea(document.getElementById('adm-body')); }
-        if (draft.sign) document.getElementById('adm-sign').value = draft.sign;
-        if (draft.stickers) { currentStickers = draft.stickers; renderStickers(document.getElementById('live-stickers-layer'), currentStickers, true); }
+        if (draft.stickers && draft.stickers.length) {
+          currentStickers = draft.stickers;
+          renderStickers(document.getElementById('live-stickers-layer'), currentStickers, true);
+        }
       } catch(e) {}
     }
 
     function attachAutosaveListeners() {
-      ['adm-code','adm-style','adm-date-type','adm-date','adm-tag','adm-title','adm-body','adm-sign'].forEach(id => {
+      ['adm-code','adm-style','adm-date-type','adm-date'].forEach(id => {
         const el = document.getElementById(id);
-        if (el) el.addEventListener('input', scheduleAutosave);
-        if (el) el.addEventListener('change', scheduleAutosave);
+        if (el) {
+          el.addEventListener('input', scheduleAutosave);
+          el.addEventListener('change', scheduleAutosave);
+        }
       });
     }
+
+    // ─── LISTENER DEL DATALIST PARA CARGA AUTOMÁTICA ───
+    document.getElementById('adm-code').addEventListener('change', async (e) => {
+      const val = e.target.value.toLowerCase().trim();
+      if (!val) return;
+      
+      // Si el código existe en nuestra caché, intentamos cargarlo de la nube
+      if (allCodesCache.includes(val)) {
+        try {
+          const res = await fetch(`${FIREBASE_DB_URL}/cartas/${val}.json`);
+          const carta = await res.json();
+          setupEditorForEdit(val, carta);
+        } catch(err) { alert('Error cargando la carta elegida.'); }
+      } else {
+        // Es un código nuevo, forzamos que se guarde como borrador
+        scheduleAutosave();
+      }
+    });
 
     // ─── LOADING STATE ───
     function setLoadingState(loading) {
@@ -760,27 +916,10 @@
       unlock();
     }
 
-    // ─── PREVIEW MODE ───
-    function togglePreview() {
-      isPreviewMode = !isPreviewMode;
-      const adminView = document.getElementById('admin-view');
-      const btn = document.getElementById('preview-btn');
-      if (isPreviewMode) {
-        adminView.classList.add('preview-mode');
-        btn.classList.add('active');
-        btn.textContent = '✕ Salir de vista previa';
-        updateLiveCardStyle(document.getElementById('adm-style').value);
-      } else {
-        adminView.classList.remove('preview-mode');
-        btn.classList.remove('active');
-        btn.textContent = '👁 Vista previa — así lo ve Pame';
-      }
-    }
-
     function toggleDateField(type) {
-      const dateGroup = document.getElementById('scheduled-date-group');
-      if (dateGroup) dateGroup.style.display = (type === 'scheduled') ? 'block' : 'none';
-      if (type !== 'scheduled') document.getElementById('adm-date').value = '';
+      const dateEl = document.getElementById('adm-date');
+      if (dateEl) dateEl.style.display = (type === 'scheduled') ? 'inline-block' : 'none';
+      if (type !== 'scheduled') dateEl.value = '';
     }
 
     function updateLiveCardStyle(styleId) {
@@ -795,13 +934,6 @@
       } else {
         bodyBats.forEach(b => b.style.opacity = '0.07');
       }
-      autoResizeTextArea(document.getElementById('adm-body'));
-    }
-
-    function autoResizeTextArea(textarea) {
-      if (!textarea) return;
-      textarea.style.height = 'auto';
-      textarea.style.height = textarea.scrollHeight + 'px';
     }
 
     async function unlock() {
@@ -827,17 +959,81 @@
       setLoadingState(false);
     }
 
+    // ─── TEXTO COMO CUADROS-STICKER (todo el texto de la carta vive acá) ───
+    function createDefaultTextStickers() {
+      return [
+        { type: 'text', role: 'tag', content: 'PARA LEER CUANDO', left: 8, top: 5, width: 84, rotation: 0, fontSize: 12 },
+        { type: 'text', role: 'title', content: '', placeholder: 'Título', left: 8, top: 8, width: 84, rotation: 0, fontSize: 30 },
+        { type: 'text', role: 'body', content: '', placeholder: 'Cuerpo de la carta...', left: 8, top: 16, width: 84, rotation: 0, fontSize: 16 },
+        { type: 'text', role: 'sign', content: '— Fran', left: 8, top: 70, width: 84, rotation: 0, fontSize: 16 }
+      ];
+    }
+
+    // Convierte cartas guardadas con el formato viejo (tag/title/body/sign fijos) a cuadros de texto
+    function migrateLetterToStickers(carta) {
+      let list = Array.isArray(carta.stickers) ? carta.stickers.slice() : [];
+      list.forEach(st => { if (st.type === 'text' && !st.fontSize) st.fontSize = 16; });
+      const hasRoleTexts = list.some(st => st.role);
+      if (!hasRoleTexts && (carta.tag || carta.title || carta.body || carta.sign)) {
+        const legacy = [];
+        if (carta.tag) legacy.push({ type: 'text', role: 'tag', content: carta.tag, left: 8, top: 5, width: 84, rotation: 0, fontSize: 12 });
+        if (carta.title) legacy.push({ type: 'text', role: 'title', content: carta.title, left: 8, top: 10, width: 84, rotation: 0, fontSize: 30 });
+        if (carta.body) legacy.push({ type: 'text', role: 'body', content: carta.body, left: 8, top: 22, width: 84, rotation: 0, fontSize: 16 });
+        if (carta.sign) legacy.push({ type: 'text', role: 'sign', content: carta.sign, left: 8, top: 70, width: 84, rotation: 0, fontSize: 16 });
+        list = legacy.concat(list);
+      }
+      return list;
+    }
+
+    function getCartaTitleText(carta) {
+      if (carta.title) return carta.title;
+      if (Array.isArray(carta.stickers)) {
+        const t = carta.stickers.find(s => s.role === 'title');
+        if (t && t.content) {
+          const div = document.createElement('div');
+          div.innerHTML = t.content;
+          const txt = div.textContent.trim();
+          if (txt) return txt;
+        }
+      }
+      return '(Sin título)';
+    }
+
+    function getCartaTagText(carta) {
+      if (Array.isArray(carta.stickers)) {
+        const t = carta.stickers.find(s => s.role === 'tag');
+        if (t && t.content) {
+          const div = document.createElement('div');
+          div.innerHTML = t.content;
+          const txt = div.textContent.trim();
+          if (txt) return txt;
+        }
+      }
+      return carta.tag || '';
+    }
+
+    function formatEditedLabel(ts) {
+      if (!ts) return '';
+      const diffMs = Date.now() - ts;
+      const diffMin = Math.floor(diffMs / 60000);
+      if (diffMin < 1) return 'Editado justo ahora';
+      if (diffMin < 60) return `Editado hace ${diffMin} min`;
+      const diffHr = Math.floor(diffMin / 60);
+      if (diffHr < 24) return `Editado hace ${diffHr} h`;
+      const diffDay = Math.floor(diffHr / 24);
+      if (diffDay === 1) return 'Editado ayer';
+      if (diffDay < 7) return `Editado hace ${diffDay} d`;
+      const d = new Date(ts);
+      return `Editado ${d.toLocaleDateString('es-AR', { day: '2-digit', month: '2-digit', year: '2-digit' })}`;
+    }
+
     function resetEditorForm() {
       document.getElementById('adm-code').value = '';
       document.getElementById('adm-style').value = 'style-a';
       document.getElementById('adm-date-type').value = 'immediate';
-      document.getElementById('adm-tag').value = 'PARA LEER CUANDO';
-      document.getElementById('adm-title').value = '';
-      document.getElementById('adm-body').value = '';
-      document.getElementById('adm-sign').value = '— Fran';
-      currentStickers = [];
+      currentStickers = createDefaultTextStickers();
       selectedStickerIdx = null;
-      document.getElementById('live-stickers-layer').innerHTML = '';
+      renderStickers(document.getElementById('live-stickers-layer'), currentStickers, true);
       toggleDateField('immediate');
       updateLiveCardStyle('style-a');
       try { localStorage.removeItem('cartas_draft'); } catch(e) {}
@@ -883,28 +1079,26 @@
           });
         }
 
-        document.getElementById('letter-tag').textContent = carta.tag || '';
-        document.getElementById('letter-title').textContent = carta.title || '';
         document.getElementById('letter-card-wrapper').className = carta.style || 'style-a';
 
-        const bodyEl = document.getElementById('letter-body');
-        const signEl = document.getElementById('letter-sign');
-        bodyEl.innerHTML = '';
-        signEl.textContent = '';
-
-        if (carta.body) {
-          carta.body.split(/\n+/).forEach(para => {
-            if (para.trim()) {
-              const p = document.createElement('p');
-              p.textContent = para.trim();
-              bodyEl.appendChild(p);
-            }
-          });
-        }
-        signEl.textContent = carta.sign || '';
-
+        const imgEl = document.getElementById('letter-card-image');
         const viewLayer = document.getElementById('view-stickers-layer');
-        renderStickers(viewLayer, carta.stickers || [], false);
+        const cardEl = document.getElementById('letter-card');
+
+        if (carta.cardImage) {
+          // Se muestra la imagen final tal cual se guardó (estilo "story")
+          imgEl.src = carta.cardImage;
+          imgEl.style.display = 'block';
+          viewLayer.style.display = 'none';
+          viewLayer.innerHTML = '';
+          cardEl.classList.add('showing-image');
+        } else {
+          // Carta vieja / nunca re-guardada con el sistema nuevo: se arma en vivo
+          imgEl.style.display = 'none';
+          viewLayer.style.display = '';
+          cardEl.classList.remove('showing-image');
+          renderStickers(viewLayer, migrateLetterToStickers(carta), false);
+        }
 
         switchView('letter-view');
       } catch (err) {
@@ -937,106 +1131,309 @@
       }
     }
 
+    async function deleteLetter(code) {
+      if (!confirm(`¿Seguro que querés eliminar la carta #${code}? Esta acción no se puede deshacer.`)) return;
+      try {
+        const res = await fetch(`${FIREBASE_DB_URL}/cartas/${code}.json`, { method: 'DELETE' });
+        if (!res.ok) throw new Error('Error al eliminar');
+        await loadGallery();
+      } catch (err) {
+        console.error(err);
+        alert('No se pudo eliminar la carta. Probá de nuevo.');
+      }
+    }
+
+    function getGallerySearchTerm() {
+      const el = document.getElementById('gallery-search');
+      return el ? el.value.trim().toLowerCase() : '';
+    }
+
+    function matchesGallerySearch(code, carta, term) {
+      if (!term) return true;
+      const title = getCartaTitleText(carta).toLowerCase();
+      const tag = getCartaTagText(carta).toLowerCase();
+      return code.toLowerCase().includes(term) || title.includes(term) || tag.includes(term);
+    }
+
+    function applyGalleryFilters() {
+      renderGalleryGrids();
+    }
+
+    function toggleGalleryMenu() {
+      const panel = document.getElementById('gallery-menu-panel');
+      const btn = document.getElementById('gallery-menu-btn');
+      if (!panel || !btn) return;
+      const isOpen = panel.classList.toggle('open');
+      btn.classList.toggle('active', isOpen);
+    }
+
     async function loadGallery() {
-      const standardGrid = document.getElementById('gallery-grid');
-      const undefinedGrid = document.getElementById('gallery-undefined-grid');
-      
-      if (standardGrid) standardGrid.innerHTML = '<div class="gallery-empty">Buscando cartas...</div>';
-      if (undefinedGrid) undefinedGrid.innerHTML = '<div class="gallery-empty">Buscando cartas...</div>';
+      const grid = document.getElementById('gallery-grid');
+      if (grid) grid.innerHTML = '<div class="gallery-empty">Buscando cartas...</div>';
 
       try {
         const res = await fetch(`${FIREBASE_DB_URL}/cartas.json`);
         if (!res.ok) return;
         const cartas = await res.json();
 
-        if (!cartas || Object.keys(cartas).length === 0) {
-          if (standardGrid) standardGrid.innerHTML = '<div class="gallery-empty">No hay cartas subidas.</div>';
-          if (undefinedGrid) undefinedGrid.innerHTML = '<div class="gallery-empty">No hay cartas con candado.</div>';
+        allCartasData = cartas || {};
+        allCodesCache = Object.keys(allCartasData);
+
+        const dl = document.getElementById('codes-list');
+        if (dl) {
+          dl.innerHTML = '';
+          allCodesCache.forEach(c => {
+            const opt = document.createElement('option');
+            opt.value = c;
+            dl.appendChild(opt);
+          });
+        }
+
+        if (!allCodesCache.length) {
+          if (grid) grid.innerHTML = '<div class="gallery-empty">No hay cartas subidas.</div>';
           return;
         }
 
-        if (standardGrid) standardGrid.innerHTML = '';
-        if (undefinedGrid) undefinedGrid.innerHTML = '';
-        
-        let hasStandard = false;
-        let hasUndefined = false;
-
-        Object.keys(cartas).forEach(code => {
-          const carta = cartas[code];
-          const thumb = document.createElement('div');
-          thumb.className = 'gallery-card-thumb';
-          
-          thumb.onclick = () => {
-            currentAdminView = true;
-            fetchAndDisplayLetter(code);
-          };
-
-          const styleLetter = carta.style ? carta.style.replace('style-', '') : 'a';
-          const isUndef = carta.dateType === 'undefined';
-          const totalViews = carta.views || 0;
-          
-          let icon = '🔓';
-          if (carta.dateType === 'scheduled') icon = '📅';
-          if (carta.dateType === 'undefined') icon = '🔒';
-
-          thumb.innerHTML = `
-            <span class="thumb-code">#${code}</span>
-            <div class="thumb-title">${carta.title || '(Sin título)'}</div>
-            <span class="thumb-style-tag">Estilo ${styleLetter}</span>
-            <span class="thumb-type-icon">${icon}</span>
-          `;
-
-          const viewsSpan = document.createElement('span');
-          if (totalViews > 0) {
-            viewsSpan.className = 'thumb-views-status status-seen';
-            viewsSpan.innerHTML = `✔️✔️ ${totalViews}`;
-          } else {
-            viewsSpan.className = 'thumb-views-status status-unseen';
-            viewsSpan.innerHTML = `✔️✔️ 0`;
-          }
-          
-          viewsSpan.onclick = (e) => {
-            e.stopPropagation();
-            resetViewsCounter(code);
-          };
-          
-          thumb.appendChild(viewsSpan);
-
-          const editBtn = document.createElement('div');
-          editBtn.className = 'thumb-edit-btn';
-          editBtn.innerHTML = '✏️';
-          editBtn.onclick = (e) => {
-            e.stopPropagation();
-            setupEditorForEdit(code, carta);
-          };
-
-          thumb.appendChild(editBtn);
-
-          if (isUndef) {
-            undefinedGrid.appendChild(thumb);
-            hasUndefined = true;
-          } else {
-            standardGrid.appendChild(thumb);
-            hasStandard = true;
-          }
-        });
-
-        if (!hasStandard && standardGrid) standardGrid.innerHTML = '<div class="gallery-empty">Sin cartas estándar.</div>';
-        if (!hasUndefined && undefinedGrid) undefinedGrid.innerHTML = '<div class="gallery-empty">Sin cartas indefinidas.</div>';
-
+        renderGalleryGrids();
       } catch (err) {
         console.error(err);
       }
     }
 
+    // ─── FILTRO DE GALERÍA (Todas / Inmediatas / Programadas / Borradores) ───
+    let currentGalleryFilter = 'all';
+
+    function setGalleryFilter(filter) {
+      currentGalleryFilter = filter;
+      document.querySelectorAll('.gallery-filter-btn').forEach(b => {
+        b.classList.toggle('active', b.dataset.filter === filter);
+      });
+      renderGalleryGrids();
+    }
+
+    function renderGalleryGrids() {
+      const grid = document.getElementById('gallery-grid');
+      if (!grid) return;
+
+      exitSelectionMode();
+
+      const term = getGallerySearchTerm();
+      const sortFieldEl = document.getElementById('gallery-sort-field');
+      const sortDirEl = document.getElementById('gallery-sort-dir');
+      const sortField = sortFieldEl ? sortFieldEl.value : 'updatedAt';
+      const sortDir = sortDirEl ? sortDirEl.value : 'desc';
+
+      let entries = Object.keys(allCartasData).map(code => [code, allCartasData[code]]);
+      entries = entries.filter(([code, carta]) => matchesGallerySearch(code, carta, term));
+      if (currentGalleryFilter !== 'all') {
+        entries = entries.filter(([code, carta]) => (carta.dateType || 'immediate') === currentGalleryFilter);
+      }
+      entries.sort((a, b) => {
+        const av = a[1][sortField] || 0;
+        const bv = b[1][sortField] || 0;
+        return sortDir === 'asc' ? av - bv : bv - av;
+      });
+
+      grid.innerHTML = '';
+
+      if (!entries.length) {
+        grid.innerHTML = term ? '<div class="gallery-empty">Sin resultados.</div>' : '<div class="gallery-empty">No hay cartas en esta categoría.</div>';
+        return;
+      }
+
+      entries.forEach(([code, carta]) => {
+        grid.appendChild(buildGalleryThumb(code, carta));
+      });
+    }
+
+    // ─── SELECCIÓN EN MASA (mantener pulsado en celular / long-press) ───
+    let selectionMode = false;
+    let selectedCodes = new Set();
+
+    function toggleBulkSelect(code, thumbEl) {
+      if (selectedCodes.has(code)) {
+        selectedCodes.delete(code);
+        thumbEl.classList.remove('selected-for-bulk');
+      } else {
+        selectedCodes.add(code);
+        thumbEl.classList.add('selected-for-bulk');
+      }
+      updateBulkBar();
+      if (selectionMode && selectedCodes.size === 0) exitSelectionMode();
+    }
+
+    function enterSelectionMode(code, thumbEl) {
+      selectionMode = true;
+      const grid = document.getElementById('gallery-grid');
+      if (grid) grid.classList.add('selection-mode');
+      toggleBulkSelect(code, thumbEl);
+    }
+
+    function exitSelectionMode() {
+      selectionMode = false;
+      selectedCodes.clear();
+      const grid = document.getElementById('gallery-grid');
+      if (grid) grid.classList.remove('selection-mode');
+      document.querySelectorAll('.gallery-card-thumb.selected-for-bulk').forEach(t => t.classList.remove('selected-for-bulk'));
+      updateBulkBar();
+    }
+
+    function updateBulkBar() {
+      const bar = document.getElementById('bulk-actions-bar');
+      const label = document.getElementById('bulk-count-label');
+      if (!bar || !label) return;
+      if (selectionMode && selectedCodes.size > 0) {
+        bar.classList.add('visible');
+        label.textContent = `${selectedCodes.size} seleccionada${selectedCodes.size === 1 ? '' : 's'}`;
+      } else {
+        bar.classList.remove('visible');
+      }
+    }
+
+    async function bulkDeleteSelected() {
+      if (!selectedCodes.size) return;
+      const codes = Array.from(selectedCodes);
+      if (!confirm(`¿Eliminar ${codes.length} carta(s) seleccionada(s)? Esta acción no se puede deshacer.`)) return;
+
+      try {
+        await Promise.all(codes.map(code => fetch(`${FIREBASE_DB_URL}/cartas/${code}.json`, { method: 'DELETE' })));
+      } catch (err) {
+        console.error(err);
+        alert('Hubo un error eliminando algunas de las cartas.');
+      }
+
+      exitSelectionMode();
+      await loadGallery();
+    }
+
+    function attachLongPress(thumbEl, code) {
+      let timer = null;
+      let moved = false;
+
+      const start = () => {
+        moved = false;
+        timer = setTimeout(() => {
+          if (moved) return;
+          if (navigator.vibrate) navigator.vibrate(30);
+          if (!selectionMode) enterSelectionMode(code, thumbEl);
+          else toggleBulkSelect(code, thumbEl);
+        }, 500);
+      };
+      const cancelTimer = () => clearTimeout(timer);
+      const markMoved = () => { moved = true; clearTimeout(timer); };
+
+      thumbEl.addEventListener('touchstart', start, { passive: true });
+      thumbEl.addEventListener('touchmove', markMoved, { passive: true });
+      thumbEl.addEventListener('touchend', cancelTimer);
+      thumbEl.addEventListener('touchcancel', cancelTimer);
+      thumbEl.addEventListener('contextmenu', (e) => {
+        e.preventDefault();
+        if (!selectionMode) enterSelectionMode(code, thumbEl);
+        else toggleBulkSelect(code, thumbEl);
+      });
+    }
+
+    function buildGalleryThumb(code, carta) {
+      const thumb = document.createElement('div');
+      thumb.className = 'gallery-card-thumb';
+      if (selectionMode && selectedCodes.has(code)) thumb.classList.add('selected-for-bulk');
+
+      thumb.onclick = () => {
+        if (selectionMode) {
+          toggleBulkSelect(code, thumb);
+          return;
+        }
+        currentAdminView = true;
+        fetchAndDisplayLetter(code);
+      };
+
+      const totalViews = carta.views || 0;
+
+      let icon = '';
+      if (carta.dateType === 'scheduled') icon = '📅';
+      if (carta.dateType === 'undefined') icon = '📝';
+
+      const tagText = getCartaTagText(carta);
+      const titleText = getCartaTitleText(carta);
+      const editedLabel = formatEditedLabel(carta.updatedAt || carta.createdAt);
+
+      const previewInner = carta.cardImage
+        ? `<img src="${carta.cardImage}" class="gallery-thumb-preview" alt="" />`
+        : `<div class="thumb-preview-placeholder">✉️</div>`;
+
+      thumb.innerHTML = `
+        <div class="thumb-header-row">
+          <span class="thumb-code">#${code}</span>
+          <span class="thumb-type-icon">${icon}</span>
+        </div>
+        <div class="thumb-tag">${tagText}</div>
+        <div class="thumb-title">${titleText}</div>
+        <div class="thumb-preview-wrap">${previewInner}</div>
+        <div class="thumb-footer-row">
+          <span class="thumb-edited">${editedLabel}</span>
+        </div>
+      `;
+
+      const viewsSpan = document.createElement('span');
+      if (totalViews > 0) {
+        viewsSpan.className = 'thumb-views-status status-seen';
+        viewsSpan.innerHTML = `✔️ ${totalViews}`;
+      } else {
+        viewsSpan.className = 'thumb-views-status status-unseen';
+        viewsSpan.innerHTML = `✔️ 0`;
+      }
+      
+      viewsSpan.onclick = (e) => {
+        e.stopPropagation();
+        if (selectionMode) return;
+        resetViewsCounter(code);
+      };
+
+      const previewWrap = thumb.querySelector('.thumb-preview-wrap');
+      if (previewWrap) previewWrap.appendChild(viewsSpan);
+
+      const editBtn = document.createElement('div');
+      editBtn.className = 'thumb-edit-btn';
+      editBtn.innerHTML = '✏️';
+      editBtn.onclick = (e) => {
+        e.stopPropagation();
+        if (selectionMode) return;
+        setupEditorForEdit(code, carta);
+      };
+
+      thumb.appendChild(editBtn);
+
+      const deleteBtn = document.createElement('div');
+      deleteBtn.className = 'thumb-delete-btn';
+      deleteBtn.innerHTML = '🗑️';
+      deleteBtn.title = 'Eliminar carta';
+      deleteBtn.onclick = (e) => {
+        e.stopPropagation();
+        if (selectionMode) return;
+        deleteLetter(code);
+      };
+
+      thumb.appendChild(deleteBtn);
+
+      const selectCheck = document.createElement('div');
+      selectCheck.className = 'thumb-select-check';
+      selectCheck.innerHTML = '✓';
+      selectCheck.onclick = (e) => {
+        e.stopPropagation();
+        if (!selectionMode) enterSelectionMode(code, thumb);
+        else toggleBulkSelect(code, thumb);
+      };
+      thumb.appendChild(selectCheck);
+
+      attachLongPress(thumb, code);
+
+      return thumb;
+    }
+
     function setupEditorForEdit(code, carta) {
       document.getElementById('adm-code').value = code;
       document.getElementById('adm-style').value = carta.style || 'style-a';
-      document.getElementById('adm-tag').value = carta.tag || '';
-      document.getElementById('adm-title').value = carta.title || '';
-      document.getElementById('adm-body').value = carta.body || '';
-      document.getElementById('adm-sign').value = carta.sign || '';
-      
+
       const dateType = carta.dateType || 'immediate';
       document.getElementById('adm-date-type').value = dateType;
       toggleDateField(dateType);
@@ -1045,7 +1442,8 @@
         document.getElementById('adm-date').value = carta.releaseDate || '';
       }
 
-      currentStickers = carta.stickers || [];
+      currentStickers = migrateLetterToStickers(carta);
+      if (!currentStickers.length) currentStickers = createDefaultTextStickers();
       selectedStickerIdx = null;
       renderStickers(document.getElementById('live-stickers-layer'), currentStickers, true);
 
@@ -1053,36 +1451,78 @@
       document.getElementById('live-card-container').scrollIntoView({ behavior: 'smooth' });
     }
 
-    async function saveLetter() {
+    // Genera una imagen (PNG) plana de la carta tal cual se ve, como una "story" que se pisa cada vez
+    async function renderCardSnapshot() {
+      // Deseleccionamos todo para que no salgan bordes ni controles en la foto
+      selectedStickerIdx = null;
+      document.querySelectorAll('.sticker-wrapper').forEach(w => w.classList.remove('selected'));
+      if (document.activeElement) document.activeElement.blur();
+      await new Promise(r => setTimeout(r, 60));
+
+      const target = document.querySelector('#live-card-container .letter-card');
+      if (!target || typeof html2canvas === 'undefined') return null;
+
+      // Ocultamos el marco guía del área de trabajo (es solo una ayuda visual del editor)
+      const boundaryEl = document.getElementById('workspace-boundary-guide');
+      if (boundaryEl) boundaryEl.style.display = 'none';
+
+      try {
+        const canvas = await html2canvas(target, { backgroundColor: null, scale: 2, useCORS: true });
+        return canvas.toDataURL('image/png');
+      } catch (err) {
+        console.error('No se pudo generar la imagen de la carta:', err);
+        return null;
+      } finally {
+        if (boundaryEl) boundaryEl.style.display = '';
+      }
+    }
+
+    let isPersisting = false;
+
+    // Guarda la carta en Firebase. Si isAutosave=true, siempre queda como "Borrador"
+    // (dateType 'undefined'), sin importar lo que esté elegido en el selector,
+    // para que un cambio no guardado a mano nunca quede publicado por error.
+    async function persistLetter({ isAutosave = false } = {}) {
+      if (isPersisting) return false;
+
+      syncTextStickersContent();
+
       const code = document.getElementById('adm-code').value.trim().toLowerCase();
+      if (!code) return false;
+
       const style = document.getElementById('adm-style').value;
-      const dateType = document.getElementById('adm-date-type').value;
       const releaseDate = document.getElementById('adm-date').value;
-      const tag = document.getElementById('adm-tag').value.trim();
-      const title = document.getElementById('adm-title').value.trim();
-      const body = document.getElementById('adm-body').value;
-      const sign = document.getElementById('adm-sign').value.trim();
+      let dateType = document.getElementById('adm-date-type').value;
 
-      if (!code || !title || !body) {
-        alert('Por favor completá al menos el Código, el Título y el Cuerpo.');
-        return;
-      }
-
-      if (dateType === 'scheduled' && !releaseDate) {
+      if (isAutosave) {
+        dateType = 'undefined';
+      } else if (dateType === 'scheduled' && !releaseDate) {
         alert('Falta ingresar la fecha de liberación.');
-        return;
+        return false;
       }
 
-      let existingViews = 0;
+      isPersisting = true;
       try {
-        const checkRes = await fetch(`${FIREBASE_DB_URL}/cartas/${code}/views.json`);
-        const checkData = await checkRes.json();
-        if (checkData !== null) existingViews = checkData;
-      } catch(e) {}
+        let existingViews = 0;
+        let existingCreatedAt = null;
+        try {
+          const checkRes = await fetch(`${FIREBASE_DB_URL}/cartas/${code}.json`);
+          const checkData = await checkRes.json();
+          if (checkData !== null) {
+            existingViews = checkData.views || 0;
+            existingCreatedAt = checkData.createdAt || null;
+          }
+        } catch(e) {}
 
-      const nuevaCarta = { style, dateType, releaseDate, tag, title, body, sign, views: existingViews, stickers: currentStickers };
+        const cardImage = await renderCardSnapshot();
+        renderStickers(document.getElementById('live-stickers-layer'), currentStickers, true);
 
-      try {
+        const now = Date.now();
+        const nuevaCarta = {
+          style, dateType, releaseDate, views: existingViews, stickers: currentStickers, cardImage,
+          createdAt: existingCreatedAt || now, updatedAt: now
+        };
+
         const res = await fetch(`${FIREBASE_DB_URL}/cartas/${code}.json`, {
           method: 'PUT',
           headers: { 'Content-Type': 'application/json' },
@@ -1090,17 +1530,54 @@
         });
 
         if (!res.ok) throw new Error('Error al guardar');
-
-        const msg = document.getElementById('admin-success');
-        if (msg) {
-          msg.textContent = `¡Sincronizada carta #${code} con éxito!`;
-          setTimeout(() => { msg.textContent = ''; }, 3000);
-        }
-
-        resetEditorForm();
-        await loadGallery();
+        return true;
       } catch (err) {
-        alert('Error al intentar guardar en Firebase.');
+        if (!isAutosave) alert('Error al intentar guardar en Firebase.');
+        else console.error('Autoguardado en la nube falló:', err);
+        return false;
+      } finally {
+        isPersisting = false;
+      }
+    }
+
+    async function saveLetter() {
+      const code = document.getElementById('adm-code').value.trim().toLowerCase();
+      if (!code) {
+        alert('Por favor ingresá un código para la carta.');
+        return;
+      }
+
+      const ok = await persistLetter({ isAutosave: false });
+      if (!ok) return;
+
+      const msg = document.getElementById('admin-success');
+      if (msg) {
+        msg.textContent = `¡Sincronizada carta #${code} con éxito!`;
+        setTimeout(() => { msg.textContent = ''; }, 3000);
+      }
+
+      resetEditorForm();
+      await loadGallery();
+    }
+
+    // Autoguardado silencioso en la nube: si el usuario no tocó "Guardar",
+    // la carta se sigue subiendo pero siempre como Borrador.
+    async function autosaveDraftToCloud() {
+      const code = document.getElementById('adm-code').value.trim().toLowerCase();
+      if (!code) return;
+
+      const ok = await persistLetter({ isAutosave: true });
+      if (ok) {
+        const ind = document.getElementById('autosave-indicator');
+        if (ind) {
+          ind.textContent = 'guardado automáticamente como borrador';
+          ind.classList.add('visible');
+          setTimeout(() => {
+            ind.classList.remove('visible');
+            ind.textContent = 'borrador guardado localmente';
+          }, 2500);
+        }
+        if (currentAdminView) loadGallery();
       }
     }
 
@@ -1136,19 +1613,54 @@
       if (e.key === 'Enter') unlock();
     });
 
+    // ─── ESC: volver atrás desde cualquier pantalla ───
+    document.addEventListener('keydown', (e) => {
+      if (e.key !== 'Escape') return;
+
+      // Si hay una selección en masa activa, primero la cancelamos
+      if (selectionMode) {
+        exitSelectionMode();
+        return;
+      }
+
+      // Si hay un sticker seleccionado en el editor, lo deseleccionamos primero
+      if (currentAdminView && selectedStickerIdx !== null) {
+        syncTextStickersContent();
+        selectedStickerIdx = null;
+        document.querySelectorAll('.sticker-wrapper').forEach(w => w.classList.remove('selected'));
+        refreshPropsPanel();
+        return;
+      }
+
+      const letterView = document.getElementById('letter-view');
+      const adminView = document.getElementById('admin-view');
+
+      if (letterView && letterView.classList.contains('active')) {
+        goBackFromLetter();
+      } else if (adminView && adminView.classList.contains('active')) {
+        exitAdmin();
+      }
+    });
+
     // ══════════════════════════════════════
     //   SISTEMA DE MANIPULACIÓN DE STICKERS
     // ══════════════════════════════════════
 
     function addStickerToData(base64Src) {
       const newSticker = {
-        src: base64Src,
-        left: 35,
-        top: 25,
-        width: 30, 
-        rotation: 0
+        type: 'image', src: base64Src, left: 35, top: 25, width: 30, rotation: 0
       };
       currentStickers.push(newSticker);
+      selectedStickerIdx = currentStickers.length - 1;
+      renderStickers(document.getElementById('live-stickers-layer'), currentStickers, true);
+      scheduleAutosave();
+    }
+
+    function addTextSticker() {
+      const newText = {
+        type: 'text', content: 'Escribí algo...', left: 35, top: 25, width: 40, rotation: 0, fontSize: 16
+      };
+      currentStickers.push(newText);
       selectedStickerIdx = currentStickers.length - 1;
       renderStickers(document.getElementById('live-stickers-layer'), currentStickers, true);
       scheduleAutosave();
@@ -1166,7 +1678,8 @@
     }
 
     window.addEventListener('paste', (e) => {
-      if (!currentAdminView || isPreviewMode) return;
+      if (!currentAdminView) return;
+      if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA' || e.target.isContentEditable) return;
       
       const items = (e.clipboardData || e.originalEvent.clipboardData).items;
       for (let i = 0; i < items.length; i++) {
@@ -1184,12 +1697,61 @@
 
     // Clic afuera para limpiar la selección de stickers
     document.addEventListener('click', (e) => {
-      if (!currentAdminView || isPreviewMode) return;
-      if (!e.target.closest('.sticker-wrapper') && !e.target.closest('#adm-sticker-file') && !e.target.closest('.preview-btn')) {
+      if (!currentAdminView) return;
+      if (!e.target.closest('.sticker-wrapper') && !e.target.closest('.docs-toolbar') && !e.target.closest('.code-save-row') && !e.target.closest('#sticker-props-bar')) {
+        syncTextStickersContent();
         selectedStickerIdx = null;
         document.querySelectorAll('.sticker-wrapper').forEach(w => w.classList.remove('selected'));
+        refreshPropsPanel();
       }
     });
+
+    // ─── PANEL FIJO DE PROPIEDADES (capas + opacidad) ───
+    function refreshPropsPanel() {
+      const bar = document.getElementById('sticker-props-bar');
+      if (!bar) return;
+
+      if (selectedStickerIdx === null || !currentStickers[selectedStickerIdx]) {
+        bar.classList.remove('visible');
+        return;
+      }
+
+      const idx = selectedStickerIdx;
+      const st = currentStickers[idx];
+      bar.classList.add('visible');
+
+      const opacitySlider = document.getElementById('props-opacity');
+      opacitySlider.value = (st.opacity === undefined || st.opacity === null) ? 1 : st.opacity;
+      opacitySlider.oninput = (e) => {
+        st.opacity = parseFloat(e.target.value);
+        const wrapper = document.querySelector(`#live-stickers-layer .sticker-wrapper[data-idx="${idx}"]`);
+        if (wrapper) wrapper.style.opacity = st.opacity;
+      };
+      opacitySlider.onchange = () => scheduleAutosave();
+
+      const downBtn = document.getElementById('props-layer-down');
+      const upBtn = document.getElementById('props-layer-up');
+
+      downBtn.onclick = () => {
+        if (idx > 0) {
+          [currentStickers[idx - 1], currentStickers[idx]] = [currentStickers[idx], currentStickers[idx - 1]];
+          selectedStickerIdx = idx - 1;
+          syncTextStickersContent();
+          renderStickers(document.getElementById('live-stickers-layer'), currentStickers, true);
+          scheduleAutosave();
+        }
+      };
+
+      upBtn.onclick = () => {
+        if (idx < currentStickers.length - 1) {
+          [currentStickers[idx + 1], currentStickers[idx]] = [currentStickers[idx], currentStickers[idx + 1]];
+          selectedStickerIdx = idx + 1;
+          syncTextStickersContent();
+          renderStickers(document.getElementById('live-stickers-layer'), currentStickers, true);
+          scheduleAutosave();
+        }
+      };
+    }
 
     function renderStickers(layerContainer, stickersArray, isEditable) {
       if (!layerContainer) return;
@@ -1198,6 +1760,7 @@
       stickersArray.forEach((st, idx) => {
         const wrapper = document.createElement('div');
         wrapper.className = 'sticker-wrapper';
+        wrapper.dataset.idx = idx;
         if (isEditable && selectedStickerIdx === idx) {
           wrapper.classList.add('selected');
         }
@@ -1205,14 +1768,39 @@
         wrapper.style.top = st.top + '%';
         wrapper.style.width = st.width + '%';
         wrapper.style.transform = `rotate(${st.rotation || 0}deg)`;
+        wrapper.style.opacity = (st.opacity === undefined || st.opacity === null) ? 1 : st.opacity;
 
-        const img = document.createElement('img');
-        img.className = 'sticker-img';
-        img.src = st.src;
-        wrapper.appendChild(img);
+        if (st.type === 'text') {
+           const textDiv = document.createElement('div');
+           textDiv.className = 'sticker-text-content';
+           textDiv.id = `sticker-text-${idx}`;
+           textDiv.contentEditable = isEditable ? "true" : "false";
+           textDiv.innerHTML = st.content || '';
+           if (isEditable && st.placeholder) textDiv.setAttribute('placeholder', st.placeholder);
+           textDiv.style.fontSize = (st.fontSize || 16) + 'px';
+           if (st.role === 'tag') { textDiv.style.letterSpacing = '0.25em'; textDiv.style.textTransform = 'uppercase'; }
+           if (st.role === 'title') { textDiv.style.fontFamily = "'Lora', serif"; textDiv.style.fontStyle = 'italic'; }
+           if (st.role === 'sign') { textDiv.style.fontFamily = "'Lora', serif"; textDiv.style.fontStyle = 'italic'; textDiv.style.textAlign = 'right'; }
+
+           textDiv.addEventListener('input', () => {
+             st.content = textDiv.innerHTML;
+             scheduleAutosave();
+           });
+
+           wrapper.appendChild(textDiv);
+        } else {
+           const img = document.createElement('img');
+           img.className = 'sticker-img';
+           img.src = st.src;
+           wrapper.appendChild(img);
+        }
 
         if (isEditable) {
-          // Eliminar
+          const moveBtn = document.createElement('div');
+          moveBtn.className = 'sticker-control control-move';
+          moveBtn.innerHTML = '✥';
+          wrapper.appendChild(moveBtn);
+
           const delBtn = document.createElement('div');
           delBtn.className = 'sticker-control control-delete';
           delBtn.innerHTML = '✕';
@@ -1226,19 +1814,16 @@
           };
           wrapper.appendChild(delBtn);
 
-          // Copiar / Duplicar
           const cloneBtn = document.createElement('div');
           cloneBtn.className = 'sticker-control control-clone';
           cloneBtn.innerHTML = '＋';
           cloneBtn.onclick = (e) => {
             e.stopPropagation();
-            const cloned = {
-              src: st.src,
-              left: Math.min(st.left + 5, 85),
-              top: Math.min(st.top + 5, 85),
-              width: st.width,
-              rotation: st.rotation || 0
-            };
+            syncTextStickersContent();
+            const cloned = JSON.parse(JSON.stringify(st));
+            cloned.left = Math.min(st.left + 5, 85);
+            cloned.top = Math.min(st.top + 5, 85);
+            if (cloned.role) delete cloned.role; // el clon es un cuadro libre, no reemplaza al original
             stickersArray.push(cloned);
             selectedStickerIdx = stickersArray.length - 1;
             renderStickers(layerContainer, stickersArray, isEditable);
@@ -1246,34 +1831,32 @@
           };
           wrapper.appendChild(cloneBtn);
 
-          // Copiar al portapapeles del sistema
-          const copyBtn = document.createElement('div');
-          copyBtn.className = 'sticker-control control-copy';
-          copyBtn.innerHTML = '📋';
-          copyBtn.title = 'Copiar al portapapeles';
-          copyBtn.onclick = async (e) => {
-            e.stopPropagation();
-            try {
-              const response = await fetch(st.src);
-              const blob = await response.blob();
-              await navigator.clipboard.write([
-                new ClipboardItem({ [blob.type]: blob })
-              ]);
-              alert("¡Imagen copiada al portapapeles!");
-            } catch (err) {
-              console.error("Error al copiar imagen: ", err);
-              alert("No se pudo copiar la imagen al portapapeles.");
-            }
-          };
-          wrapper.appendChild(copyBtn);
+          if (st.type !== 'text') {
+            const copyBtn = document.createElement('div');
+            copyBtn.className = 'sticker-control control-copy';
+            copyBtn.innerHTML = '📋';
+            copyBtn.title = 'Copiar al portapapeles';
+            copyBtn.onclick = async (e) => {
+              e.stopPropagation();
+              try {
+                const response = await fetch(st.src);
+                const blob = await response.blob();
+                await navigator.clipboard.write([
+                  new ClipboardItem({ [blob.type]: blob })
+                ]);
+                alert("¡Imagen copiada al portapapeles!");
+              } catch (err) {
+                alert("No se pudo copiar la imagen al portapapeles.");
+              }
+            };
+            wrapper.appendChild(copyBtn);
+          }
 
-          // Rotar
           const rotBtn = document.createElement('div');
           rotBtn.className = 'sticker-control control-rotate';
           rotBtn.innerHTML = '↻';
           wrapper.appendChild(rotBtn);
 
-          // Redimensionar
           const resBtn = document.createElement('div');
           resBtn.className = 'sticker-control control-resize';
           resBtn.innerHTML = '⤡';
@@ -1284,6 +1867,8 @@
 
         layerContainer.appendChild(wrapper);
       });
+
+      if (isEditable) refreshPropsPanel();
     }
 
     function setupStickerDragAndTransform(wrapper, stickerData, layerContainer, rotBtn, resBtn, idx) {
@@ -1294,13 +1879,28 @@
       wrapper.addEventListener('touchstart', startMove, { passive: false });
 
       function startMove(e) {
-        if (e.target.classList.contains('sticker-control')) return;
+        const isMoveControl = e.target.closest('.control-move');
+        const isOtherControl = (e.target.closest('.sticker-control') || e.target.closest('.sticker-props-panel')) && !isMoveControl;
+        const isText = (stickerData.type === 'text');
+
+        if (isOtherControl) return;
+
+        if (isText && !isMoveControl) {
+           selectedStickerIdx = idx;
+           document.querySelectorAll('.sticker-wrapper').forEach(w => w.classList.remove('selected'));
+           wrapper.classList.add('selected');
+           refreshPropsPanel();
+           return; 
+        }
+
         e.preventDefault();
+        syncTextStickersContent();
 
         selectedStickerIdx = idx;
         document.querySelectorAll('.sticker-wrapper').forEach(w => w.classList.remove('selected'));
         wrapper.classList.add('selected');
         wrapper.classList.add('active');
+        refreshPropsPanel();
 
         const clientX = e.touches ? e.touches[0].clientX : e.clientX;
         const clientY = e.touches ? e.touches[0].clientY : e.clientY;
@@ -1359,6 +1959,7 @@
         const startClientY = e.touches ? e.touches[0].clientY : e.clientY;
         const startRadius = Math.hypot(startClientX - centerX, startClientY - centerY);
         const initialWidthPercent = stickerData.width;
+        const initialFontSize = stickerData.fontSize || 16;
 
         function doResize(moveEvent) {
           const mX = moveEvent.touches ? moveEvent.touches[0].clientX : moveEvent.clientX;
@@ -1368,11 +1969,21 @@
           const ratio = currentRadius / startRadius;
           
           let newWidthPercent = initialWidthPercent * ratio;
+          const maxWidthPercent = stickerData.type === 'text' ? 2000 : 100;
           if (newWidthPercent < 5) newWidthPercent = 5;
-          if (newWidthPercent > 100) newWidthPercent = 100;
+          if (newWidthPercent > maxWidthPercent) newWidthPercent = maxWidthPercent;
 
           stickerData.width = newWidthPercent;
           wrapper.style.width = stickerData.width + '%';
+
+          if (stickerData.type === 'text') {
+            // El texto escala con el cuadro, como si fuera una imagen vectorial (sin control de tamaño aparte)
+            let newFontSize = initialFontSize * (newWidthPercent / initialWidthPercent);
+            if (newFontSize < 6) newFontSize = 6;
+            stickerData.fontSize = newFontSize;
+            const textEl = wrapper.querySelector('.sticker-text-content');
+            if (textEl) textEl.style.fontSize = newFontSize + 'px';
+          }
         }
 
         function stopResize() {
@@ -1427,6 +2038,360 @@
         window.addEventListener('touchmove', doRotate, { passive: false });
         window.addEventListener('touchend', stopRotate);
       }
+    }
+
+    // ════════════════════════════════════════════════════════════
+    // ─── IDENTIDAD: ¿sos Fran o Pame? (solo se pregunta una vez) ───
+    // ════════════════════════════════════════════════════════════
+    let myIdentity = null;
+
+    function initIdentity() {
+      myIdentity = localStorage.getItem('fc_identity');
+      if (!myIdentity) {
+        document.getElementById('identity-overlay').classList.add('visible');
+      }
+    }
+
+    function setIdentity(who) {
+      myIdentity = who;
+      try { localStorage.setItem('fc_identity', who); } catch (e) {}
+      document.getElementById('identity-overlay').classList.remove('visible');
+    }
+
+    function otherName() {
+      return myIdentity === 'fran' ? 'Pame' : 'Fran';
+    }
+    function myName() {
+      return myIdentity === 'fran' ? 'Fran' : 'Pame';
+    }
+
+    // ════════════════════════════════════════════════════════════
+    // ─── PWA: instalar como app + service worker ───
+    // ════════════════════════════════════════════════════════════
+    let deferredInstallPrompt = null;
+
+    function initInstallPrompt() {
+      window.addEventListener('beforeinstallprompt', (e) => {
+        e.preventDefault();
+        deferredInstallPrompt = e;
+        const btn = document.getElementById('install-btn');
+        if (btn) btn.classList.add('visible');
+      });
+      window.addEventListener('appinstalled', () => {
+        deferredInstallPrompt = null;
+        const btn = document.getElementById('install-btn');
+        if (btn) btn.classList.remove('visible');
+      });
+    }
+
+    async function installApp() {
+      if (!deferredInstallPrompt) return;
+      deferredInstallPrompt.prompt();
+      await deferredInstallPrompt.userChoice;
+      deferredInstallPrompt = null;
+      document.getElementById('install-btn').classList.remove('visible');
+    }
+
+    function registerServiceWorker() {
+      if ('serviceWorker' in navigator) {
+        navigator.serviceWorker.register('sw.js').catch(() => {
+          // Si falla (por ejemplo abriendo el archivo local sin servidor), no rompe nada.
+        });
+      }
+    }
+
+    // ════════════════════════════════════════════════════════════
+    // ─── PIZARRA COMPARTIDA: dibujo entre los dos ───
+    // ════════════════════════════════════════════════════════════
+    let drawCtx = null;
+    let drawCanvas = null;
+    let drawing = false;
+    let drawColor = '#e8ddd0';
+    let drawSize = 6;
+    let eraserOn = false;
+    let drawHistory = []; // snapshots para "deshacer"
+    let lastRemoteImg = null;
+    let drawSaveTimer = null;
+    let suppressNextRemoteEcho = false;
+
+    function initDrawBoard() {
+      drawCanvas = document.getElementById('draw-canvas');
+      if (!drawCanvas) return;
+      drawCtx = drawCanvas.getContext('2d');
+
+      const resize = () => {
+        const box = drawCanvas.parentElement;
+        const ratio = window.devicePixelRatio || 1;
+        const w = box.clientWidth, h = box.clientHeight;
+        // Preservamos el dibujo actual al redimensionar
+        const prev = drawCanvas.width ? drawCanvas.toDataURL('image/png') : null;
+        drawCanvas.width = w * ratio;
+        drawCanvas.height = h * ratio;
+        drawCtx.setTransform(ratio, 0, 0, ratio, 0, 0);
+        drawCtx.fillStyle = '#0a080d';
+        drawCtx.fillRect(0, 0, w, h);
+        if (prev) {
+          const img = new Image();
+          img.onload = () => drawCtx.drawImage(img, 0, 0, w, h);
+          img.src = prev;
+        } else if (lastRemoteImg) {
+          drawCtx.drawImage(lastRemoteImg, 0, 0, w, h);
+        }
+      };
+      resize();
+      window.addEventListener('resize', resize);
+
+      drawCtx.lineCap = 'round';
+      drawCtx.lineJoin = 'round';
+
+      const getPos = (e) => {
+        const rect = drawCanvas.getBoundingClientRect();
+        const clientX = e.touches ? e.touches[0].clientX : e.clientX;
+        const clientY = e.touches ? e.touches[0].clientY : e.clientY;
+        return { x: clientX - rect.left, y: clientY - rect.top };
+      };
+
+      const start = (e) => {
+        e.preventDefault();
+        drawing = true;
+        pushHistory();
+        const p = getPos(e);
+        drawCtx.beginPath();
+        drawCtx.moveTo(p.x, p.y);
+      };
+      const move = (e) => {
+        if (!drawing) return;
+        e.preventDefault();
+        const p = getPos(e);
+        drawCtx.strokeStyle = eraserOn ? '#0a080d' : drawColor;
+        drawCtx.lineWidth = drawSize;
+        drawCtx.lineTo(p.x, p.y);
+        drawCtx.stroke();
+      };
+      const end = (e) => {
+        if (!drawing) return;
+        drawing = false;
+        scheduleDrawSave();
+      };
+
+      drawCanvas.addEventListener('mousedown', start);
+      drawCanvas.addEventListener('mousemove', move);
+      window.addEventListener('mouseup', end);
+      drawCanvas.addEventListener('touchstart', start, { passive: false });
+      drawCanvas.addEventListener('touchmove', move, { passive: false });
+      drawCanvas.addEventListener('touchend', end);
+
+      // Paleta de colores
+      document.querySelectorAll('.draw-swatch').forEach((sw) => {
+        sw.addEventListener('click', () => {
+          document.querySelectorAll('.draw-swatch').forEach((s) => s.classList.remove('active'));
+          sw.classList.add('active');
+          drawColor = sw.dataset.color;
+          eraserOn = false;
+          document.getElementById('draw-eraser-btn').classList.remove('active');
+        });
+      });
+      document.getElementById('draw-color-custom').addEventListener('input', (e) => {
+        drawColor = e.target.value;
+        eraserOn = false;
+        document.querySelectorAll('.draw-swatch').forEach((s) => s.classList.remove('active'));
+        document.getElementById('draw-eraser-btn').classList.remove('active');
+      });
+
+      document.getElementById('draw-size').addEventListener('input', (e) => {
+        drawSize = parseInt(e.target.value, 10);
+      });
+
+      document.getElementById('draw-eraser-btn').addEventListener('click', (e) => {
+        eraserOn = !eraserOn;
+        e.currentTarget.classList.toggle('active', eraserOn);
+      });
+
+      document.getElementById('draw-undo-btn').addEventListener('click', () => {
+        if (!drawHistory.length) return;
+        const prev = drawHistory.pop();
+        drawCtx.putImageData(prev, 0, 0);
+        scheduleDrawSave();
+      });
+
+      document.getElementById('draw-clear-btn').addEventListener('click', () => {
+        pushHistory();
+        const w = drawCanvas.clientWidth, h = drawCanvas.clientHeight;
+        drawCtx.fillStyle = '#0a080d';
+        drawCtx.fillRect(0, 0, w, h);
+        scheduleDrawSave();
+      });
+
+      loadDrawBoard();
+      listenDrawBoard();
+    }
+
+    function pushHistory() {
+      try {
+        const data = drawCtx.getImageData(0, 0, drawCanvas.width, drawCanvas.height);
+        drawHistory.push(data);
+        if (drawHistory.length > 15) drawHistory.shift();
+      } catch (e) {}
+    }
+
+    function scheduleDrawSave() {
+      const note = document.getElementById('draw-sync-note');
+      note.textContent = 'guardando...';
+      note.classList.add('saving');
+      clearTimeout(drawSaveTimer);
+      drawSaveTimer = setTimeout(async () => {
+        try {
+          const dataUrl = drawCanvas.toDataURL('image/png', 0.8);
+          suppressNextRemoteEcho = true;
+          await fetch(`${FIREBASE_DB_URL}/dibujo.json`, {
+            method: 'PUT',
+            body: JSON.stringify({ img: dataUrl, ts: Date.now(), by: myIdentity || 'alguien' })
+          });
+          note.textContent = 'se guarda solo, y aparece del otro lado ✦';
+        } catch (e) {
+          note.textContent = 'no se pudo guardar, revisá la conexión';
+        }
+        note.classList.remove('saving');
+      }, 500);
+    }
+
+    async function loadDrawBoard() {
+      try {
+        const res = await fetch(`${FIREBASE_DB_URL}/dibujo.json`);
+        const data = await res.json();
+        if (data && data.img) applyRemoteDrawing(data.img);
+      } catch (e) {}
+    }
+
+    function listenDrawBoard() {
+      try {
+        const es = new EventSource(`${FIREBASE_DB_URL}/dibujo.json`);
+        es.addEventListener('put', (e) => {
+          if (suppressNextRemoteEcho) { suppressNextRemoteEcho = false; return; }
+          try {
+            const payload = JSON.parse(e.data);
+            const data = payload.data;
+            if (data && data.img) applyRemoteDrawing(data.img);
+          } catch (err) {}
+        });
+        es.onerror = () => {}; // Firebase reconecta solo; si falla, la próxima apertura igual carga el dibujo.
+      } catch (e) {}
+    }
+
+    function applyRemoteDrawing(dataUrl) {
+      const img = new Image();
+      img.onload = () => {
+        lastRemoteImg = img;
+        if (!drawCtx || !drawCanvas) return;
+        const w = drawCanvas.clientWidth, h = drawCanvas.clientHeight;
+        drawCtx.drawImage(img, 0, 0, w, h);
+      };
+      img.src = dataUrl;
+    }
+
+    // ════════════════════════════════════════════════════════════
+    // ─── TOQUES: avisale al otro con un botón ───
+    // ════════════════════════════════════════════════════════════
+    const TOQUE_MESSAGES = {
+      extraño: { emoji: '💭', text: 'te extraño' },
+      hablame: { emoji: '💬', text: 'hablame' },
+      toque:   { emoji: '👉', text: 'te mandaron un toque' }
+    };
+    let lastToqueTs = Date.now(); // no notificar toques viejos al abrir
+
+    function initTouchFab() {
+      const fab = document.getElementById('touch-fab');
+      const menu = document.getElementById('touch-menu');
+      fab.addEventListener('click', () => {
+        menu.classList.toggle('visible');
+        if (Notification && Notification.permission === 'default') {
+          Notification.requestPermission();
+        }
+      });
+      document.addEventListener('click', (e) => {
+        if (!menu.contains(e.target) && e.target !== fab) menu.classList.remove('visible');
+      });
+    }
+
+    async function sendToque(type) {
+      document.getElementById('touch-menu').classList.remove('visible');
+      const msg = TOQUE_MESSAGES[type] || TOQUE_MESSAGES.toque;
+      try {
+        await fetch(`${FIREBASE_DB_URL}/toques.json`, {
+          method: 'POST',
+          body: JSON.stringify({ type, from: myIdentity || 'alguien', ts: Date.now() })
+        });
+        showToqueSentFeedback(msg);
+      } catch (e) {
+        alert('No se pudo enviar el toque, revisá la conexión.');
+      }
+    }
+
+    function showToqueSentFeedback(msg) {
+      const fab = document.getElementById('touch-fab');
+      fab.textContent = msg.emoji;
+      fab.classList.add('pulse');
+      setTimeout(() => { fab.textContent = '👋'; fab.classList.remove('pulse'); }, 2600);
+    }
+
+    function initToques() {
+      try {
+        const es = new EventSource(`${FIREBASE_DB_URL}/toques.json`);
+        es.addEventListener('put', (e) => {
+          try {
+            const payload = JSON.parse(e.data);
+            if (payload.path === '/') return; // snapshot inicial completo: lo ignoramos
+            const toque = payload.data;
+            if (!toque || !toque.ts) return;
+            if (toque.ts <= lastToqueTs) return;
+            if (toque.from === myIdentity) return; // no notificarme a mí mismo
+            lastToqueTs = toque.ts;
+            handleIncomingToque(toque);
+          } catch (err) {}
+        });
+      } catch (e) {}
+    }
+
+    function handleIncomingToque(toque) {
+      const msg = TOQUE_MESSAGES[toque.type] || TOQUE_MESSAGES.toque;
+      const fromName = toque.from === 'fran' ? 'Fran' : (toque.from === 'pame' ? 'Pame' : 'alguien');
+
+      showToqueToast(msg, fromName);
+      playToqueSound();
+
+      if (window.Notification && Notification.permission === 'granted') {
+        try {
+          new Notification('Framecorreo 💌', {
+            body: `${fromName}: ${msg.text}`,
+            icon: 'icon-192.png'
+          });
+        } catch (e) {}
+      }
+    }
+
+    function showToqueToast(msg, fromName) {
+      const toast = document.getElementById('toque-toast');
+      document.getElementById('toque-toast-emoji').textContent = msg.emoji;
+      document.getElementById('toque-toast-text').textContent = msg.text;
+      document.getElementById('toque-toast-from').textContent = fromName;
+      toast.classList.add('visible');
+      setTimeout(() => toast.classList.remove('visible'), 4200);
+    }
+
+    function playToqueSound() {
+      try {
+        const ctx = new (window.AudioContext || window.webkitAudioContext)();
+        const o = ctx.createOscillator();
+        const g = ctx.createGain();
+        o.type = 'sine';
+        o.frequency.setValueAtTime(660, ctx.currentTime);
+        o.frequency.exponentialRampToValueAtTime(880, ctx.currentTime + 0.15);
+        g.gain.setValueAtTime(0.001, ctx.currentTime);
+        g.gain.exponentialRampToValueAtTime(0.12, ctx.currentTime + 0.03);
+        g.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.5);
+        o.connect(g); g.connect(ctx.destination);
+        o.start(); o.stop(ctx.currentTime + 0.5);
+      } catch (e) {}
     }
   </script>
 </body>
