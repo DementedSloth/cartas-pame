@@ -2362,7 +2362,6 @@
     let drawHistory = []; // snapshots para "deshacer"
     let lastRemoteImg = null;
     let drawSaveTimer = null;
-    let suppressNextRemoteEcho = false;
 
     function initDrawBoard() {
       drawCanvas = document.getElementById('draw-canvas');
@@ -2492,7 +2491,6 @@
       drawSaveTimer = setTimeout(async () => {
         try {
           const dataUrl = drawCanvas.toDataURL('image/png', 0.8);
-          suppressNextRemoteEcho = true;
           await fetch(`${FIREBASE_DB_URL}/dibujo.json`, {
             method: 'PUT',
             body: JSON.stringify({ img: dataUrl, ts: Date.now(), by: myIdentity || 'alguien' })
@@ -2517,11 +2515,14 @@
       try {
         const es = new EventSource(`${FIREBASE_DB_URL}/dibujo.json`);
         es.addEventListener('put', (e) => {
-          if (suppressNextRemoteEcho) { suppressNextRemoteEcho = false; return; }
           try {
             const payload = JSON.parse(e.data);
             const data = payload.data;
-            if (data && data.img) applyRemoteDrawing(data.img);
+            if (!data || !data.img) return;
+            // Ignoramos el eco de nuestro propio guardado, pero por identidad (no por tiempo),
+            // así nunca se pierde una actualización real del otro por una coincidencia de timing.
+            if (data.by && myIdentity && data.by === myIdentity) return;
+            applyRemoteDrawing(data.img);
           } catch (err) {}
         });
         es.onerror = () => {}; // Firebase reconecta solo; si falla, la próxima apertura igual carga el dibujo.
@@ -2530,7 +2531,6 @@
 
     // ─── TÍTULO EDITABLE DEL DIBUJO: se sincroniza igual que el dibujo ───
     let drawTitleSaveTimer = null;
-    let suppressNextTitleEcho = false;
 
     function initDrawTitle() {
       const input = document.getElementById('draw-title-input');
@@ -2546,7 +2546,6 @@
         const input = document.getElementById('draw-title-input');
         if (!input) return;
         const text = input.value.trim() || 'un dibujito para vos';
-        suppressNextTitleEcho = true;
         try {
           await fetch(`${FIREBASE_DB_URL}/dibujo_titulo.json`, {
             method: 'PUT',
@@ -2569,12 +2568,13 @@
       try {
         const es = new EventSource(`${FIREBASE_DB_URL}/dibujo_titulo.json`);
         es.addEventListener('put', (e) => {
-          if (suppressNextTitleEcho) { suppressNextTitleEcho = false; return; }
           try {
             const payload = JSON.parse(e.data);
             const data = payload.data;
+            if (!data || !data.text) return;
+            if (data.by && myIdentity && data.by === myIdentity) return;
             const input = document.getElementById('draw-title-input');
-            if (data && data.text && input && document.activeElement !== input) {
+            if (input && document.activeElement !== input) {
               input.value = data.text;
             }
           } catch (err) {}
