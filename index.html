@@ -129,68 +129,6 @@
     .code-entry-submit:hover { background: var(--accent-soft); transform: scale(1.05); }
     .code-entry-submit:disabled { opacity: 0.4; cursor: not-allowed; transform: none; }
 
-    /* ─── FILA SUPERIOR: código + avatar de perfil ─── */
-    .top-row {
-      width: 100%; max-width: 420px; margin: 0.4rem auto 0;
-      display: flex; align-items: center; gap: 0.6rem;
-    }
-    .top-row .code-entry-wrap { margin: 0; flex: 1; }
-
-    .profile-avatar-btn {
-      flex-shrink: 0; width: 46px; height: 46px; border-radius: 50%;
-      border: 2px solid var(--border); background: var(--surface);
-      cursor: pointer; overflow: hidden; padding: 0;
-      display: flex; align-items: center; justify-content: center;
-      transition: border-color 0.2s, transform 0.15s;
-      position: relative;
-    }
-    .profile-avatar-btn:hover { border-color: var(--accent-soft); transform: scale(1.05); }
-    .profile-avatar-btn img { width: 100%; height: 100%; object-fit: cover; display: block; }
-    .profile-avatar-btn .avatar-fallback {
-      font-family: 'Lora', serif; font-size: 1.1rem; color: var(--accent-soft);
-    }
-    .profile-avatar-btn .avatar-name-tag {
-      position: absolute; bottom: -1.15rem; left: 50%; transform: translateX(-50%);
-      font-size: 0.6rem; letter-spacing: 0.08em; text-transform: uppercase;
-      color: var(--text-muted); white-space: nowrap;
-    }
-
-    /* ─── MODAL DE PERFIL: cambiar nombre / foto ─── */
-    .profile-modal-overlay {
-      position: fixed; inset: 0; background: rgba(5,4,7,0.82); z-index: 1000;
-      display: none; align-items: center; justify-content: center; padding: 1.2rem;
-    }
-    .profile-modal-overlay.visible { display: flex; }
-    .profile-modal-box {
-      background: linear-gradient(160deg, var(--surface), #17121e); border: 1px solid var(--border);
-      border-radius: 10px; padding: 1.8rem 1.6rem; text-align: center; max-width: 320px; width: 100%;
-      box-shadow: 0 20px 50px -15px rgba(0,0,0,0.8);
-    }
-    .profile-modal-box p { font-size: 0.95rem; color: var(--text); margin-bottom: 1rem; font-family: 'Lora', serif; }
-    .profile-modal-preview {
-      width: 84px; height: 84px; border-radius: 50%; margin: 0 auto 1rem;
-      border: 2px solid var(--border); overflow: hidden; display: flex;
-      align-items: center; justify-content: center; background: var(--bg); cursor: pointer;
-      transition: border-color 0.2s;
-    }
-    .profile-modal-preview:hover { border-color: var(--accent-soft); }
-    .profile-modal-preview img { width: 100%; height: 100%; object-fit: cover; }
-    .profile-modal-preview .avatar-fallback { font-family: 'Lora', serif; font-size: 2rem; color: var(--accent-soft); }
-    .profile-modal-hint { font-size: 0.7rem; color: var(--text-muted); opacity: 0.6; margin-bottom: 1.3rem; }
-    .profile-modal-btns { display: flex; gap: 0.7rem; justify-content: center; margin-bottom: 0.8rem; }
-    .profile-modal-btn {
-      flex: 1; padding: 0.7rem 0.5rem; background: transparent; border: 1px solid var(--accent);
-      border-radius: 6px; color: var(--accent-soft); cursor: pointer; font-family: 'Inter', sans-serif;
-      font-size: 0.82rem; letter-spacing: 0.06em; transition: background 0.15s, color 0.15s;
-    }
-    .profile-modal-btn:hover { background: var(--accent); color: var(--text); }
-    .profile-modal-btn.active { background: var(--accent); color: var(--text); }
-    .profile-modal-close {
-      background: transparent; border: none; color: var(--text-muted); font-size: 0.75rem;
-      letter-spacing: 0.15em; text-transform: uppercase; cursor: pointer; padding: 0.4rem;
-    }
-    .profile-modal-close:hover { color: var(--text); }
-
     .form-btn { width: 100%; margin-top: 1.5rem; padding: 1rem; background: transparent; border: 1px solid var(--accent); border-radius: 6px; color: var(--accent-soft); font-family: 'Inter', sans-serif; font-size: 0.85rem; font-weight: 500; letter-spacing: 0.25em; text-transform: uppercase; cursor: pointer; transition: background 0.2s, color 0.2s, box-shadow 0.2s; }
     .form-btn:hover { background: var(--accent); color: var(--text); box-shadow: 0 8px 24px -8px rgba(124,63,110,0.6); }
     .form-btn:disabled { opacity: 0.5; cursor: not-allowed; background: transparent; }
@@ -510,22 +448,15 @@
 
     /* ═══════════════ PIZARRA COMPARTIDA (DIBUJO) ═══════════════ */
     .draw-wrapper {
-      width: 100%; max-width: 560px; margin: 0.7rem auto 0;
+      width: 100%; max-width: 560px; margin: 1.6rem auto 0;
       background: linear-gradient(160deg, var(--surface), #17121e);
       border: 1px solid var(--border); border-radius: 10px;
       padding: 1.2rem 1.2rem 1.4rem;
       box-shadow: 0 20px 50px -15px rgba(0,0,0,0.7), 0 0 0 1px rgba(201,169,110,0.04) inset;
     }
-    .draw-header { display: flex; align-items: baseline; justify-content: space-between; margin-bottom: 0.8rem; gap: 0.6rem; }
-    .draw-title-input {
-      font-family: 'Lora', serif; font-style: italic; font-size: 1.05rem; color: var(--accent-soft);
-      background: transparent; border: none; border-bottom: 1px dashed transparent; outline: none;
-      padding: 0.1rem 0.15rem; min-width: 0; flex: 1; cursor: text;
-      transition: border-color 0.2s;
-    }
-    .draw-title-input:hover, .draw-title-input:focus { border-bottom-color: var(--accent-soft); }
-    .draw-title-input::placeholder { color: var(--accent-soft); opacity: 0.5; }
-    .draw-sub { font-size: 0.68rem; letter-spacing: 0.15em; text-transform: uppercase; color: var(--text-muted); opacity: 0.6; white-space: nowrap; flex-shrink: 0; }
+    .draw-header { display: flex; align-items: baseline; justify-content: space-between; margin-bottom: 0.8rem; }
+    .draw-title { font-family: 'Lora', serif; font-style: italic; font-size: 1.05rem; color: var(--accent-soft); }
+    .draw-sub { font-size: 0.68rem; letter-spacing: 0.15em; text-transform: uppercase; color: var(--text-muted); opacity: 0.6; }
     .draw-canvas-box {
       width: 100%; aspect-ratio: 4 / 4.2; border-radius: 8px; overflow: hidden;
       background: #0a080d; border: 1px solid var(--border); touch-action: none; position: relative;
@@ -645,16 +576,10 @@
 
       <button class="install-btn" id="install-btn" onclick="installApp()">📲 Instalar Framecorreo</button>
 
-      <div class="top-row">
-        <div class="code-entry-wrap">
-          <input id="code-input" class="code-entry-input" type="text" placeholder="Código" autocomplete="off" spellcheck="false" />
-          <button class="code-entry-submit" id="unlock-btn" onclick="unlock()" title="Abrir carta" aria-label="Abrir carta">
-            <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>
-          </button>
-        </div>
-        <button type="button" class="profile-avatar-btn" id="profile-avatar-btn" onclick="openProfileModal()" title="Cambiar de perfil">
-          <span class="avatar-fallback" id="avatar-fallback">?</span>
-          <img id="avatar-img" style="display:none;" alt="Perfil" />
+      <div class="code-entry-wrap">
+        <input id="code-input" class="code-entry-input" type="text" placeholder="Código" autocomplete="off" spellcheck="false" />
+        <button class="code-entry-submit" id="unlock-btn" onclick="unlock()" title="Abrir carta" aria-label="Abrir carta">
+          <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>
         </button>
       </div>
       <div class="error-msg" id="error-msg"></div>
@@ -666,7 +591,7 @@
       <!-- ─── Pizarra compartida: la pueden dibujar los dos ─── -->
       <div class="draw-wrapper" id="draw-wrapper">
         <div class="draw-header">
-          <input type="text" id="draw-title-input" class="draw-title-input" placeholder="un dibujito para vos" value="un dibujito para vos" spellcheck="false" autocomplete="off" />
+          <span class="draw-title">un dibujito para vos</span>
           <span class="draw-sub" id="draw-sub">compartido</span>
         </div>
         <div class="draw-canvas-box">
@@ -866,25 +791,6 @@
     </div>
   </div>
 
-  <!-- ─── Modal: cambiar perfil (nombre + foto) ─── -->
-  <div class="profile-modal-overlay" id="profile-modal-overlay">
-    <div class="profile-modal-box">
-      <p>Tu perfil</p>
-      <div class="profile-modal-preview" id="profile-modal-preview" onclick="document.getElementById('avatar-file-input').click()">
-        <span class="avatar-fallback" id="profile-modal-fallback">?</span>
-        <img id="profile-modal-img" style="display:none;" alt="Perfil" />
-      </div>
-      <input type="file" id="avatar-file-input" accept="image/*" style="display:none;" onchange="handleAvatarUpload(event)" />
-      <div class="profile-modal-hint">tocá la foto para cambiarla</div>
-      <div class="profile-modal-btns">
-        <button type="button" class="profile-modal-btn" id="profile-btn-fran" onclick="setIdentity('fran'); refreshProfileModal();">Fran</button>
-        <button type="button" class="profile-modal-btn" id="profile-btn-pame" onclick="setIdentity('pame'); refreshProfileModal();">Pame</button>
-      </div>
-      <button type="button" class="profile-modal-close" onclick="closeProfileModal()">Listo</button>
-    </div>
-  </div>
-
-
   <script>
     const BASE_URL_RAW = "https://cartas-pame-default-rtdb.firebaseio.com";
     const FIREBASE_DB_URL = BASE_URL_RAW.endsWith('/') ? BASE_URL_RAW.slice(0, -1) : BASE_URL_RAW;
@@ -912,7 +818,6 @@
       initInstallPrompt();
       registerServiceWorker();
       initDrawBoard();
-      initDrawTitle();
       initToques();
       initTouchFab();
     });
@@ -2196,8 +2101,6 @@
       myIdentity = localStorage.getItem('fc_identity');
       if (!myIdentity) {
         document.getElementById('identity-overlay').classList.add('visible');
-      } else {
-        loadMyProfile();
       }
     }
 
@@ -2205,7 +2108,6 @@
       myIdentity = who;
       try { localStorage.setItem('fc_identity', who); } catch (e) {}
       document.getElementById('identity-overlay').classList.remove('visible');
-      loadMyProfile();
     }
 
     function otherName() {
@@ -2213,106 +2115,6 @@
     }
     function myName() {
       return myIdentity === 'fran' ? 'Fran' : 'Pame';
-    }
-
-    // ════════════════════════════════════════════════════════════
-    // ─── PERFIL: avatar + nombre visible arriba a la derecha ───
-    // ════════════════════════════════════════════════════════════
-    let profileCache = {}; // { fran: {img}, pame: {img} }
-
-    function renderAvatarInto(imgEl, fallbackEl, identity) {
-      const data = profileCache[identity];
-      if (data && data.img) {
-        imgEl.src = data.img;
-        imgEl.style.display = 'block';
-        fallbackEl.style.display = 'none';
-      } else {
-        imgEl.style.display = 'none';
-        fallbackEl.style.display = 'flex';
-        fallbackEl.textContent = identity === 'fran' ? 'F' : identity === 'pame' ? 'P' : '?';
-      }
-    }
-
-    function updateAvatarDisplay() {
-      const imgEl = document.getElementById('avatar-img');
-      const fallbackEl = document.getElementById('avatar-fallback');
-      if (!imgEl || !fallbackEl) return;
-      renderAvatarInto(imgEl, fallbackEl, myIdentity);
-      const btn = document.getElementById('profile-avatar-btn');
-      if (btn) btn.title = myIdentity ? `Sos ${myName()} · tocá para cambiar de perfil` : 'Elegí tu perfil';
-    }
-
-    async function loadMyProfile() {
-      if (!myIdentity) return;
-      try {
-        // Cache local primero, para que se vea instantáneo
-        const cached = localStorage.getItem(`fc_avatar_${myIdentity}`);
-        if (cached) profileCache[myIdentity] = { img: cached };
-        updateAvatarDisplay();
-
-        const res = await fetch(`${FIREBASE_DB_URL}/perfiles/${myIdentity}.json`);
-        const data = await res.json();
-        if (data && data.img) {
-          profileCache[myIdentity] = data;
-          try { localStorage.setItem(`fc_avatar_${myIdentity}`, data.img); } catch (e) {}
-          updateAvatarDisplay();
-        }
-      } catch (e) {}
-    }
-
-    function openProfileModal() {
-      document.getElementById('profile-modal-overlay').classList.add('visible');
-      refreshProfileModal();
-    }
-    function closeProfileModal() {
-      document.getElementById('profile-modal-overlay').classList.remove('visible');
-      updateAvatarDisplay();
-    }
-
-    function refreshProfileModal() {
-      const imgEl = document.getElementById('profile-modal-img');
-      const fallbackEl = document.getElementById('profile-modal-fallback');
-      if (imgEl && fallbackEl) renderAvatarInto(imgEl, fallbackEl, myIdentity);
-
-      document.getElementById('profile-btn-fran').classList.toggle('active', myIdentity === 'fran');
-      document.getElementById('profile-btn-pame').classList.toggle('active', myIdentity === 'pame');
-    }
-
-    function handleAvatarUpload(e) {
-      const file = e.target.files && e.target.files[0];
-      if (!file || !myIdentity) return;
-
-      const reader = new FileReader();
-      reader.onload = (ev) => {
-        const img = new Image();
-        img.onload = async () => {
-          // Achicar a un cuadrado pequeño para no llenar Firebase de datos pesados
-          const size = 240;
-          const canvas = document.createElement('canvas');
-          canvas.width = size; canvas.height = size;
-          const ctx = canvas.getContext('2d');
-          const minSide = Math.min(img.width, img.height);
-          const sx = (img.width - minSide) / 2;
-          const sy = (img.height - minSide) / 2;
-          ctx.drawImage(img, sx, sy, minSide, minSide, 0, 0, size, size);
-          const dataUrl = canvas.toDataURL('image/jpeg', 0.85);
-
-          profileCache[myIdentity] = { img: dataUrl };
-          try { localStorage.setItem(`fc_avatar_${myIdentity}`, dataUrl); } catch (err) {}
-          refreshProfileModal();
-          updateAvatarDisplay();
-
-          try {
-            await fetch(`${FIREBASE_DB_URL}/perfiles/${myIdentity}.json`, {
-              method: 'PUT',
-              body: JSON.stringify({ img: dataUrl, ts: Date.now() })
-            });
-          } catch (err) {}
-        };
-        img.src = ev.target.result;
-      };
-      reader.readAsDataURL(file);
-      e.target.value = '';
     }
 
     // ════════════════════════════════════════════════════════════
@@ -2362,6 +2164,7 @@
     let drawHistory = []; // snapshots para "deshacer"
     let lastRemoteImg = null;
     let drawSaveTimer = null;
+    let suppressNextRemoteEcho = false;
 
     function initDrawBoard() {
       drawCanvas = document.getElementById('draw-canvas');
@@ -2491,6 +2294,7 @@
       drawSaveTimer = setTimeout(async () => {
         try {
           const dataUrl = drawCanvas.toDataURL('image/png', 0.8);
+          suppressNextRemoteEcho = true;
           await fetch(`${FIREBASE_DB_URL}/dibujo.json`, {
             method: 'PUT',
             body: JSON.stringify({ img: dataUrl, ts: Date.now(), by: myIdentity || 'alguien' })
@@ -2515,71 +2319,14 @@
       try {
         const es = new EventSource(`${FIREBASE_DB_URL}/dibujo.json`);
         es.addEventListener('put', (e) => {
+          if (suppressNextRemoteEcho) { suppressNextRemoteEcho = false; return; }
           try {
             const payload = JSON.parse(e.data);
             const data = payload.data;
-            if (!data || !data.img) return;
-            // Ignoramos el eco de nuestro propio guardado, pero por identidad (no por tiempo),
-            // así nunca se pierde una actualización real del otro por una coincidencia de timing.
-            if (data.by && myIdentity && data.by === myIdentity) return;
-            applyRemoteDrawing(data.img);
+            if (data && data.img) applyRemoteDrawing(data.img);
           } catch (err) {}
         });
         es.onerror = () => {}; // Firebase reconecta solo; si falla, la próxima apertura igual carga el dibujo.
-      } catch (e) {}
-    }
-
-    // ─── TÍTULO EDITABLE DEL DIBUJO: se sincroniza igual que el dibujo ───
-    let drawTitleSaveTimer = null;
-
-    function initDrawTitle() {
-      const input = document.getElementById('draw-title-input');
-      if (!input) return;
-      input.addEventListener('input', scheduleDrawTitleSave);
-      loadDrawTitle();
-      listenDrawTitle();
-    }
-
-    function scheduleDrawTitleSave() {
-      clearTimeout(drawTitleSaveTimer);
-      drawTitleSaveTimer = setTimeout(async () => {
-        const input = document.getElementById('draw-title-input');
-        if (!input) return;
-        const text = input.value.trim() || 'un dibujito para vos';
-        try {
-          await fetch(`${FIREBASE_DB_URL}/dibujo_titulo.json`, {
-            method: 'PUT',
-            body: JSON.stringify({ text, ts: Date.now(), by: myIdentity || 'alguien' })
-          });
-        } catch (e) {}
-      }, 600);
-    }
-
-    async function loadDrawTitle() {
-      try {
-        const res = await fetch(`${FIREBASE_DB_URL}/dibujo_titulo.json`);
-        const data = await res.json();
-        const input = document.getElementById('draw-title-input');
-        if (data && data.text && input) input.value = data.text;
-      } catch (e) {}
-    }
-
-    function listenDrawTitle() {
-      try {
-        const es = new EventSource(`${FIREBASE_DB_URL}/dibujo_titulo.json`);
-        es.addEventListener('put', (e) => {
-          try {
-            const payload = JSON.parse(e.data);
-            const data = payload.data;
-            if (!data || !data.text) return;
-            if (data.by && myIdentity && data.by === myIdentity) return;
-            const input = document.getElementById('draw-title-input');
-            if (input && document.activeElement !== input) {
-              input.value = data.text;
-            }
-          } catch (err) {}
-        });
-        es.onerror = () => {};
       } catch (e) {}
     }
 
