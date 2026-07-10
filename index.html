@@ -2299,6 +2299,12 @@
     };
     let lastToqueTs = Date.now(); // no notificar toques viejos al abrir
 
+    // ─── TELEGRAM: completá estos 3 datos (ver instrucciones que te pasé) ───
+    const TELEGRAM_BOT_TOKEN = "8883767588:AAGv-7Zb4KT2olGBbuXNXbL06wXc7c43hUk";       // ej: "7123456789:AAHk3jX9..."
+    const TELEGRAM_CHAT_FRAN = "5933575501";    // ej: "111111111"
+    const TELEGRAM_CHAT_PAME = "CHAT_ID_DE_PAME";    // ej: "222222222"
+    const TELEGRAM_ENABLED = !TELEGRAM_BOT_TOKEN.includes("TU_TOKEN_ACA");
+
     function initTouchFab() {
       const fab = document.getElementById('touch-fab');
       const menu = document.getElementById('touch-menu');
@@ -2321,9 +2327,29 @@
           method: 'POST',
           body: JSON.stringify({ type, from: myIdentity || 'alguien', ts: Date.now() })
         });
+        sendTelegramToque(msg);
         showToqueSentFeedback(msg);
       } catch (e) {
         alert('No se pudo enviar el toque, revisá la conexión.');
+      }
+    }
+
+    // Le manda el toque por Telegram al chat del OTRO (no al propio), para que
+    // le llegue como notificación incluso con la app cerrada.
+    async function sendTelegramToque(msg) {
+      if (!TELEGRAM_ENABLED) return; // todavía no completaste el token/chat_id
+      const targetChat = myIdentity === 'fran' ? TELEGRAM_CHAT_PAME : TELEGRAM_CHAT_FRAN;
+      if (!targetChat || targetChat.includes('CHAT_ID_DE')) return;
+      const text = `${msg.emoji} ${myName()} te mandó un toque: "${msg.text}"`;
+      try {
+        await fetch(`https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ chat_id: targetChat, text })
+        });
+      } catch (e) {
+        // Si falla Telegram, el toque igual quedó guardado en Firebase y se
+        // muestra en la app si el otro la tiene abierta.
       }
     }
 
