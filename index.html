@@ -109,19 +109,19 @@
       width: 100%; max-width: 420px; margin: 0.4rem auto 0;
       display: flex; align-items: center; gap: 0;
       background: var(--surface); border: 1px solid var(--border); border-radius: 999px;
-      padding: 0.3rem 0.3rem 0.3rem 1.3rem;
+      padding: 0.3rem 0.3rem 0.3rem 1.05rem;
       box-shadow: 0 10px 30px -12px rgba(0,0,0,0.6);
       transition: border-color 0.2s, box-shadow 0.2s;
     }
     .code-entry-wrap:focus-within { border-color: var(--accent-soft); box-shadow: 0 0 0 3px rgba(160,88,126,0.15); }
     .code-entry-input {
       flex: 1; min-width: 0; background: transparent; border: none; outline: none;
-      color: var(--text); font-family: 'Inter', sans-serif; font-size: 1.05rem;
-      letter-spacing: 0.03em; padding: 0.7rem 0.4rem;
+      color: var(--text); font-family: 'Inter', sans-serif; font-size: 0.98rem;
+      letter-spacing: 0.03em; padding: 0.65rem 0.3rem;
     }
     .code-entry-input::placeholder { color: var(--text-muted); opacity: 0.55; font-style: italic; }
     .code-entry-submit {
-      flex-shrink: 0; width: 42px; height: 42px; border-radius: 50%;
+      flex-shrink: 0; width: 40px; height: 40px; border-radius: 50%;
       background: var(--accent); border: none; color: var(--text);
       display: flex; align-items: center; justify-content: center; cursor: pointer;
       transition: background 0.2s, transform 0.15s;
@@ -129,12 +129,21 @@
     .code-entry-submit:hover { background: var(--accent-soft); transform: scale(1.05); }
     .code-entry-submit:disabled { opacity: 0.4; cursor: not-allowed; transform: none; }
 
-    /* ─── FILA SUPERIOR: código + avatar de perfil ─── */
+    /* ─── FILA SUPERIOR: ícono de la app + código + avatar de perfil ─── */
     .top-row {
       width: 100%; max-width: 420px; margin: 0.4rem auto 0;
-      display: flex; align-items: center; gap: 0.6rem;
+      display: flex; align-items: center; gap: 0.5rem;
     }
-    .top-row .code-entry-wrap { margin: 0; flex: 1; }
+    .top-row .code-entry-wrap { margin: 0; flex: 1; min-width: 0; }
+
+    /* Simétrico con el avatar de perfil: mismo tamaño y forma, del otro lado. */
+    .app-icon-badge {
+      flex-shrink: 0; width: 46px; height: 46px; border-radius: 50%;
+      border: 2px solid var(--border); background: var(--surface);
+      overflow: hidden; padding: 0;
+      display: flex; align-items: center; justify-content: center;
+    }
+    .app-icon-badge img { width: 100%; height: 100%; object-fit: cover; display: block; }
 
     .profile-avatar-btn {
       flex-shrink: 0; width: 46px; height: 46px; border-radius: 50%;
@@ -531,7 +540,8 @@
       background: #0a080d; border: 1px solid var(--border); touch-action: none; position: relative;
     }
     #draw-canvas { width: 100%; height: 100%; display: block; cursor: crosshair; }
-    .draw-toolbar { display: flex; align-items: center; gap: 0.6rem; margin-top: 0.9rem; flex-wrap: wrap; }
+    .draw-toolbar { display: flex; flex-direction: column; gap: 0.7rem; margin-top: 0.9rem; }
+    .draw-top-tools-row { display: flex; align-items: center; gap: 0.6rem; flex-wrap: wrap; }
     .draw-colors { display: flex; gap: 0.4rem; align-items: center; flex-wrap: wrap; }
     .draw-swatch {
       width: 22px; height: 22px; border-radius: 50%; border: 2px solid transparent; cursor: pointer;
@@ -543,8 +553,18 @@
       width: 22px; height: 22px; border-radius: 50%; padding: 0; border: 2px solid var(--border);
       background: conic-gradient(red, yellow, lime, cyan, blue, magenta, red); cursor: pointer; flex-shrink: 0;
     }
-    .draw-size-wrap { display: flex; align-items: center; gap: 0.4rem; margin-left: auto; }
-    .draw-size { width: 78px; accent-color: var(--accent-soft); cursor: pointer; }
+    /* Selector de tipo de pincel, a la derecha de la paleta de colores */
+    .draw-brush-select { margin-left: 0.3rem; flex-shrink: 0; max-width: 132px; }
+
+    /* Slider de grosor: debajo de la paleta, más grande y preciso */
+    .draw-size-wrap { display: flex; align-items: center; gap: 0.7rem; width: 100%; }
+    .draw-size {
+      flex: 1; width: 100%; height: 26px; accent-color: var(--accent-soft); cursor: pointer;
+    }
+    .draw-size-value {
+      flex-shrink: 0; min-width: 2.6rem; text-align: right; font-size: 0.8rem;
+      color: var(--text-muted); font-variant-numeric: tabular-nums;
+    }
     .draw-tool-btn {
       width: 30px; height: 30px; border-radius: 6px; background: #1c1624; border: 1px solid var(--border);
       color: var(--text); font-size: 0.85rem; display: flex; align-items: center; justify-content: center;
@@ -561,7 +581,27 @@
     #login-view .sticker-wrapper.selected .sticker-text-content { border: 1px dashed rgba(255,255,255,0.2); }
 
     /* La barra de formato del lienzo no necesita quedar pegada arriba de todo */
-    #canvas-format-toolbar { position: static; margin: 0 auto 0.9rem auto; }
+    #canvas-format-toolbar { position: static; margin: 0; }
+
+    /* Fila superior del lienzo: deshacer a la izquierda, eliminar a la
+       derecha, simétricos respecto de la barra de texto/imagen en el medio. */
+    .canvas-top-row {
+      display: flex; align-items: center; justify-content: center; gap: 0.5rem;
+      width: 100%; margin: 0 auto 0.9rem auto;
+    }
+    .canvas-top-row .canvas-format-toolbar { flex: 0 1 auto; min-width: 0; }
+    .canvas-undo-top-btn, .canvas-clear-top-btn { flex-shrink: 0; }
+
+    /* Manijas laterales de los cuadros de texto: permiten arrastrar el ancho
+       del recuadro sin afectar el tamaño de letra, para controlar cuántas
+       palabras entran por línea. */
+    .control-resize-side {
+      width: 14px; height: 30px; border-radius: 4px; top: calc(50% - 15px);
+      background: #4ade80; color: #0d0b0f; border: 1.5px solid #fff;
+      font-size: 9px; cursor: ew-resize;
+    }
+    .control-resize-side-left { left: -9px; }
+    .control-resize-side-right { right: -9px; }
 
     /* ─── Acciones del lienzo: guardar imagen + enviar por Telegram ─── */
     .canvas-actions-row { display: flex; align-items: stretch; gap: 0.7rem; margin-top: 1rem; }
@@ -709,6 +749,9 @@
       <button class="install-btn" id="install-btn" onclick="installApp()">📲 Instalar Framecorreo</button>
 
       <div class="top-row">
+        <div class="app-icon-badge" aria-hidden="true">
+          <img src="icon-192.png" alt="Framecorreo" />
+        </div>
         <div class="code-entry-wrap">
           <input id="code-input" class="code-entry-input" type="text" placeholder="Código" autocomplete="off" spellcheck="false" />
           <button class="code-entry-submit" id="unlock-btn" onclick="unlock()" title="Abrir carta" aria-label="Abrir carta">
@@ -731,19 +774,23 @@
            defecto: arranca vacío. ─── -->
       <div class="draw-wrapper" id="draw-wrapper">
 
-        <div class="docs-toolbar canvas-format-toolbar" id="canvas-format-toolbar">
-          <div class="tb-group">
-            <input type="file" id="canvas-sticker-file" accept="image/*" style="display: none;" onchange="uploadCanvasStickerFile(this)" />
-            <button type="button" class="tb-btn" onclick="document.getElementById('canvas-sticker-file').click()" title="Insertar imagen">🖼️</button>
-            <button type="button" class="tb-btn" onclick="addCanvasTextSticker()" style="font-weight: bold;" title="Agregar cuadro de texto">Aa</button>
+        <div class="canvas-top-row" id="canvas-top-row">
+          <button type="button" class="draw-tool-btn canvas-undo-top-btn" id="draw-undo-btn" title="Deshacer (Ctrl+Z)">↺</button>
+          <div class="docs-toolbar canvas-format-toolbar" id="canvas-format-toolbar">
+            <div class="tb-group">
+              <input type="file" id="canvas-sticker-file" accept="image/*" style="display: none;" onchange="uploadCanvasStickerFile(this)" />
+              <button type="button" class="tb-btn" onclick="document.getElementById('canvas-sticker-file').click()" title="Insertar imagen">🖼️</button>
+              <button type="button" class="tb-btn" onclick="addCanvasTextSticker()" style="font-weight: bold;" title="Agregar cuadro de texto">Aa</button>
+            </div>
+            <div class="tb-sep"></div>
+            <div class="tb-group">
+              <button type="button" class="tb-btn" onclick="execCanvasCmd('bold')" style="font-weight: bold;" title="Negrita">N</button>
+              <button type="button" class="tb-btn" onclick="execCanvasCmd('italic')" style="font-style: italic;" title="Cursiva">C</button>
+              <button type="button" class="tb-btn" onclick="execCanvasCmd('underline')" style="text-decoration: underline;" title="Subrayado">S</button>
+              <input type="color" id="canvas-text-color" class="tb-color" value="#e8ddd0" onchange="execCanvasCmd('foreColor', this.value)" title="Color del texto">
+            </div>
           </div>
-          <div class="tb-sep"></div>
-          <div class="tb-group">
-            <button type="button" class="tb-btn" onclick="execCanvasCmd('bold')" style="font-weight: bold;" title="Negrita">N</button>
-            <button type="button" class="tb-btn" onclick="execCanvasCmd('italic')" style="font-style: italic;" title="Cursiva">C</button>
-            <button type="button" class="tb-btn" onclick="execCanvasCmd('underline')" style="text-decoration: underline;" title="Subrayado">S</button>
-            <input type="color" id="canvas-text-color" class="tb-color" value="#e8ddd0" onchange="execCanvasCmd('foreColor', this.value)" title="Color del texto">
-          </div>
+          <button type="button" class="draw-tool-btn canvas-clear-top-btn" id="draw-clear-btn" title="Borrar todo">🗑️</button>
         </div>
 
         <div class="draw-canvas-box" id="canvas-stage">
@@ -765,27 +812,28 @@
         </div>
 
         <div class="draw-toolbar">
-          <div class="draw-colors" id="draw-colors">
-            <button type="button" class="draw-swatch active" style="background:#e8ddd0" data-color="#e8ddd0" title="Marfil"></button>
-            <button type="button" class="draw-swatch" style="background:#c9a96e" data-color="#c9a96e" title="Dorado"></button>
-            <button type="button" class="draw-swatch" style="background:#a0587e" data-color="#a0587e" title="Rosa"></button>
-            <button type="button" class="draw-swatch" style="background:#e05656" data-color="#e05656" title="Rojo"></button>
-            <button type="button" class="draw-swatch" style="background:#5fb3d9" data-color="#5fb3d9" title="Celeste"></button>
-            <button type="button" class="draw-swatch" style="background:#7fd18f" data-color="#7fd18f" title="Verde"></button>
-            <button type="button" class="draw-swatch" style="background:#f0a94e" data-color="#f0a94e" title="Naranja"></button>
-            <button type="button" class="draw-swatch" style="background:#c084fc" data-color="#c084fc" title="Violeta"></button>
-            <button type="button" class="draw-swatch" style="background:#f472b6" data-color="#f472b6" title="Fucsia"></button>
-            <button type="button" class="draw-swatch" style="background:#fde047" data-color="#fde047" title="Amarillo"></button>
-            <button type="button" class="draw-swatch" style="background:#0d0b0f; border-color:#3d2e4f;" data-color="#0d0b0f" title="Negro"></button>
-            <button type="button" class="draw-swatch" style="background:#ffffff" data-color="#ffffff" title="Blanco"></button>
-            <input type="color" id="draw-color-custom" class="draw-swatch-custom" title="Elegir color" value="#e8ddd0" />
+          <div class="draw-top-tools-row">
+            <div class="draw-colors" id="draw-colors">
+              <button type="button" class="draw-swatch active" style="background:#e8ddd0" data-color="#e8ddd0" title="Marfil"></button>
+              <button type="button" class="draw-swatch" style="background:#c9a96e" data-color="#c9a96e" title="Dorado"></button>
+              <button type="button" class="draw-swatch" style="background:#e05656" data-color="#e05656" title="Rojo"></button>
+              <button type="button" class="draw-swatch" style="background:#5fb3d9" data-color="#5fb3d9" title="Celeste"></button>
+              <button type="button" class="draw-swatch" style="background:#0d0b0f; border-color:#3d2e4f;" data-color="#0d0b0f" title="Negro"></button>
+              <button type="button" class="draw-swatch" style="background:#ffffff" data-color="#ffffff" title="Blanco"></button>
+              <input type="color" id="draw-color-custom" class="draw-swatch-custom" title="Elegir color" value="#e8ddd0" />
+            </div>
+            <select id="draw-brush-type" class="tb-select draw-brush-select" title="Tipo de pincel">
+              <option value="normal">🖌️ Normal</option>
+              <option value="spray">💨 Aerosol</option>
+              <option value="pencil">✏️ Lápiz</option>
+              <option value="highlighter">🖍️ Resaltador</option>
+            </select>
+            <button type="button" class="draw-tool-btn" id="draw-eraser-btn" title="Borrador">🧽</button>
           </div>
           <div class="draw-size-wrap">
-            <input type="range" id="draw-size" class="draw-size" min="2" max="26" value="6" title="Grosor" />
+            <input type="range" id="draw-size" class="draw-size" min="1" max="90" value="6" title="Grosor" />
+            <span class="draw-size-value" id="draw-size-value">6px</span>
           </div>
-          <button type="button" class="draw-tool-btn" id="draw-eraser-btn" title="Borrador">🧽</button>
-          <button type="button" class="draw-tool-btn" id="draw-undo-btn" title="Deshacer">↺</button>
-          <button type="button" class="draw-tool-btn" id="draw-clear-btn" title="Borrar todo">🗑️</button>
         </div>
 
         <div class="canvas-actions-row">
@@ -2509,6 +2557,7 @@
     let drawing = false;
     let drawColor = '#e8ddd0';
     let drawSize = 6;
+    let drawBrushType = 'normal'; // normal | spray | pencil | highlighter
     let eraserOn = false;
     let drawHistory = []; // snapshots para "deshacer"
     let lastRemoteImg = null;
@@ -2528,6 +2577,7 @@
         drawCanvas.width = w * ratio;
         drawCanvas.height = h * ratio;
         drawCtx.setTransform(ratio, 0, 0, ratio, 0, 0);
+        drawCtx.globalAlpha = 1;
         drawCtx.fillStyle = '#0a080d';
         drawCtx.fillRect(0, 0, w, h);
         if (prev) {
@@ -2551,6 +2601,58 @@
         return { x: clientX - rect.left, y: clientY - rect.top };
       };
 
+      // Dibuja una nube de puntitos dispersos alrededor del punto (efecto aerosol).
+      const sprayDot = (p) => {
+        const radius = Math.max(4, drawSize);
+        const density = Math.round(6 + drawSize * 0.4);
+        drawCtx.save();
+        drawCtx.globalAlpha = 0.55;
+        drawCtx.fillStyle = drawColor;
+        for (let i = 0; i < density; i++) {
+          const angle = Math.random() * Math.PI * 2;
+          const dist = Math.random() * radius;
+          const dotSize = Math.random() * 1.6 + 0.4;
+          drawCtx.beginPath();
+          drawCtx.arc(p.x + Math.cos(angle) * dist, p.y + Math.sin(angle) * dist, dotSize, 0, Math.PI * 2);
+          drawCtx.fill();
+        }
+        drawCtx.restore();
+      };
+
+      // Aplica el estilo de trazo según el pincel elegido, antes de cada segmento.
+      const applyStrokeStyle = () => {
+        drawCtx.globalAlpha = 1;
+        if (eraserOn) {
+          drawCtx.strokeStyle = '#0a080d';
+          drawCtx.lineCap = 'round';
+          drawCtx.lineJoin = 'round';
+          drawCtx.lineWidth = drawSize;
+          return;
+        }
+        switch (drawBrushType) {
+          case 'pencil':
+            drawCtx.globalAlpha = 0.55;
+            drawCtx.strokeStyle = drawColor;
+            drawCtx.lineCap = 'round';
+            drawCtx.lineJoin = 'round';
+            drawCtx.lineWidth = Math.max(1, drawSize * 0.55);
+            break;
+          case 'highlighter':
+            drawCtx.globalAlpha = 0.28;
+            drawCtx.strokeStyle = drawColor;
+            drawCtx.lineCap = 'square';
+            drawCtx.lineJoin = 'round';
+            drawCtx.lineWidth = drawSize * 1.9;
+            break;
+          default:
+            drawCtx.globalAlpha = 1;
+            drawCtx.strokeStyle = drawColor;
+            drawCtx.lineCap = 'round';
+            drawCtx.lineJoin = 'round';
+            drawCtx.lineWidth = drawSize;
+        }
+      };
+
       const start = (e) => {
         e.preventDefault();
         drawing = true;
@@ -2558,19 +2660,25 @@
         const p = getPos(e);
         drawCtx.beginPath();
         drawCtx.moveTo(p.x, p.y);
+        if (!eraserOn && drawBrushType === 'spray') sprayDot(p);
       };
       const move = (e) => {
         if (!drawing) return;
         e.preventDefault();
         const p = getPos(e);
-        drawCtx.strokeStyle = eraserOn ? '#0a080d' : drawColor;
-        drawCtx.lineWidth = drawSize;
+        if (!eraserOn && drawBrushType === 'spray') {
+          sprayDot(p);
+          drawCtx.moveTo(p.x, p.y);
+          return;
+        }
+        applyStrokeStyle();
         drawCtx.lineTo(p.x, p.y);
         drawCtx.stroke();
       };
       const end = (e) => {
         if (!drawing) return;
         drawing = false;
+        drawCtx.globalAlpha = 1;
         scheduleDrawSave();
       };
 
@@ -2598,8 +2706,16 @@
         document.getElementById('draw-eraser-btn').classList.remove('active');
       });
 
-      document.getElementById('draw-size').addEventListener('input', (e) => {
+      // Tipo de pincel (normal, aerosol, lápiz, resaltador)
+      document.getElementById('draw-brush-type').addEventListener('change', (e) => {
+        drawBrushType = e.target.value;
+      });
+
+      const sizeSlider = document.getElementById('draw-size');
+      const sizeValue = document.getElementById('draw-size-value');
+      sizeSlider.addEventListener('input', (e) => {
         drawSize = parseInt(e.target.value, 10);
+        if (sizeValue) sizeValue.textContent = drawSize + 'px';
       });
 
       document.getElementById('draw-eraser-btn').addEventListener('click', (e) => {
@@ -2607,23 +2723,41 @@
         e.currentTarget.classList.toggle('active', eraserOn);
       });
 
-      document.getElementById('draw-undo-btn').addEventListener('click', () => {
-        if (!drawHistory.length) return;
-        const prev = drawHistory.pop();
-        drawCtx.putImageData(prev, 0, 0);
-        scheduleDrawSave();
-      });
+      document.getElementById('draw-undo-btn').addEventListener('click', undoDraw);
 
       document.getElementById('draw-clear-btn').addEventListener('click', () => {
         pushHistory();
         const w = drawCanvas.clientWidth, h = drawCanvas.clientHeight;
+        drawCtx.globalAlpha = 1;
         drawCtx.fillStyle = '#0a080d';
         drawCtx.fillRect(0, 0, w, h);
         scheduleDrawSave();
       });
 
+      // ─── Deshacer con Ctrl+Z (o Cmd+Z en Mac) ───
+      // Si el foco está en un campo de texto o cuadro editable, dejamos que el
+      // navegador maneje su propio deshacer de texto en vez de interferir.
+      document.addEventListener('keydown', (e) => {
+        const key = e.key ? e.key.toLowerCase() : '';
+        if (!(e.ctrlKey || e.metaKey) || key !== 'z' || e.shiftKey) return;
+        const active = document.activeElement;
+        const isEditableFocus = active && (
+          active.tagName === 'INPUT' || active.tagName === 'TEXTAREA' || active.isContentEditable
+        );
+        if (isEditableFocus) return;
+        e.preventDefault();
+        undoDraw();
+      });
+
       loadDrawBoard();
       listenDrawBoard();
+    }
+
+    function undoDraw() {
+      if (!drawCtx || !drawHistory.length) return;
+      const prev = drawHistory.pop();
+      drawCtx.putImageData(prev, 0, 0);
+      scheduleDrawSave();
     }
 
     function pushHistory() {
@@ -2693,27 +2827,80 @@
 
     // ════════════════════════════════════════════════════════════
     // ─── LIENZO: mismo sistema de stickers que las cartas (imágenes,
-    // cuadros de texto con formato), pero vive arriba del dibujo a mano
-    // y no se sube a la nube: es un espacio de armado local para
-    // guardar como imagen o mandar por Telegram. Arranca siempre vacío.
+    // cuadros de texto con formato), vive arriba del dibujo a mano. Se
+    // sincroniza por Firebase igual que el dibujo, para que las imágenes y
+    // cuadros de texto le aparezcan al otro apenas abre la página (no solo
+    // al guardar como imagen o mandar por Telegram). Arranca siempre vacío
+    // si nadie puso nada todavía.
     // ════════════════════════════════════════════════════════════
     let canvasStickers = [];
     let canvasSelectedStickerIdx = null;
     let canvasSaveTimer = null;
 
     function scheduleCanvasSave() {
+      // Guardado local instantáneo (funciona sin conexión y sirve de respaldo).
+      try { localStorage.setItem('fc_canvas_stickers', JSON.stringify(canvasStickers)); } catch (e) {}
+
       clearTimeout(canvasSaveTimer);
-      canvasSaveTimer = setTimeout(() => {
-        try { localStorage.setItem('fc_canvas_stickers', JSON.stringify(canvasStickers)); } catch (e) {}
+      canvasSaveTimer = setTimeout(async () => {
+        try {
+          await fetch(`${FIREBASE_DB_URL}/lienzo_stickers.json`, {
+            method: 'PUT',
+            body: JSON.stringify({ stickers: canvasStickers, ts: Date.now(), by: myIdentity || 'alguien' })
+          });
+        } catch (e) {
+          // Si falla, ya quedó guardado localmente; la próxima vez que haya
+          // conexión el "input"/drag siguiente reintenta el envío.
+        }
       }, 400);
     }
 
     function restoreCanvasStickers() {
+      // Restauración local instantánea mientras llega la versión remota (más
+      // reciente y compartida) desde Firebase.
       try {
         const raw = localStorage.getItem('fc_canvas_stickers');
-        if (!raw) return;
-        canvasStickers = JSON.parse(raw) || [];
-        renderCanvasStickers();
+        if (raw) {
+          canvasStickers = JSON.parse(raw) || [];
+          renderCanvasStickers();
+        }
+      } catch (e) {}
+
+      loadCanvasStickersRemote();
+      listenCanvasStickers();
+    }
+
+    async function loadCanvasStickersRemote() {
+      try {
+        const res = await fetch(`${FIREBASE_DB_URL}/lienzo_stickers.json`);
+        const data = await res.json();
+        if (data && Array.isArray(data.stickers)) {
+          canvasStickers = data.stickers;
+          canvasSelectedStickerIdx = null;
+          renderCanvasStickers();
+          try { localStorage.setItem('fc_canvas_stickers', JSON.stringify(canvasStickers)); } catch (e) {}
+        }
+      } catch (e) {}
+    }
+
+    function listenCanvasStickers() {
+      try {
+        const es = new EventSource(`${FIREBASE_DB_URL}/lienzo_stickers.json`);
+        es.addEventListener('put', (e) => {
+          try {
+            const payload = JSON.parse(e.data);
+            const data = payload.data;
+            if (!data || !Array.isArray(data.stickers)) return;
+            // Ignoramos el eco de nuestro propio guardado, por identidad (no por
+            // tiempo), así nunca se pierde una actualización real del otro.
+            if (data.by && myIdentity && data.by === myIdentity) return;
+            canvasStickers = data.stickers;
+            canvasSelectedStickerIdx = null;
+            renderCanvasStickers();
+            try { localStorage.setItem('fc_canvas_stickers', JSON.stringify(canvasStickers)); } catch (err) {}
+          } catch (err) {}
+        });
+        es.onerror = () => {}; // Firebase reconecta solo; si falla, la próxima apertura igual carga lo último.
       } catch (e) {}
     }
 
@@ -2887,7 +3074,22 @@
         resBtn.innerHTML = '⤡';
         wrapper.appendChild(resBtn);
 
-        setupCanvasStickerDragAndTransform(wrapper, st, layerContainer, rotBtn, resBtn, idx);
+        let sideLeftBtn = null, sideRightBtn = null;
+        if (st.type === 'text') {
+          sideLeftBtn = document.createElement('div');
+          sideLeftBtn.className = 'sticker-control control-resize-side control-resize-side-left';
+          sideLeftBtn.innerHTML = '⋮';
+          sideLeftBtn.title = 'Ajustar ancho del recuadro';
+          wrapper.appendChild(sideLeftBtn);
+
+          sideRightBtn = document.createElement('div');
+          sideRightBtn.className = 'sticker-control control-resize-side control-resize-side-right';
+          sideRightBtn.innerHTML = '⋮';
+          sideRightBtn.title = 'Ajustar ancho del recuadro';
+          wrapper.appendChild(sideRightBtn);
+        }
+
+        setupCanvasStickerDragAndTransform(wrapper, st, layerContainer, rotBtn, resBtn, idx, sideLeftBtn, sideRightBtn);
 
         layerContainer.appendChild(wrapper);
       });
@@ -2895,7 +3097,7 @@
       refreshCanvasPropsPanel();
     }
 
-    function setupCanvasStickerDragAndTransform(wrapper, stickerData, layerContainer, rotBtn, resBtn, idx) {
+    function setupCanvasStickerDragAndTransform(wrapper, stickerData, layerContainer, rotBtn, resBtn, idx, sideLeftBtn, sideRightBtn) {
       wrapper.addEventListener('dragstart', (e) => e.preventDefault());
 
       // 1. MOVER (DRAG)
@@ -3021,6 +3223,62 @@
         window.addEventListener('touchend', stopResize);
       }
 
+      // 2b. REDIMENSIONAR ANCHO DESDE LOS LADOS (solo texto): cambia cuántas
+      // palabras entran por línea sin tocar el tamaño de letra.
+      if (sideLeftBtn) {
+        sideLeftBtn.addEventListener('mousedown', (e) => startResizeSide(e, 'left'));
+        sideLeftBtn.addEventListener('touchstart', (e) => startResizeSide(e, 'left'), { passive: false });
+      }
+      if (sideRightBtn) {
+        sideRightBtn.addEventListener('mousedown', (e) => startResizeSide(e, 'right'));
+        sideRightBtn.addEventListener('touchstart', (e) => startResizeSide(e, 'right'), { passive: false });
+      }
+
+      function startResizeSide(e, side) {
+        e.stopPropagation();
+        e.preventDefault();
+
+        const containerRect = layerContainer.getBoundingClientRect();
+        const startClientX = e.touches ? e.touches[0].clientX : e.clientX;
+        const initialWidthPercent = stickerData.width;
+        const initialLeftPercent = stickerData.left;
+
+        function doResizeSide(moveEvent) {
+          const mX = moveEvent.touches ? moveEvent.touches[0].clientX : moveEvent.clientX;
+          const deltaPercent = ((mX - startClientX) / containerRect.width) * 100;
+
+          let newWidth, newLeft;
+          if (side === 'right') {
+            newWidth = initialWidthPercent + deltaPercent;
+            newLeft = initialLeftPercent;
+          } else {
+            newWidth = initialWidthPercent - deltaPercent;
+            newLeft = initialLeftPercent + deltaPercent;
+          }
+
+          if (newWidth < 12) { newWidth = 12; }
+          if (newWidth > 400) { newWidth = 400; }
+
+          stickerData.width = newWidth;
+          stickerData.left = newLeft;
+          wrapper.style.width = newWidth + '%';
+          wrapper.style.left = newLeft + '%';
+        }
+
+        function stopResizeSide() {
+          window.removeEventListener('mousemove', doResizeSide);
+          window.removeEventListener('mouseup', stopResizeSide);
+          window.removeEventListener('touchmove', doResizeSide);
+          window.removeEventListener('touchend', stopResizeSide);
+          scheduleCanvasSave();
+        }
+
+        window.addEventListener('mousemove', doResizeSide);
+        window.addEventListener('mouseup', stopResizeSide);
+        window.addEventListener('touchmove', doResizeSide, { passive: false });
+        window.addEventListener('touchend', stopResizeSide);
+      }
+
       // 3. ROTAR
       rotBtn.addEventListener('mousedown', startRotate);
       rotBtn.addEventListener('touchstart', startRotate, { passive: false });
@@ -3143,7 +3401,7 @@
         const formData = new FormData();
         formData.append('chat_id', chatId);
         formData.append('photo', blob, 'dibujo.png');
-        formData.append('caption', `💌 ${myName()} te mandó un dibujo por Framecorreo`);
+        formData.append('caption', buildCanvasCaption(target));
 
         const res = await fetch(`https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendPhoto`, {
           method: 'POST',
@@ -3155,6 +3413,16 @@
       } catch (e) {
         alert('No se pudo enviar por Telegram, revisá la conexión.');
       }
+    }
+
+    // El mensaje cambia según quién esté logueado y a quién le llega: si te lo
+    // mandás a vos mismo (p. ej. para guardarlo), el texto es reflexivo; si se
+    // lo mandás al otro, usa tu nombre en tercera persona.
+    function buildCanvasCaption(target) {
+      if (myIdentity && target === myIdentity) {
+        return '💌 Guardaste un dibujo en Framecorreo';
+      }
+      return `💌 ${myName()} te mandó un dibujo por Framecorreo`;
     }
 
     function showCanvasSendFeedback(target) {
@@ -3203,20 +3471,36 @@
           method: 'POST',
           body: JSON.stringify({ type, from: myIdentity || 'alguien', ts: Date.now() })
         });
-        sendTelegramToque(msg);
+        sendTelegramToque(type);
         showToqueSentFeedback(msg);
       } catch (e) {
         alert('No se pudo enviar el toque, revisá la conexión.');
       }
     }
 
+    // Arma el texto del mensaje de Telegram según el tipo de toque y el
+    // nombre de quien está logueado en este momento. El toque simple ya no
+    // usa el emoji de dedo (👉), solo el texto; "te extraño" y "hablame"
+    // mantienen su emoji propio.
+    function buildToqueTelegramText(type) {
+      const name = myName();
+      switch (type) {
+        case 'extraño':
+          return `💭 ${name} te extraña`;
+        case 'hablame':
+          return `💬 ${name} quiere que le hables`;
+        default:
+          return `${name} te mandó un toque`;
+      }
+    }
+
     // Le manda el toque por Telegram al chat del OTRO (no al propio), para que
     // le llegue como notificación incluso con la app cerrada.
-    async function sendTelegramToque(msg) {
+    async function sendTelegramToque(type) {
       if (!TELEGRAM_ENABLED) return; // todavía no completaste el token/chat_id
       const targetChat = myIdentity === 'fran' ? TELEGRAM_CHAT_PAME : TELEGRAM_CHAT_FRAN;
       if (!targetChat || targetChat.includes('CHAT_ID_DE')) return;
-      const text = `${msg.emoji} ${myName()} te mandó un toque: "${msg.text}"`;
+      const text = buildToqueTelegramText(type);
       try {
         await fetch(`https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage`, {
           method: 'POST',
