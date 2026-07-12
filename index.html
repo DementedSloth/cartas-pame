@@ -76,6 +76,17 @@
     .view-section.active { display: flex; }
     #login-view { padding-bottom: calc(var(--bottom-nav-h) + 1.4rem); }
 
+    /* En pantallas chicas el lienzo ya ocupa (100dvh - bottom-nav-h) por sí
+       solo (ver .ig-stage-shell), así que el padding/margen extra de arriba
+       y abajo de la pantalla de inicio sobra: eso es lo que generaba scroll
+       y franjas vacías. Achicamos body y #login-view a cero en ese caso. */
+    @media (max-width: 480px) {
+      body { padding-top: 0; padding-bottom: 0; overflow: hidden; }
+      .container { margin-top: 0; }
+      #login-view { padding-bottom: 0; }
+      #login-view .install-btn.visible { margin: 0.4rem auto 0; }
+    }
+
     /* Forzar el ancho central a 560px excepto para la toolbar */
     .form-wrapper, .header, #live-card-container, #letter-card-wrapper { 
       width: 100%; max-width: 560px; margin: 0 auto; 
@@ -205,7 +216,8 @@
     .form-btn:hover { background: var(--accent); color: var(--text); box-shadow: 0 8px 24px -8px rgba(124,63,110,0.6); }
     .form-btn:disabled { opacity: 0.5; cursor: not-allowed; background: transparent; }
 
-    .error-msg { margin-top: 0.9rem; font-style: italic; font-size: 0.95rem; color: #df7a7a; text-align: center; min-height: 1.2rem; }
+    .error-msg { margin-top: 0; font-style: italic; font-size: 0.95rem; color: #df7a7a; text-align: center; min-height: 0; }
+    .error-msg:not(:empty) { margin-top: 0.9rem; min-height: 1.2rem; }
     .success-msg { margin-top: 0.9rem; font-style: italic; font-size: 0.9rem; color: #7adf7a; text-align: center; }
 
     .back-btn { display: inline-block; margin-top: 1.8rem; background: transparent; border: none; color: var(--text-muted); font-family: 'Inter', sans-serif; font-size: 0.78rem; letter-spacing: 0.2em; text-transform: uppercase; cursor: pointer; transition: color 0.2s; }
@@ -764,6 +776,45 @@
       display: flex; flex-direction: column; gap: 10px; align-items: center;
     }
 
+    /* Herramientas colapsadas detrás del botón de lápiz: ocultas hasta que
+       se abren, para trabajar con la pantalla más limpia. */
+    .ig-rail-collapsible {
+      display: none; flex-direction: column; gap: 10px; align-items: center;
+      margin-top: 10px;
+    }
+    .ig-rail.tools-open .ig-rail-collapsible { display: flex; }
+    .ig-rail-toggle.active { background: var(--accent); border-color: var(--gold); }
+
+    /* Rail inferior derecho: atrás / código, lejos del área de trabajo */
+    .ig-rail-bottom-right {
+      position: absolute; bottom: 14px; right: 12px; z-index: 60;
+      display: flex; flex-direction: row; gap: 10px; align-items: center;
+    }
+
+    /* Herramienta "mover página": mientras está activa, ningún elemento del
+       lienzo se mueve y se puede hacer zoom/pan libremente sobre la página. */
+    .ig-rail-btn#adm-move-tool-btn.active,
+    .ig-rail-btn#canvas-move-tool-btn.active { background: var(--accent); border-color: var(--gold); }
+
+    /* Con la herramienta "mover" activa, ningún elemento del lienzo recibe
+       los toques: todo el gesto (pellizcar/arrastrar) mueve la página. */
+    .ig-stage-shell.move-tool-active .stickers-layer,
+    .ig-stage-shell.move-tool-active #draw-canvas { pointer-events: none; }
+
+    /* Zona de "soltar para borrar", estilo Instagram: aparece abajo mientras
+       se arrastra un elemento y se puede arrastrar hasta ahí para eliminarlo. */
+    .delete-drop-zone {
+      position: absolute; left: 50%; bottom: 16px; transform: translateX(-50%) scale(0.8);
+      width: 58px; height: 58px; border-radius: 50%; z-index: 250;
+      background: rgba(20,16,26,0.7); backdrop-filter: blur(6px);
+      border: 1px solid rgba(255,255,255,0.18); color: var(--text);
+      display: none; align-items: center; justify-content: center; font-size: 1.3rem;
+      opacity: 0; transition: opacity 0.15s, transform 0.15s, background 0.15s, border-color 0.15s;
+      pointer-events: none;
+    }
+    .delete-drop-zone.visible { display: flex; opacity: 1; transform: translateX(-50%) scale(1); }
+    .delete-drop-zone.armed { background: #b23b3b; border-color: #ff6b6b; transform: translateX(-50%) scale(1.15); }
+
     .ig-bottom-bar {
       position: absolute; left: 0; right: 0; bottom: 0; z-index: 60;
       display: flex; align-items: center; gap: 0.6rem;
@@ -1099,22 +1150,25 @@
 
           <div class="ig-stage-dim"></div>
 
-          <!-- Rail izquierdo: deshacer / borrar todo -->
+          <!-- Rail izquierdo: deshacer / borrar todo / mover página -->
           <div class="ig-rail-left">
             <button type="button" class="ig-rail-btn" id="draw-undo-btn" title="Deshacer">↺</button>
             <button type="button" class="ig-rail-btn" id="draw-clear-btn" title="Borrar todo">🗑️</button>
+            <button type="button" class="ig-rail-btn" id="canvas-move-tool-btn" title="Mover / hacer zoom en la página" onclick="toggleMoveTool('canvas')">✋</button>
           </div>
 
           <!-- Rail derecho: estilo Instagram Stories, vertical -->
           <div class="ig-rail">
             <input type="file" id="canvas-sticker-file" accept="image/*" style="display:none;" onchange="uploadCanvasStickerFile(this)" />
             <button type="button" class="ig-rail-btn" title="Insertar imagen" onclick="document.getElementById('canvas-sticker-file').click()">🖼️</button>
-            <button type="button" class="ig-rail-btn" title="Agregar texto" onclick="addCanvasTextSticker(); openIgPanel('panel-canvas-text')" style="font-weight:bold;">Aa</button>
+            <button type="button" class="ig-rail-btn" id="canvas-text-btn" title="Agregar texto" onclick="handleTextToolClick('canvas')" style="font-weight:bold;">Aa</button>
             <button type="button" class="ig-rail-btn" title="Pincel" onclick="openIgPanel('panel-canvas-brush')">🎨</button>
             <button type="button" class="ig-rail-btn canvas-send-btn" title="Enviar" onclick="openIgPanel('panel-canvas-send')">
               <svg viewBox="0 0 24 24" width="19" height="19" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
             </button>
           </div>
+
+          <div class="delete-drop-zone" id="canvas-delete-zone"><span>✕</span></div>
 
           <!-- Barra flotante de elemento seleccionado (capas / opacidad) -->
           <div class="sticker-props-bar" id="canvas-sticker-props-bar">
@@ -1193,6 +1247,11 @@
                 <button type="button" class="ig-toggle-btn" style="font-style:italic;" onclick="execCanvasCmd('italic'); this.classList.toggle('active')">C</button>
                 <button type="button" class="ig-toggle-btn" style="text-decoration:underline;" onclick="execCanvasCmd('underline'); this.classList.toggle('active')">S</button>
               </div>
+              <div class="ig-slider-block">
+                <div class="ig-panel-section-label">Tamaño de letra</div>
+                <input type="range" id="canvas-font-size" min="6" max="120" value="22" title="Tamaño de letra" oninput="setStickerFontSize('canvas', this.value)" />
+                <span class="ig-slider-value" id="canvas-font-size-value">22px</span>
+              </div>
               <div>
                 <div class="ig-panel-section-label">Fuente</div>
                 <select id="canvas-font-select" class="ig-native-hidden" onchange="execCanvasCmd('fontName', this.value)" title="Fuente">
@@ -1255,7 +1314,6 @@
         </div>
       </div>
 
-      <div class="footer" style="margin-top: 2.2rem; text-align: center; font-size: 0.85rem; color: var(--text-muted); opacity: 0.45;">Fran · 2026</div>
     </div>
 
     <div id="admin-view" class="view-section">
@@ -1286,21 +1344,31 @@
 
         <div class="ig-stage-dim"></div>
 
-        <!-- Rail izquierdo -->
+        <!-- Rail izquierdo: solo la herramienta "mover página" (zoom/pan libre) -->
         <div class="ig-rail-left">
+          <button type="button" class="ig-rail-btn" id="adm-move-tool-btn" title="Mover / hacer zoom en la página" onclick="toggleMoveTool('admin')">✋</button>
+        </div>
+
+        <!-- Rail derecho: colapsado detrás de un botón de lápiz para trabajar más limpio -->
+        <div class="ig-rail" id="adm-tools-rail">
+          <button type="button" class="ig-rail-btn ig-rail-toggle" id="adm-tools-toggle" title="Herramientas" onclick="toggleToolsRail('adm-tools-rail')">✏️</button>
+          <div class="ig-rail-collapsible" id="adm-tools-collapsible">
+            <input type="file" id="adm-sticker-file" accept="image/*" style="display:none;" onchange="uploadStickerFile(this)" />
+            <button type="button" class="ig-rail-btn" title="Insertar imagen" onclick="document.getElementById('adm-sticker-file').click()">🖼️</button>
+            <button type="button" class="ig-rail-btn" id="adm-text-btn" title="Texto" style="font-weight:bold;" onclick="handleTextToolClick('admin')">Aa</button>
+            <button type="button" class="ig-rail-btn" title="Estilo de la carta" onclick="openIgPanel('panel-adm-style')">🎨</button>
+            <button type="button" class="ig-rail-btn" title="Disponibilidad" onclick="openIgPanel('panel-adm-date')">📅</button>
+            <button type="button" class="ig-rail-btn save-btn" id="save-btn" onclick="saveLetter()" title="Guardar">💾</button>
+          </div>
+        </div>
+
+        <!-- Rail inferior derecho: salir del panel / código de la carta (fuera del paso, ya no estorban) -->
+        <div class="ig-rail-bottom-right">
           <button type="button" class="icon-row-btn ig-rail-btn" onclick="exitAdmin()" title="Salir del panel">←</button>
           <button type="button" class="ig-rail-btn" onclick="openIgPanel('panel-adm-code')" title="Código de la carta">#</button>
         </div>
 
-        <!-- Rail derecho: estilo Instagram Stories -->
-        <div class="ig-rail">
-          <input type="file" id="adm-sticker-file" accept="image/*" style="display:none;" onchange="uploadStickerFile(this)" />
-          <button type="button" class="ig-rail-btn" title="Insertar imagen" onclick="document.getElementById('adm-sticker-file').click()">🖼️</button>
-          <button type="button" class="ig-rail-btn" title="Texto" style="font-weight:bold;" onclick="addTextSticker(); openIgPanel('panel-adm-text')">Aa</button>
-          <button type="button" class="ig-rail-btn" title="Estilo de la carta" onclick="openIgPanel('panel-adm-style')">🎨</button>
-          <button type="button" class="ig-rail-btn" title="Disponibilidad" onclick="openIgPanel('panel-adm-date')">📅</button>
-          <button type="button" class="ig-rail-btn save-btn" id="save-btn" onclick="saveLetter()" title="Guardar">💾</button>
-        </div>
+        <div class="delete-drop-zone" id="adm-delete-zone"><span>✕</span></div>
 
         <div class="sticker-props-bar" id="sticker-props-bar">
           <span class="props-bar-label">Elemento</span>
@@ -1346,6 +1414,11 @@
               <button type="button" class="ig-toggle-btn" style="font-weight:bold;" onclick="execCmd('bold'); this.classList.toggle('active')">N</button>
               <button type="button" class="ig-toggle-btn" style="font-style:italic;" onclick="execCmd('italic'); this.classList.toggle('active')">C</button>
               <button type="button" class="ig-toggle-btn" style="text-decoration:underline;" onclick="execCmd('underline'); this.classList.toggle('active')">S</button>
+            </div>
+            <div class="ig-slider-block">
+              <div class="ig-panel-section-label">Tamaño de letra</div>
+              <input type="range" id="adm-font-size" min="6" max="120" value="16" title="Tamaño de letra" oninput="setStickerFontSize('admin', this.value)" />
+              <span class="ig-slider-value" id="adm-font-size-value">16px</span>
             </div>
             <div>
               <div class="ig-panel-section-label">Fuente</div>
@@ -1616,6 +1689,184 @@
     let autosaveTimer = null;
     let currentStickers = [];
     let selectedStickerIdx = null;
+
+    // ════════════════════════════════════════════════════════════
+    // ─── HERRAMIENTA "MOVER PÁGINA" + colapsar herramientas + Aa dinámico ───
+    // ════════════════════════════════════════════════════════════
+    let moveToolActiveAdmin = false;
+    let moveToolActiveCanvas = false;
+    const pageZoomState = {}; // { shellId: { scale, tx, ty } }
+
+    function toggleToolsRail(railId) {
+      const rail = document.getElementById(railId);
+      if (!rail) return;
+      rail.classList.toggle('tools-open');
+      const btn = rail.querySelector('.ig-rail-toggle');
+      if (btn) btn.classList.toggle('active', rail.classList.contains('tools-open'));
+    }
+
+    function toggleMoveTool(scope) {
+      const isCanvas = scope === 'canvas';
+      const btn = document.getElementById(isCanvas ? 'canvas-move-tool-btn' : 'adm-move-tool-btn');
+      const shellId = isCanvas ? 'canvas-stage-shell' : 'letter-stage-shell';
+      const contentSelector = isCanvas ? '#canvas-stage' : '#live-card-container';
+
+      if (isCanvas) moveToolActiveCanvas = !moveToolActiveCanvas;
+      else moveToolActiveAdmin = !moveToolActiveAdmin;
+
+      const active = isCanvas ? moveToolActiveCanvas : moveToolActiveAdmin;
+      if (btn) btn.classList.toggle('active', active);
+      const shellEl = document.getElementById(shellId);
+      if (shellEl) shellEl.classList.toggle('move-tool-active', active);
+
+      if (active) {
+        enablePageZoomPan(shellId, contentSelector);
+      } else {
+        disablePageZoomPan(shellId, contentSelector);
+      }
+    }
+
+    // Zoom/pan libre de la página con dos dedos (o rueda del mouse), sin
+    // mover ningún sticker, mientras la herramienta "mover" esté activa.
+    function enablePageZoomPan(shellId, contentSelector) {
+      const shell = document.getElementById(shellId);
+      const content = shell ? shell.querySelector(contentSelector) : null;
+      if (!shell || !content) return;
+
+      if (!pageZoomState[shellId]) pageZoomState[shellId] = { scale: 1, tx: 0, ty: 0 };
+      content.style.transition = 'none';
+      content.style.transformOrigin = 'center center';
+
+      let touches = {};
+      let startDist = 0, startScale = 1, startTx = 0, startTy = 0, startMidX = 0, startMidY = 0;
+      let panStartX = 0, panStartY = 0;
+
+      function applyTransform() {
+        const st = pageZoomState[shellId];
+        content.style.transform = `translate(${st.tx}px, ${st.ty}px) scale(${st.scale})`;
+      }
+
+      function onTouchStart(e) {
+        if (e.touches.length === 2) {
+          e.preventDefault();
+          const [a, b] = e.touches;
+          startDist = Math.hypot(b.clientX - a.clientX, b.clientY - a.clientY);
+          startMidX = (a.clientX + b.clientX) / 2;
+          startMidY = (a.clientY + b.clientY) / 2;
+          startScale = pageZoomState[shellId].scale;
+          startTx = pageZoomState[shellId].tx;
+          startTy = pageZoomState[shellId].ty;
+        } else if (e.touches.length === 1) {
+          panStartX = e.touches[0].clientX - pageZoomState[shellId].tx;
+          panStartY = e.touches[0].clientY - pageZoomState[shellId].ty;
+        }
+      }
+
+      function onTouchMove(e) {
+        if (e.touches.length === 2) {
+          e.preventDefault();
+          const [a, b] = e.touches;
+          const dist = Math.hypot(b.clientX - a.clientX, b.clientY - a.clientY);
+          const st = pageZoomState[shellId];
+          st.scale = Math.min(4, Math.max(1, startScale * (dist / startDist)));
+          st.tx = startTx + ((a.clientX + b.clientX) / 2 - startMidX);
+          st.ty = startTy + ((a.clientY + b.clientY) / 2 - startMidY);
+          applyTransform();
+        } else if (e.touches.length === 1) {
+          e.preventDefault();
+          const st = pageZoomState[shellId];
+          st.tx = e.touches[0].clientX - panStartX;
+          st.ty = e.touches[0].clientY - panStartY;
+          applyTransform();
+        }
+      }
+
+      function onWheel(e) {
+        e.preventDefault();
+        const st = pageZoomState[shellId];
+        st.scale = Math.min(4, Math.max(1, st.scale - e.deltaY * 0.0015));
+        applyTransform();
+      }
+
+      shell._zoomHandlers = { onTouchStart, onTouchMove, onWheel };
+      shell.addEventListener('touchstart', onTouchStart, { passive: false });
+      shell.addEventListener('touchmove', onTouchMove, { passive: false });
+      shell.addEventListener('wheel', onWheel, { passive: false });
+    }
+
+    function disablePageZoomPan(shellId, contentSelector) {
+      const shell = document.getElementById(shellId);
+      const content = shell ? shell.querySelector(contentSelector) : null;
+      if (shell && shell._zoomHandlers) {
+        shell.removeEventListener('touchstart', shell._zoomHandlers.onTouchStart);
+        shell.removeEventListener('touchmove', shell._zoomHandlers.onTouchMove);
+        shell.removeEventListener('wheel', shell._zoomHandlers.onWheel);
+        delete shell._zoomHandlers;
+      }
+      pageZoomState[shellId] = { scale: 1, tx: 0, ty: 0 };
+      if (content) {
+        content.style.transition = 'transform 0.25s ease';
+        content.style.transform = 'translate(0,0) scale(1)';
+      }
+    }
+
+    // El botón "Aa": si hay un cuadro de texto seleccionado, edita ese en vez
+    // de crear uno nuevo.
+    function handleTextToolClick(scope) {
+      const isCanvas = scope === 'canvas';
+      const idx = isCanvas ? canvasSelectedStickerIdx : selectedStickerIdx;
+      const arr = isCanvas ? canvasStickers : currentStickers;
+      const panelId = isCanvas ? 'panel-canvas-text' : 'panel-adm-text';
+
+      if (idx !== null && idx !== undefined && arr[idx] && arr[idx].type === 'text') {
+        syncFontSizeSlider(scope);
+        openIgPanel(panelId);
+        focusStickerTextEditor(idx, isCanvas);
+      } else {
+        if (isCanvas) addCanvasTextSticker(); else addTextSticker();
+        openIgPanel(panelId);
+      }
+    }
+
+    function updateTextToolButton(scope) {
+      const isCanvas = scope === 'canvas';
+      const idx = isCanvas ? canvasSelectedStickerIdx : selectedStickerIdx;
+      const arr = isCanvas ? canvasStickers : currentStickers;
+      const btn = document.getElementById(isCanvas ? 'canvas-text-btn' : 'adm-text-btn');
+      if (!btn) return;
+      const isEditingText = idx !== null && idx !== undefined && arr[idx] && arr[idx].type === 'text';
+      btn.title = isEditingText ? 'Editar texto' : 'Agregar texto';
+      if (isEditingText) syncFontSizeSlider(scope);
+    }
+
+    function syncFontSizeSlider(scope) {
+      const isCanvas = scope === 'canvas';
+      const idx = isCanvas ? canvasSelectedStickerIdx : selectedStickerIdx;
+      const arr = isCanvas ? canvasStickers : currentStickers;
+      const slider = document.getElementById(isCanvas ? 'canvas-font-size' : 'adm-font-size');
+      const label = document.getElementById(isCanvas ? 'canvas-font-size-value' : 'adm-font-size-value');
+      if (!slider || idx === null || idx === undefined || !arr[idx]) return;
+      const size = arr[idx].fontSize || (isCanvas ? 22 : 16);
+      slider.value = size;
+      if (label) label.textContent = Math.round(size) + 'px';
+    }
+
+    function setStickerFontSize(scope, val) {
+      const isCanvas = scope === 'canvas';
+      const size = parseFloat(val);
+      const idx = isCanvas ? canvasSelectedStickerIdx : selectedStickerIdx;
+      const arr = isCanvas ? canvasStickers : currentStickers;
+      const label = document.getElementById(isCanvas ? 'canvas-font-size-value' : 'adm-font-size-value');
+      if (label) label.textContent = Math.round(size) + 'px';
+      if (idx === null || idx === undefined || !arr[idx]) return;
+
+      arr[idx].fontSize = size;
+      const wrapperSel = isCanvas ? '#canvas-stickers-layer' : '#live-stickers-layer';
+      const textEl = document.querySelector(`${wrapperSel} .sticker-wrapper[data-idx="${idx}"] .sticker-text-content`);
+      if (textEl) textEl.style.fontSize = size + 'px';
+
+      if (isCanvas) scheduleCanvasSave(); else scheduleAutosave();
+    }
     let allCodesCache = [];
     let allCartasData = {};
 
@@ -2663,12 +2914,14 @@
 
       if (selectedStickerIdx === null || !currentStickers[selectedStickerIdx]) {
         bar.classList.remove('visible');
+        updateTextToolButton('admin');
         return;
       }
 
       const idx = selectedStickerIdx;
       const st = currentStickers[idx];
       bar.classList.add('visible');
+      updateTextToolButton('admin');
 
       const opacitySlider = document.getElementById('props-opacity');
       opacitySlider.value = (st.opacity === undefined || st.opacity === null) ? 1 : st.opacity;
@@ -2885,19 +3138,28 @@
       wrapper.addEventListener('touchstart', startMove, { passive: false });
 
       function startMove(e) {
+        if (moveToolActiveAdmin) return; // herramienta "mover página": no tocar elementos
+        if (e.touches && e.touches.length > 1) return; // dos dedos: lo maneja el pellizco
+
         const isMoveControl = e.target.closest('.control-move');
         const isOtherControl = (e.target.closest('.sticker-control') || e.target.closest('.sticker-props-panel')) && !isMoveControl;
         const isText = (stickerData.type === 'text');
+        const isEditingThisText = isText && e.target.closest('.sticker-text-content') && wrapper.classList.contains('selected');
 
         if (isOtherControl) return;
 
-        if (isText && !isMoveControl) {
+        // Un cuadro de texto recién tocado (todavía no seleccionado) solo se
+        // selecciona con el primer toque; ya seleccionado, se puede agarrar
+        // y mover desde cualquier parte (como una imagen), salvo que el toque
+        // caiga justo sobre el texto ya en edición (para poder escribir).
+        if (isText && !wrapper.classList.contains('selected')) {
            selectedStickerIdx = idx;
            document.querySelectorAll('.sticker-wrapper').forEach(w => w.classList.remove('selected'));
            wrapper.classList.add('selected');
            refreshPropsPanel();
            return; 
         }
+        if (isEditingThisText) return;
 
         e.preventDefault();
         syncTextStickersContent();
@@ -2918,6 +3180,8 @@
         const initialLeftPx = (stickerData.left / 100) * containerRect.width;
         const initialTopPx = (stickerData.top / 100) * containerRect.height;
 
+        const deleteZone = document.getElementById('adm-delete-zone');
+
         function doMove(moveEvent) {
           const mX = moveEvent.touches ? moveEvent.touches[0].clientX : moveEvent.clientX;
           const mY = moveEvent.touches ? moveEvent.touches[0].clientY : moveEvent.clientY;
@@ -2930,6 +3194,14 @@
 
           wrapper.style.left = stickerData.left + '%';
           wrapper.style.top = stickerData.top + '%';
+
+          if (deleteZone) {
+            deleteZone.classList.add('visible');
+            const zoneRect = deleteZone.getBoundingClientRect();
+            const nearDelete = Math.hypot(mX - (zoneRect.left + zoneRect.width / 2), mY - (zoneRect.top + zoneRect.height / 2)) < 55;
+            deleteZone.classList.toggle('armed', nearDelete);
+            wrapper.style.opacity = nearDelete ? '0.35' : ((stickerData.opacity === undefined || stickerData.opacity === null) ? 1 : stickerData.opacity);
+          }
         }
 
         function stopMove() {
@@ -2938,6 +3210,17 @@
           window.removeEventListener('mouseup', stopMove);
           window.removeEventListener('touchmove', doMove);
           window.removeEventListener('touchend', stopMove);
+
+          if (deleteZone && deleteZone.classList.contains('armed')) {
+            deleteZone.classList.remove('visible', 'armed');
+            currentStickers.splice(idx, 1);
+            if (selectedStickerIdx === idx) selectedStickerIdx = null;
+            else if (selectedStickerIdx > idx) selectedStickerIdx--;
+            renderStickers(layerContainer, currentStickers, true);
+            scheduleAutosave();
+            return;
+          }
+          if (deleteZone) deleteZone.classList.remove('visible', 'armed');
           scheduleAutosave();
         }
 
@@ -2945,6 +3228,67 @@
         window.addEventListener('mouseup', stopMove);
         window.addEventListener('touchmove', doMove, { passive: false });
         window.addEventListener('touchend', stopMove);
+      }
+
+      // 1b. PELLIZCAR CON DOS DEDOS: agranda/achica y rota a la vez
+      wrapper.addEventListener('touchstart', startPinch, { passive: false });
+
+      function startPinch(e) {
+        if (moveToolActiveAdmin) return;
+        if (!e.touches || e.touches.length !== 2) return;
+        e.preventDefault();
+        e.stopPropagation();
+
+        selectedStickerIdx = idx;
+        document.querySelectorAll('.sticker-wrapper').forEach(w => w.classList.remove('selected'));
+        wrapper.classList.add('selected');
+        refreshPropsPanel();
+
+        const t0 = e.touches[0], t1 = e.touches[1];
+        const startDist = Math.hypot(t1.clientX - t0.clientX, t1.clientY - t0.clientY);
+        const startAngle = Math.atan2(t1.clientY - t0.clientY, t1.clientX - t0.clientX) * 180 / Math.PI;
+        const initialWidthPercent = stickerData.width;
+        const initialFontSize = stickerData.fontSize || 16;
+        const initialRotation = stickerData.rotation || 0;
+
+        function doPinch(moveEvt) {
+          if (!moveEvt.touches || moveEvt.touches.length < 2) return;
+          moveEvt.preventDefault();
+          const a = moveEvt.touches[0], b = moveEvt.touches[1];
+          const dist = Math.hypot(b.clientX - a.clientX, b.clientY - a.clientY);
+          const angle = Math.atan2(b.clientY - a.clientY, b.clientX - a.clientX) * 180 / Math.PI;
+
+          let newWidthPercent = initialWidthPercent * (dist / startDist);
+          const maxWidthPercent = stickerData.type === 'text' ? 2000 : 100;
+          if (newWidthPercent < 5) newWidthPercent = 5;
+          if (newWidthPercent > maxWidthPercent) newWidthPercent = maxWidthPercent;
+          stickerData.width = newWidthPercent;
+          wrapper.style.width = stickerData.width + '%';
+
+          if (stickerData.type === 'text') {
+            let newFontSize = initialFontSize * (newWidthPercent / initialWidthPercent);
+            if (newFontSize < 6) newFontSize = 6;
+            stickerData.fontSize = newFontSize;
+            const textEl = wrapper.querySelector('.sticker-text-content');
+            if (textEl) textEl.style.fontSize = newFontSize + 'px';
+            const slider = document.getElementById('adm-font-size');
+            if (slider && selectedStickerIdx === idx) { slider.value = newFontSize; const lbl = document.getElementById('adm-font-size-value'); if (lbl) lbl.textContent = Math.round(newFontSize) + 'px'; }
+          }
+
+          stickerData.rotation = initialRotation + (angle - startAngle);
+          wrapper.style.transform = `rotate(${stickerData.rotation}deg)`;
+        }
+
+        function stopPinch() {
+          window.removeEventListener('touchmove', doPinch);
+          window.removeEventListener('touchend', stopPinch);
+          window.removeEventListener('touchcancel', stopPinch);
+          scheduleAutosave();
+        }
+
+        window.addEventListener('touchmove', doPinch, { passive: false });
+        window.addEventListener('touchend', stopPinch);
+        window.addEventListener('touchcancel', stopPinch);
       }
 
       // 2. REDIMENSIONAR
@@ -3856,12 +4200,14 @@
 
       if (canvasSelectedStickerIdx === null || !canvasStickers[canvasSelectedStickerIdx]) {
         bar.classList.remove('visible');
+        updateTextToolButton('canvas');
         return;
       }
 
       const idx = canvasSelectedStickerIdx;
       const st = canvasStickers[idx];
       bar.classList.add('visible');
+      updateTextToolButton('canvas');
 
       const opacitySlider = document.getElementById('canvas-props-opacity');
       opacitySlider.value = (st.opacity === undefined || st.opacity === null) ? 1 : st.opacity;
@@ -4023,19 +4369,24 @@
       wrapper.addEventListener('touchstart', startMove, { passive: false });
 
       function startMove(e) {
+        if (moveToolActiveCanvas) return; // herramienta "mover página": no tocar elementos
+        if (e.touches && e.touches.length > 1) return; // dos dedos: lo maneja el pellizco
+
         const isMoveControl = e.target.closest('.control-move');
         const isOtherControl = e.target.closest('.sticker-control') && !isMoveControl;
         const isText = (stickerData.type === 'text');
+        const isEditingThisText = isText && e.target.closest('.sticker-text-content') && wrapper.classList.contains('selected');
 
         if (isOtherControl) return;
 
-        if (isText && !isMoveControl) {
+        if (isText && !wrapper.classList.contains('selected')) {
           canvasSelectedStickerIdx = idx;
           document.querySelectorAll('#canvas-stickers-layer .sticker-wrapper').forEach(w => w.classList.remove('selected'));
           wrapper.classList.add('selected');
           refreshCanvasPropsPanel();
           return;
         }
+        if (isEditingThisText) return;
 
         e.preventDefault();
         syncCanvasTextStickersContent();
@@ -4056,6 +4407,8 @@
         const initialLeftPx = (stickerData.left / 100) * containerRect.width;
         const initialTopPx = (stickerData.top / 100) * containerRect.height;
 
+        const deleteZone = document.getElementById('canvas-delete-zone');
+
         function doMove(moveEvent) {
           const mX = moveEvent.touches ? moveEvent.touches[0].clientX : moveEvent.clientX;
           const mY = moveEvent.touches ? moveEvent.touches[0].clientY : moveEvent.clientY;
@@ -4068,6 +4421,14 @@
 
           wrapper.style.left = stickerData.left + '%';
           wrapper.style.top = stickerData.top + '%';
+
+          if (deleteZone) {
+            deleteZone.classList.add('visible');
+            const zoneRect = deleteZone.getBoundingClientRect();
+            const nearDelete = Math.hypot(mX - (zoneRect.left + zoneRect.width / 2), mY - (zoneRect.top + zoneRect.height / 2)) < 55;
+            deleteZone.classList.toggle('armed', nearDelete);
+            wrapper.style.opacity = nearDelete ? '0.35' : ((stickerData.opacity === undefined || stickerData.opacity === null) ? 1 : stickerData.opacity);
+          }
         }
 
         function stopMove() {
@@ -4076,6 +4437,17 @@
           window.removeEventListener('mouseup', stopMove);
           window.removeEventListener('touchmove', doMove);
           window.removeEventListener('touchend', stopMove);
+
+          if (deleteZone && deleteZone.classList.contains('armed')) {
+            deleteZone.classList.remove('visible', 'armed');
+            canvasStickers.splice(idx, 1);
+            if (canvasSelectedStickerIdx === idx) canvasSelectedStickerIdx = null;
+            else if (canvasSelectedStickerIdx > idx) canvasSelectedStickerIdx--;
+            renderCanvasStickers();
+            scheduleCanvasSave();
+            return;
+          }
+          if (deleteZone) deleteZone.classList.remove('visible', 'armed');
           scheduleCanvasSave();
         }
 
@@ -4083,6 +4455,67 @@
         window.addEventListener('mouseup', stopMove);
         window.addEventListener('touchmove', doMove, { passive: false });
         window.addEventListener('touchend', stopMove);
+      }
+
+      // 1b. PELLIZCAR CON DOS DEDOS: agranda/achica y rota a la vez
+      wrapper.addEventListener('touchstart', startPinch, { passive: false });
+
+      function startPinch(e) {
+        if (moveToolActiveCanvas) return;
+        if (!e.touches || e.touches.length !== 2) return;
+        e.preventDefault();
+        e.stopPropagation();
+
+        canvasSelectedStickerIdx = idx;
+        document.querySelectorAll('#canvas-stickers-layer .sticker-wrapper').forEach(w => w.classList.remove('selected'));
+        wrapper.classList.add('selected');
+        refreshCanvasPropsPanel();
+
+        const t0 = e.touches[0], t1 = e.touches[1];
+        const startDist = Math.hypot(t1.clientX - t0.clientX, t1.clientY - t0.clientY);
+        const startAngle = Math.atan2(t1.clientY - t0.clientY, t1.clientX - t0.clientX) * 180 / Math.PI;
+        const initialWidthPercent = stickerData.width;
+        const initialFontSize = stickerData.fontSize || 22;
+        const initialRotation = stickerData.rotation || 0;
+
+        function doPinch(moveEvt) {
+          if (!moveEvt.touches || moveEvt.touches.length < 2) return;
+          moveEvt.preventDefault();
+          const a = moveEvt.touches[0], b = moveEvt.touches[1];
+          const dist = Math.hypot(b.clientX - a.clientX, b.clientY - a.clientY);
+          const angle = Math.atan2(b.clientY - a.clientY, b.clientX - a.clientX) * 180 / Math.PI;
+
+          let newWidthPercent = initialWidthPercent * (dist / startDist);
+          const maxWidthPercent = stickerData.type === 'text' ? 2000 : 100;
+          if (newWidthPercent < 5) newWidthPercent = 5;
+          if (newWidthPercent > maxWidthPercent) newWidthPercent = maxWidthPercent;
+          stickerData.width = newWidthPercent;
+          wrapper.style.width = stickerData.width + '%';
+
+          if (stickerData.type === 'text') {
+            let newFontSize = initialFontSize * (newWidthPercent / initialWidthPercent);
+            if (newFontSize < 6) newFontSize = 6;
+            stickerData.fontSize = newFontSize;
+            const textEl = wrapper.querySelector('.sticker-text-content');
+            if (textEl) textEl.style.fontSize = newFontSize + 'px';
+            const slider = document.getElementById('canvas-font-size');
+            if (slider && canvasSelectedStickerIdx === idx) { slider.value = newFontSize; const lbl = document.getElementById('canvas-font-size-value'); if (lbl) lbl.textContent = Math.round(newFontSize) + 'px'; }
+          }
+
+          stickerData.rotation = initialRotation + (angle - startAngle);
+          wrapper.style.transform = `rotate(${stickerData.rotation}deg)`;
+        }
+
+        function stopPinch() {
+          window.removeEventListener('touchmove', doPinch);
+          window.removeEventListener('touchend', stopPinch);
+          window.removeEventListener('touchcancel', stopPinch);
+          scheduleCanvasSave();
+        }
+
+        window.addEventListener('touchmove', doPinch, { passive: false });
+        window.addEventListener('touchend', stopPinch);
+        window.addEventListener('touchcancel', stopPinch);
       }
 
       // 2. REDIMENSIONAR
