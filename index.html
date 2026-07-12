@@ -74,6 +74,7 @@
 
     .view-section { width: 100%; display: none; flex-direction: column; align-items: center; }
     .view-section.active { display: flex; }
+    #login-view { padding-bottom: calc(var(--bottom-nav-h) + 1.4rem); }
 
     /* Forzar el ancho central a 560px excepto para la toolbar */
     .form-wrapper, .header, #live-card-container, #letter-card-wrapper { 
@@ -130,21 +131,20 @@
     .code-entry-submit:hover { background: var(--accent-soft); transform: scale(1.05); }
     .code-entry-submit:disabled { opacity: 0.4; cursor: not-allowed; transform: none; }
 
-    /* ─── FILA SUPERIOR: ícono de la app + código + avatar de perfil ─── */
-    .top-row {
-      width: 100%; max-width: 420px; margin: 0.4rem auto 0;
-      display: flex; align-items: center; gap: 0.5rem;
+    /* ─── BARRA DE NAVEGACIÓN INFERIOR (código + perfil) ───
+       Estilo Material You / Instagram: una barra flotante anclada abajo de
+       la pantalla, con el campo de código y el avatar de perfil. Reemplaza
+       a la vieja fila superior (con el ícono de la app, ya no se usa). */
+    :root { --bottom-nav-h: 78px; }
+    .bottom-nav-bar {
+      position: fixed; left: 0; right: 0; bottom: 0; z-index: 300;
+      display: flex; align-items: center; gap: 0.6rem;
+      padding: 0.65rem 0.8rem calc(0.65rem + env(safe-area-inset-bottom));
+      background: rgba(16,13,20,0.82); backdrop-filter: blur(14px);
+      border-top: 1px solid rgba(255,255,255,0.08);
+      box-shadow: 0 -8px 30px rgba(0,0,0,0.4);
     }
-    .top-row .code-entry-wrap { margin: 0; flex: 1; min-width: 0; }
-
-    /* Simétrico con el avatar de perfil: mismo tamaño y forma, del otro lado. */
-    .app-icon-badge {
-      flex-shrink: 0; width: 46px; height: 46px; border-radius: 50%;
-      border: 2px solid var(--border); background: var(--surface);
-      overflow: hidden; padding: 0;
-      display: flex; align-items: center; justify-content: center;
-    }
-    .app-icon-badge img { width: 100%; height: 100%; object-fit: cover; display: block; }
+    .bottom-nav-bar .code-entry-wrap { margin: 0; flex: 1; min-width: 0; }
 
     .profile-avatar-btn {
       flex-shrink: 0; width: 46px; height: 46px; border-radius: 50%;
@@ -701,14 +701,21 @@
        que no importa cuánto padding tengan: siempre llega al borde real. */
     @media (max-width: 480px) {
       .ig-stage-shell {
-        width: min(100vw, calc((100dvh - 0.6rem) * 8 / 15));
+        width: 100vw;
         max-width: 100vw;
-        max-height: calc(100dvh - 0.6rem);
+        height: calc(100dvh - var(--bottom-nav-h));
+        max-height: calc(100dvh - var(--bottom-nav-h));
+        aspect-ratio: auto;
         border-radius: 0;
-        margin-top: 0.3rem;
-        margin-bottom: 0.6rem;
+        margin: 0;
         margin-left: calc(50% - 50vw);
         margin-right: calc(50% - 50vw);
+      }
+      /* El editor de la carta (no el lienzo de dibujo compartido) sí puede
+         crecer por debajo de la barra inferior, ya que ahí no convive con
+         ella (se entra a él desde la galería, la barra de código no se ve). */
+      #letter-stage-shell {
+        height: 100dvh; max-height: 100dvh;
       }
     }
     /* Pasada esa pantalla chica, vuelve a comportarse como una tarjeta
@@ -764,37 +771,52 @@
       background: linear-gradient(0deg, rgba(0,0,0,0.75), transparent);
     }
 
+    /* Paneles tipo "hoja inferior" (bottom sheet), como en Instagram: se
+       anclan abajo y dejan el lienzo visible y tocable arriba. Tocar el
+       lienzo (fuera del panel y de los stickers) cierra el panel y vuelve
+       a la vista normal del lienzo. */
     .ig-panel {
-      position: absolute; inset: 0; z-index: 90;
-      background: rgba(4,3,6,0.94); backdrop-filter: blur(3px);
+      position: absolute; left: 0; right: 0; bottom: 0; top: auto; z-index: 90;
+      max-height: 58%;
+      background: linear-gradient(180deg, rgba(10,8,14,0.65), rgba(8,6,11,0.97) 22%);
+      backdrop-filter: blur(10px);
+      border-top: 1px solid rgba(255,255,255,0.1);
+      border-radius: 20px 20px 0 0;
+      box-shadow: 0 -10px 40px rgba(0,0,0,0.5);
       display: none; flex-direction: column;
       animation: ig-panel-in 0.22s ease;
+      padding-bottom: env(safe-area-inset-bottom);
     }
     .ig-panel.open { display: flex; }
-    @keyframes ig-panel-in { from { opacity: 0; transform: translateY(14px); } to { opacity: 1; transform: translateY(0); } }
+    @keyframes ig-panel-in { from { opacity: 0; transform: translateY(100%); } to { opacity: 1; transform: translateY(0); } }
 
     .ig-panel-header {
       display: flex; align-items: center; justify-content: space-between;
-      padding: 1rem 1rem 0.7rem; flex-shrink: 0;
+      padding: 0.75rem 1rem 0.5rem; flex-shrink: 0;
+      position: relative;
+    }
+    .ig-panel-header::before {
+      content: ''; position: absolute; top: 0.4rem; left: 50%; transform: translateX(-50%);
+      width: 34px; height: 4px; border-radius: 3px; background: rgba(255,255,255,0.18);
     }
     .ig-panel-title {
-      font-family: 'Lora', serif; font-size: 1.05rem; color: var(--text);
-      letter-spacing: 0.02em;
+      font-family: 'Lora', serif; font-size: 0.98rem; color: var(--text);
+      letter-spacing: 0.02em; margin-top: 0.35rem;
     }
     .ig-panel-close {
-      width: 40px; height: 40px; border-radius: 50%; flex-shrink: 0;
+      width: 34px; height: 34px; border-radius: 50%; flex-shrink: 0;
       background: rgba(255,255,255,0.08); border: 1px solid rgba(255,255,255,0.14);
-      color: var(--text); font-size: 1.2rem; display: flex; align-items: center; justify-content: center;
-      cursor: pointer;
+      color: var(--text); font-size: 1rem; display: flex; align-items: center; justify-content: center;
+      cursor: pointer; margin-top: 0.2rem;
     }
     .ig-panel-body {
-      flex: 1; min-height: 0; overflow-y: auto; padding: 0.4rem 1.1rem 1.4rem;
-      display: flex; flex-direction: column; gap: 1.3rem;
+      flex: 1; min-height: 0; overflow-y: auto; padding: 0.2rem 1rem 1rem;
+      display: flex; flex-direction: column; gap: 0.9rem;
       -webkit-overflow-scrolling: touch;
     }
     .ig-panel-section-label {
-      font-size: 0.72rem; letter-spacing: 0.2em; text-transform: uppercase;
-      color: var(--text-muted); margin-bottom: 0.6rem;
+      font-size: 0.68rem; letter-spacing: 0.18em; text-transform: uppercase;
+      color: var(--text-muted); margin-bottom: 0.45rem;
     }
 
     .ig-action-row {
@@ -815,44 +837,57 @@
     }
     .ig-toggle-btn.active { background: var(--accent); border-color: var(--gold); }
 
+    /* Herramientas en fila con scroll horizontal, como el selector de stories
+       de Instagram: se desliza con el dedo hacia los costados en vez de
+       ocupar toda la pantalla en una lista vertical. */
     .ig-vscroll {
-      max-height: 46vh; overflow-y: auto; scroll-snap-type: y proximity;
-      display: flex; flex-direction: column; gap: 0.5rem;
-      -webkit-overflow-scrolling: touch; padding: 0.2rem;
+      max-height: none; overflow-x: auto; overflow-y: hidden;
+      scroll-snap-type: x proximity;
+      display: flex; flex-direction: row; gap: 0.55rem;
+      -webkit-overflow-scrolling: touch; padding: 0.5rem 0.3rem;
       border-radius: 14px; background: rgba(255,255,255,0.03);
     }
+    .ig-vscroll::-webkit-scrollbar { height: 0; }
     .ig-vscroll-item {
-      scroll-snap-align: center; display: flex; align-items: center; gap: 0.9rem;
-      padding: 0.95rem 1.1rem; border-radius: 12px; cursor: pointer;
-      color: var(--text); font-size: 1.1rem; border: 1px solid transparent;
-      background: transparent; transition: background 0.15s, border-color 0.15s;
-      -webkit-tap-highlight-color: transparent;
+      scroll-snap-align: start; flex-shrink: 0;
+      display: flex; flex-direction: column; align-items: center; gap: 0.4rem;
+      padding: 0.55rem 0.7rem; border-radius: 12px; cursor: pointer;
+      color: var(--text); font-size: 0.78rem; border: 1px solid transparent;
+      background: rgba(255,255,255,0.04); transition: background 0.15s, border-color 0.15s;
+      -webkit-tap-highlight-color: transparent; white-space: nowrap; min-width: 62px; text-align: center;
     }
-    .ig-vscroll-item:active { background: rgba(255,255,255,0.08); }
+    .ig-vscroll-item:active { background: rgba(255,255,255,0.1); }
     .ig-vscroll-item.active {
       background: rgba(124,63,110,0.35); border-color: var(--accent-soft);
     }
     /* Los swatches de color reutilizan la clase .draw-swatch (para no romper
-       el JS existente), pero dentro del picker vertical se ven como filas
-       completas, no como círculos chicos. */
-    .ig-vscroll-item.draw-swatch { width: 100%; height: auto; border-radius: 12px; }
+       el JS existente): en la fila horizontal, cada uno es un círculo de
+       color arriba y el nombre chiquito abajo. */
+    .ig-vscroll-item.draw-swatch { width: auto; height: auto; border-radius: 12px; }
     .ig-vscroll-item.draw-swatch.active { background: rgba(124,63,110,0.35); border-color: var(--accent-soft); transform: none; }
     .ig-vscroll-item .ig-swatch {
-      width: 28px; height: 28px; border-radius: 50%; flex-shrink: 0;
+      width: 30px; height: 30px; border-radius: 50%; flex-shrink: 0;
       border: 2px solid rgba(255,255,255,0.25);
     }
     .ig-vscroll-item.active .ig-swatch { border-color: var(--gold); }
+    /* Botón para abrir el selector de color personalizado (ya no es un
+       <input type="color"> nativo, sino nuestro propio picker con rueda de
+       color, ver .cc-picker más abajo). Vive como un ítem más al final de
+       la fila horizontal de swatches. */
     .ig-vscroll-custom-color {
-      display: flex; align-items: center; gap: 0.9rem; padding: 0.95rem 1.1rem;
-      margin-top: 0.4rem; border-radius: 12px; background: rgba(255,255,255,0.05);
-      border: 1px solid rgba(255,255,255,0.12); color: var(--text); font-size: 1rem;
+      display: flex; flex-direction: column; align-items: center; gap: 0.4rem;
+      padding: 0.55rem 0.7rem; flex-shrink: 0; scroll-snap-align: start;
+      border-radius: 12px; background: rgba(255,255,255,0.05);
+      border: 1px solid rgba(255,255,255,0.12); color: var(--text); font-size: 0.72rem;
+      cursor: pointer; white-space: nowrap; min-width: 62px; text-align: center;
+      transition: background 0.15s, border-color 0.15s;
     }
-    .ig-vscroll-custom-color input[type="color"] {
-      width: 40px; height: 40px; border-radius: 50%; border: 2px solid rgba(255,255,255,0.25);
-      padding: 0; cursor: pointer; background: transparent;
+    .ig-vscroll-custom-color:active { background: rgba(255,255,255,0.1); }
+    .ig-vscroll-custom-color .cc-swatch-btn {
+      width: 30px; height: 30px; border-radius: 50%; border: 2px solid rgba(255,255,255,0.25);
+      background: conic-gradient(red, yellow, lime, cyan, blue, magenta, red);
+      cursor: pointer; flex-shrink: 0; padding: 0;
     }
-    .ig-vscroll-custom-color input[type="color"]::-webkit-color-swatch-wrapper { padding: 0; border-radius: 50%; }
-    .ig-vscroll-custom-color input[type="color"]::-webkit-color-swatch { border: none; border-radius: 50%; }
 
     .ig-slider-block { display: flex; flex-direction: column; gap: 0.6rem; }
     .ig-slider-block input[type="range"] { width: 100%; height: 34px; accent-color: var(--accent-soft); cursor: pointer; }
@@ -868,9 +903,61 @@
     .ig-native-hidden { position: absolute !important; width: 1px !important; height: 1px !important;
       overflow: hidden !important; opacity: 0 !important; pointer-events: none !important; margin: -1px !important; }
 
+    /* ═══════════════ SELECTOR DE COLOR PERSONALIZADO (reemplaza al <input type="color"> nativo) ═══════════════ */
+    .cc-picker-overlay {
+      position: fixed; inset: 0; z-index: 2000; display: none;
+      align-items: flex-end; justify-content: center;
+      background: rgba(4,3,6,0.6); backdrop-filter: blur(2px);
+    }
+    .cc-picker-overlay.visible { display: flex; animation: cc-fade-in 0.15s ease; }
+    @keyframes cc-fade-in { from { opacity: 0; } to { opacity: 1; } }
+    .cc-picker-box {
+      width: 100%; max-width: 420px;
+      background: linear-gradient(160deg, var(--surface), #17121e);
+      border: 1px solid var(--border); border-radius: 20px 20px 0 0;
+      padding: 1.3rem 1.3rem calc(1.1rem + env(safe-area-inset-bottom));
+      box-shadow: 0 -12px 40px rgba(0,0,0,0.6);
+      animation: ig-panel-in 0.2s ease;
+    }
+    .cc-picker-label { font-size: 0.72rem; letter-spacing: 0.2em; text-transform: uppercase; color: var(--text-muted); text-align: center; margin-bottom: 0.9rem; }
+    .cc-picker-sv {
+      width: 100%; aspect-ratio: 16 / 9; border-radius: 14px; position: relative;
+      background-image: linear-gradient(to top, #000, rgba(0,0,0,0)), linear-gradient(to right, #fff, rgba(255,255,255,0));
+      background-color: hsl(0,100%,50%);
+      touch-action: none; cursor: crosshair; overflow: hidden; margin-bottom: 1.1rem;
+      border: 1px solid rgba(255,255,255,0.08);
+    }
+    .cc-picker-sv-cursor {
+      position: absolute; width: 22px; height: 22px; border-radius: 50%;
+      border: 2px solid #fff; box-shadow: 0 0 0 1px rgba(0,0,0,0.45), 0 2px 8px rgba(0,0,0,0.6);
+      transform: translate(-50%,-50%); pointer-events: none; top: 0; left: 100%;
+    }
+    .cc-picker-hue {
+      width: 100%; height: 30px; -webkit-appearance: none; appearance: none;
+      border-radius: 15px; margin-bottom: 1.2rem; cursor: pointer; display: block;
+      background: linear-gradient(to right, red, #ff0, lime, cyan, blue, magenta, red);
+    }
+    .cc-picker-hue::-webkit-slider-thumb {
+      -webkit-appearance: none; width: 28px; height: 28px; border-radius: 50%;
+      background: #fff; border: 2px solid rgba(0,0,0,0.35); box-shadow: 0 2px 6px rgba(0,0,0,0.45); cursor: pointer;
+    }
+    .cc-picker-hue::-moz-range-thumb {
+      width: 28px; height: 28px; border-radius: 50%; background: #fff;
+      border: 2px solid rgba(0,0,0,0.35); box-shadow: 0 2px 6px rgba(0,0,0,0.45); cursor: pointer;
+    }
+    .cc-picker-footer { display: flex; align-items: center; gap: 0.85rem; }
+    .cc-picker-preview { width: 38px; height: 38px; border-radius: 50%; border: 2px solid rgba(255,255,255,0.25); flex-shrink: 0; }
+    .cc-picker-hex { flex: 1; font-family: 'Space Mono', monospace; font-size: 0.88rem; color: var(--text-muted); letter-spacing: 0.06em; }
+    .cc-picker-done {
+      background: var(--accent); border: 1px solid var(--gold); color: var(--text); border-radius: 10px;
+      padding: 0.65rem 1.2rem; font-size: 0.85rem; cursor: pointer; font-family: 'Inter', sans-serif;
+      transition: background 0.15s;
+    }
+    .cc-picker-done:hover { background: var(--accent-soft); }
+
     /* ═══════════════ BOTÓN "DAR UN TOQUE" ═══════════════ */
     .touch-fab {
-      position: fixed; right: 1.1rem; bottom: 1.1rem; z-index: 500;
+      position: fixed; right: 1.1rem; bottom: calc(var(--bottom-nav-h) + 1.1rem + env(safe-area-inset-bottom)); z-index: 500;
       width: 56px; height: 56px; border-radius: 50%;
       background: linear-gradient(160deg, var(--accent), var(--accent-dark, #5e2f52));
       border: 1px solid var(--gold); color: var(--text); font-size: 1.5rem;
@@ -886,7 +973,7 @@
       100% { box-shadow: 0 0 0 0 rgba(160,88,126,0); }
     }
     .touch-menu {
-      position: fixed; right: 1.1rem; bottom: 4.6rem; z-index: 500;
+      position: fixed; right: 1.1rem; bottom: calc(var(--bottom-nav-h) + 4.6rem); z-index: 500;
       display: none; flex-direction: column; gap: 0.5rem;
       background: linear-gradient(160deg, var(--surface), #17121e);
       border: 1px solid var(--border); border-radius: 10px; padding: 0.7rem;
@@ -977,10 +1064,14 @@
 
       <button class="install-btn" id="install-btn" onclick="installApp()">📲 Instalar Framecorreo</button>
 
-      <div class="top-row">
-        <div class="app-icon-badge" aria-hidden="true">
-          <img src="icon-192.png" alt="Framecorreo" />
-        </div>
+      <div class="error-msg" id="error-msg"></div>
+      <div class="error-block" id="error-block">
+        <div class="error-block-msg" id="error-block-msg">Ups, hubo un problema de conexión. ¿Probamos de nuevo?</div>
+        <button class="retry-btn" onclick="retryUnlock()">↻ Reintentar</button>
+      </div>
+
+      <!-- ─── Barra de navegación inferior: código para abrir una carta + perfil ─── -->
+      <div class="bottom-nav-bar" id="bottom-nav-bar">
         <div class="code-entry-wrap">
           <input id="code-input" class="code-entry-input" type="text" placeholder="Código" autocomplete="off" spellcheck="false" />
           <button class="code-entry-submit" id="unlock-btn" onclick="unlock()" title="Abrir carta" aria-label="Abrir carta">
@@ -991,11 +1082,6 @@
           <span class="avatar-fallback" id="avatar-fallback">?</span>
           <img id="avatar-img" style="display:none;" alt="Perfil" />
         </button>
-      </div>
-      <div class="error-msg" id="error-msg"></div>
-      <div class="error-block" id="error-block">
-        <div class="error-block-msg" id="error-block-msg">Ups, hubo un problema de conexión. ¿Probamos de nuevo?</div>
-        <button class="retry-btn" onclick="retryUnlock()">↻ Reintentar</button>
       </div>
 
       <!-- ─── Lienzo compartido: mismo sistema que las cartas (stickers, imágenes,
@@ -1065,9 +1151,10 @@
                   <div class="ig-vscroll-item draw-swatch" data-color="#0d0b0f"><span class="ig-swatch" style="background:#0d0b0f; border-color:#3d2e4f;"></span>Negro</div>
                   <div class="ig-vscroll-item draw-swatch" data-color="#ffffff"><span class="ig-swatch" style="background:#ffffff"></span>Blanco</div>
                 </div>
-                <div class="ig-vscroll-custom-color">
-                  <input type="color" id="draw-color-custom" value="#e8ddd0" title="Elegir color" />
-                  <span>Elegir otro color</span>
+                <div class="ig-vscroll-custom-color" onclick="openColorPicker(drawColor, (hex) => { drawColor = hex; document.getElementById('draw-color-custom').value = hex; document.querySelectorAll('.draw-swatch').forEach(s => s.classList.remove('active')); eraserOn = false; document.getElementById('draw-eraser-btn').classList.remove('active'); })">
+                  <input type="hidden" id="draw-color-custom" value="#e8ddd0" />
+                  <button type="button" class="cc-swatch-btn" title="Elegir color" tabindex="-1"></button>
+                  <span>Otro color</span>
                 </div>
               </div>
               <div>
@@ -1142,9 +1229,10 @@
                   <div class="ig-vscroll-item" data-color="#5fb3d9"><span class="ig-swatch" style="background:#5fb3d9"></span>Celeste</div>
                   <div class="ig-vscroll-item" data-color="#ffffff"><span class="ig-swatch" style="background:#ffffff"></span>Blanco</div>
                 </div>
-                <div class="ig-vscroll-custom-color">
-                  <input type="color" id="canvas-text-color" value="#e8ddd0" title="Elegir color" onchange="execCanvasCmd('foreColor', this.value)" />
-                  <span>Elegir otro color</span>
+                <div class="ig-vscroll-custom-color" onclick="openColorPicker(document.getElementById('canvas-text-color').value, (hex) => { document.getElementById('canvas-text-color').value = hex; document.querySelectorAll('#canvas-text-colors .ig-vscroll-item').forEach(i => i.classList.remove('active')); execCanvasCmd('foreColor', hex); })">
+                  <input type="hidden" id="canvas-text-color" value="#e8ddd0" />
+                  <button type="button" class="cc-swatch-btn" title="Elegir color" tabindex="-1"></button>
+                  <span>Otro color</span>
                 </div>
               </div>
             </div>
@@ -1283,9 +1371,10 @@
                 <div class="ig-vscroll-item" data-color="#5fb3d9"><span class="ig-swatch" style="background:#5fb3d9"></span>Celeste</div>
                 <div class="ig-vscroll-item" data-color="#ffffff"><span class="ig-swatch" style="background:#ffffff"></span>Blanco</div>
               </div>
-              <div class="ig-vscroll-custom-color">
-                <input type="color" id="adm-color" value="#e8ddd0" title="Elegir color" onchange="execCmd('foreColor', this.value)" />
-                <span>Elegir otro color</span>
+              <div class="ig-vscroll-custom-color" onclick="openColorPicker(document.getElementById('adm-color').value, (hex) => { document.getElementById('adm-color').value = hex; document.querySelectorAll('#adm-color-list .ig-vscroll-item').forEach(i => i.classList.remove('active')); execCmd('foreColor', hex); })">
+                <input type="hidden" id="adm-color" value="#e8ddd0" />
+                <button type="button" class="cc-swatch-btn" title="Elegir color" tabindex="-1"></button>
+                <span>Otro color</span>
               </div>
             </div>
           </div>
@@ -1426,6 +1515,22 @@
     </div>
   </div>
 
+  <!-- ─── Selector de color personalizado (reemplaza al input[type=color] nativo) ─── -->
+  <div class="cc-picker-overlay" id="cc-picker-overlay">
+    <div class="cc-picker-box">
+      <div class="cc-picker-label">Elegí un color</div>
+      <div class="cc-picker-sv" id="cc-picker-sv">
+        <div class="cc-picker-sv-cursor" id="cc-picker-sv-cursor"></div>
+      </div>
+      <input type="range" class="cc-picker-hue" id="cc-picker-hue" min="0" max="360" value="0" />
+      <div class="cc-picker-footer">
+        <span class="cc-picker-preview" id="cc-picker-preview"></span>
+        <span class="cc-picker-hex" id="cc-picker-hex">#E8DDD0</span>
+        <button type="button" class="cc-picker-done" onclick="closeColorPicker()">Listo</button>
+      </div>
+    </div>
+  </div>
+
   <!-- ─── Modal: cambiar perfil (nombre + foto) ─── -->
   <div class="profile-modal-overlay" id="profile-modal-overlay">
     <div class="profile-modal-box">
@@ -1561,6 +1666,7 @@
       registerServiceWorker();
       initDrawBoard();
       initIgAdminPickers();
+      setupColorPicker();
       restoreCanvasStickers();
       initCanvasSendMenu();
       initToques();
@@ -2478,12 +2584,32 @@
 
     function addTextSticker() {
       const newText = {
-        type: 'text', content: 'Escribí algo...', left: 35, top: 25, width: 40, rotation: 0, fontSize: 16
+        type: 'text', content: '', placeholder: 'Escribí algo...', left: 35, top: 25, width: 40, rotation: 0, fontSize: 16
       };
       currentStickers.push(newText);
-      selectedStickerIdx = currentStickers.length - 1;
+      const idx = currentStickers.length - 1;
+      selectedStickerIdx = idx;
       renderStickers(document.getElementById('live-stickers-layer'), currentStickers, true);
       scheduleAutosave();
+      focusStickerTextEditor(idx, true);
+    }
+
+    // Enfoca (y abre el teclado en mobile) el editor de un cuadro de texto recién
+    // creado, para que se pueda escribir de inmediato sin tener que tocarlo antes.
+    function focusStickerTextEditor(idx, isCanvas) {
+      requestAnimationFrame(() => {
+        const editorsMap = isCanvas ? canvasTiptapEditors : cartaTiptapEditors;
+        const ed = editorsMap[idx];
+        if (ed && !ed.isDestroyed) { ed.commands.focus('end'); return; }
+        const node = document.getElementById(isCanvas ? `canvas-sticker-text-${idx}` : `sticker-text-${idx}`);
+        if (node) {
+          if (node.isContentEditable) { node.focus(); }
+          else {
+            const inner = node.querySelector('[contenteditable="true"]');
+            if (inner) inner.focus();
+          }
+        }
+      });
     }
 
     function uploadStickerFile(input) {
@@ -2523,6 +2649,10 @@
         selectedStickerIdx = null;
         document.querySelectorAll('.sticker-wrapper').forEach(w => w.classList.remove('selected'));
         refreshPropsPanel();
+        // Tocar lejos del texto/sticker vuelve al lienzo: cerramos cualquier
+        // herramienta (texto, color, fuente, etc.) que haya quedado abierta.
+        const shell = document.getElementById('letter-stage-shell');
+        if (shell) shell.querySelectorAll('.ig-panel.open').forEach((p) => closeIgPanel(p.id));
       }
     });
 
@@ -3128,6 +3258,91 @@
         });
       });
     }
+    // ─── Selector de color personalizado (reemplaza al <input type="color"> nativo) ───
+    let ccPickerHue = 30, ccPickerSat = 0.15, ccPickerVal = 0.9, ccPickerOnChange = null;
+
+    function hexToRgb(hex) {
+      hex = (hex || '#e8ddd0').replace('#', '');
+      if (hex.length === 3) hex = hex.split('').map((c) => c + c).join('');
+      const num = parseInt(hex, 16) || 0;
+      return [(num >> 16) & 255, (num >> 8) & 255, num & 255];
+    }
+    function rgbToHex(r, g, b) {
+      return '#' + [r, g, b].map((x) => Math.round(x).toString(16).padStart(2, '0')).join('');
+    }
+    function rgbToHsv(r, g, b) {
+      r /= 255; g /= 255; b /= 255;
+      const max = Math.max(r, g, b), min = Math.min(r, g, b), d = max - min;
+      let h = 0;
+      if (d !== 0) {
+        if (max === r) h = ((g - b) / d) % 6;
+        else if (max === g) h = (b - r) / d + 2;
+        else h = (r - g) / d + 4;
+        h *= 60;
+        if (h < 0) h += 360;
+      }
+      const s = max === 0 ? 0 : d / max;
+      return [h, s, max];
+    }
+    function hsvToRgb(h, s, v) {
+      const c = v * s, x = c * (1 - Math.abs(((h / 60) % 2) - 1)), m = v - c;
+      let r, g, b;
+      if (h < 60) [r, g, b] = [c, x, 0];
+      else if (h < 120) [r, g, b] = [x, c, 0];
+      else if (h < 180) [r, g, b] = [0, c, x];
+      else if (h < 240) [r, g, b] = [0, x, c];
+      else if (h < 300) [r, g, b] = [x, 0, c];
+      else [r, g, b] = [c, 0, x];
+      return [(r + m) * 255, (g + m) * 255, (b + m) * 255];
+    }
+
+    function openColorPicker(initialHex, onChange) {
+      ccPickerOnChange = onChange;
+      const [r, g, b] = hexToRgb(initialHex);
+      [ccPickerHue, ccPickerSat, ccPickerVal] = rgbToHsv(r, g, b);
+      document.getElementById('cc-picker-hue').value = ccPickerHue;
+      updateColorPickerUI();
+      document.getElementById('cc-picker-overlay').classList.add('visible');
+    }
+    function closeColorPicker() {
+      document.getElementById('cc-picker-overlay').classList.remove('visible');
+      ccPickerOnChange = null;
+    }
+    function updateColorPickerUI() {
+      const sv = document.getElementById('cc-picker-sv');
+      sv.style.backgroundColor = `hsl(${ccPickerHue}, 100%, 50%)`;
+      const cursor = document.getElementById('cc-picker-sv-cursor');
+      cursor.style.left = (ccPickerSat * 100) + '%';
+      cursor.style.top = ((1 - ccPickerVal) * 100) + '%';
+      const [r, g, b] = hsvToRgb(ccPickerHue, ccPickerSat, ccPickerVal);
+      const hex = rgbToHex(r, g, b);
+      document.getElementById('cc-picker-preview').style.background = hex;
+      document.getElementById('cc-picker-hex').textContent = hex.toUpperCase();
+      if (ccPickerOnChange) ccPickerOnChange(hex);
+    }
+    function setupColorPicker() {
+      const sv = document.getElementById('cc-picker-sv');
+      const hueInput = document.getElementById('cc-picker-hue');
+      let dragging = false;
+      function setFromEvent(e) {
+        const rect = sv.getBoundingClientRect();
+        let x = (e.clientX - rect.left) / rect.width;
+        let y = (e.clientY - rect.top) / rect.height;
+        x = Math.max(0, Math.min(1, x));
+        y = Math.max(0, Math.min(1, y));
+        ccPickerSat = x; ccPickerVal = 1 - y;
+        updateColorPickerUI();
+      }
+      sv.addEventListener('pointerdown', (e) => { dragging = true; sv.setPointerCapture(e.pointerId); setFromEvent(e); });
+      sv.addEventListener('pointermove', (e) => { if (dragging) setFromEvent(e); });
+      sv.addEventListener('pointerup', () => { dragging = false; });
+      sv.addEventListener('pointercancel', () => { dragging = false; });
+      hueInput.addEventListener('input', (e) => { ccPickerHue = parseFloat(e.target.value); updateColorPickerUI(); });
+      document.getElementById('cc-picker-overlay').addEventListener('click', (e) => {
+        if (e.target.id === 'cc-picker-overlay') closeColorPicker();
+      });
+    }
+
     function initIgAdminPickers() {
       wireIgVscrollToSelect('adm-font-list', 'adm-font-select', 'font');
       wireIgVscrollToSelect('adm-style-list', 'adm-style', 'style');
@@ -3556,10 +3771,12 @@
     }
 
     function addCanvasTextSticker() {
-      canvasStickers.push({ type: 'text', content: 'Escribí algo...', left: 18, top: 40, width: 64, rotation: 0, fontSize: 22 });
-      canvasSelectedStickerIdx = canvasStickers.length - 1;
+      canvasStickers.push({ type: 'text', content: '', placeholder: 'Escribí algo...', left: 18, top: 40, width: 64, rotation: 0, fontSize: 22 });
+      const idx = canvasStickers.length - 1;
+      canvasSelectedStickerIdx = idx;
       renderCanvasStickers();
       scheduleCanvasSave();
+      focusStickerTextEditor(idx, true);
     }
 
     function uploadCanvasStickerFile(input) {
@@ -3619,7 +3836,7 @@
           TextStyle,
           Color,
           FontFamily,
-          Placeholder.configure({ placeholder: 'Escribí algo...' })
+          Placeholder.configure({ placeholder: st.placeholder || 'Escribí algo...' })
         ],
         onUpdate: ({ editor }) => {
           st.content = editor.getHTML();
@@ -3718,6 +3935,7 @@
             // Tiptap no llegó a cargar (sin conexión, CDN caído, etc.): editor clásico de siempre.
             textDiv.contentEditable = "true";
             textDiv.innerHTML = st.content || '';
+            if (st.placeholder) textDiv.setAttribute('placeholder', st.placeholder);
             textDiv.addEventListener('input', () => {
               st.content = textDiv.innerHTML;
               scheduleCanvasSave();
@@ -4027,6 +4245,10 @@
         canvasActiveEditor = null;
         document.querySelectorAll('#canvas-stickers-layer .sticker-wrapper').forEach(w => w.classList.remove('selected'));
         refreshCanvasPropsPanel();
+        // Tocar lejos del texto/sticker vuelve al lienzo: cerramos cualquier
+        // herramienta (texto, pincel, etc.) que haya quedado abierta.
+        const shell = document.getElementById('canvas-stage-shell');
+        if (shell) shell.querySelectorAll('.ig-panel.open').forEach((p) => closeIgPanel(p.id));
       }
     });
 
