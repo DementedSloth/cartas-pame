@@ -328,6 +328,22 @@
       content: attr(placeholder); color: inherit; opacity: 0.4; font-style: italic; pointer-events: none; display: block;
     }
 
+    /* ─── TIPTAP: cuadros de texto de la carta ───
+       Tiptap monta su propio div .ProseMirror adentro de .sticker-text-content;
+       lo hacemos ver y comportarse exactamente igual que el contentEditable de
+       siempre (mismo tipo/tamaño de letra heredado, mismo placeholder). */
+    .sticker-text-content .tiptap-carta-content {
+      width: 100%; outline: none; background: transparent; border: none;
+      color: inherit; font-family: inherit; font-size: inherit; font-style: inherit;
+      font-weight: inherit; line-height: inherit; letter-spacing: inherit;
+      text-transform: inherit; text-align: inherit;
+    }
+    .sticker-text-content .tiptap-carta-content p { margin: 0; }
+    .sticker-text-content .tiptap-carta-content p.is-editor-empty:first-child::before {
+      content: attr(data-placeholder); float: left; height: 0; pointer-events: none;
+      color: inherit; opacity: 0.4; font-style: italic;
+    }
+
     /* ─── GALERÍAS ─── */
     .gallery-section { margin-top: 3.5rem; border-top: 1px dashed #382c47; padding-top: 2rem; width: 100%; max-width: 900px; margin-left: auto; margin-right: auto; }
 
@@ -1054,6 +1070,62 @@
   </div>
 
 
+  <!-- ─── TIPTAP (editor de cartas) ───
+       Se carga como módulo ESM desde un CDN (esm.sh), sin build step. Si por
+       algún motivo no hay conexión o el CDN falla, la app sigue funcionando:
+       los cuadros de texto de la carta vuelven al contentEditable de siempre. -->
+  <script type="importmap">
+  {
+    "imports": {
+      "@tiptap/core": "https://esm.sh/@tiptap/core@2",
+      "@tiptap/starter-kit": "https://esm.sh/@tiptap/starter-kit@2",
+      "@tiptap/extension-underline": "https://esm.sh/@tiptap/extension-underline@2",
+      "@tiptap/extension-text-style": "https://esm.sh/@tiptap/extension-text-style@2",
+      "@tiptap/extension-color": "https://esm.sh/@tiptap/extension-color@2",
+      "@tiptap/extension-font-family": "https://esm.sh/@tiptap/extension-font-family@2",
+      "@tiptap/extension-placeholder": "https://esm.sh/@tiptap/extension-placeholder@2"
+    }
+  }
+  </script>
+  <script type="module">
+    const modules = {
+      core: '@tiptap/core',
+      starterKit: '@tiptap/starter-kit',
+      underline: '@tiptap/extension-underline',
+      textStyle: '@tiptap/extension-text-style',
+      color: '@tiptap/extension-color',
+      fontFamily: '@tiptap/extension-font-family',
+      placeholder: '@tiptap/extension-placeholder'
+    };
+    try {
+      const entries = await Promise.all(
+        Object.entries(modules).map(async ([key, spec]) => {
+          try {
+            return [key, await import(spec)];
+          } catch (err) {
+            // Volvemos a lanzar con el nombre del paquete puesto adelante, para
+            // que si esto falla algún día se sepa cuál de todos fue.
+            throw new Error(`No se pudo cargar ${spec}: ${err && err.message ? err.message : err}`);
+          }
+        })
+      );
+      const mods = Object.fromEntries(entries);
+      window.__TiptapLib = {
+        Editor: mods.core.Editor,
+        StarterKit: mods.starterKit.default,
+        Underline: mods.underline.default,
+        TextStyle: mods.textStyle.default,
+        Color: mods.color.default,
+        FontFamily: mods.fontFamily.default,
+        Placeholder: mods.placeholder.default
+      };
+      window.dispatchEvent(new Event('tiptap-lib-ready'));
+    } catch (err) {
+      console.warn('Framecorreo: no se pudo cargar Tiptap, se usa el editor de texto clásico.', err);
+      window.dispatchEvent(new Event('tiptap-lib-failed'));
+    }
+  </script>
+
   <script>
     const BASE_URL_RAW = "https://cartas-pame-default-rtdb.firebaseio.com";
     const FIREBASE_DB_URL = BASE_URL_RAW.endsWith('/') ? BASE_URL_RAW.slice(0, -1) : BASE_URL_RAW;
@@ -1067,7 +1139,35 @@
     let allCodesCache = [];
     let allCartasData = {};
 
-    window.addEventListener('DOMContentLoaded', () => {
+    // ─── TIPTAP: estado del editor de cartas ───
+    // cartaTiptapEditors: idx del sticker -> instancia de Tiptap viva (solo
+    // existen mientras ese cuadro de texto está montado en el DOM editable).
+    // cartaActiveEditor: la última instancia que tuvo el foco; la usan los
+    // botones de la barra de formato, porque al hacer click en un botón el
+    // cuadro de texto pierde el foco antes de que se ejecute el comando.
+    let cartaTiptapEditors = {};
+    let cartaActiveEditor = null;
+
+    function waitForTiptap(timeoutMs = 1500) {
+      return new Promise((resolve) => {
+        if (window.__TiptapLib) { resolve(true); return; }
+        let done = false;
+        const finish = (ok) => {
+          if (done) return;
+          done = true;
+          window.removeEventListener('tiptap-lib-ready', onReady);
+          window.removeEventListener('tiptap-lib-failed', onFail);
+          resolve(ok);
+        };
+        const onReady = () => finish(true);
+        const onFail = () => finish(false);
+        window.addEventListener('tiptap-lib-ready', onReady);
+        window.addEventListener('tiptap-lib-failed', onFail);
+        setTimeout(() => finish(!!window.__TiptapLib), timeoutMs);
+      });
+    }
+
+    window.addEventListener('DOMContentLoaded', async () => {
       switchView('login-view');
       const urlParams = new URLSearchParams(window.location.search);
       const codeParam = urlParams.get('c');
@@ -1075,6 +1175,10 @@
         document.getElementById('code-input').value = codeParam.trim();
         unlock();
       }
+
+      // Esperamos a Tiptap (con límite de tiempo) antes del primer render de
+      // la carta, para no mezclar cuadros de texto viejos y nuevos.
+      await waitForTiptap();
       restoreAutosave();
 
       initIdentity();
@@ -1114,9 +1218,30 @@
     }
 
     function execCmd(command, value = null) {
+      // Si el cuadro de texto activo es un editor Tiptap (carta), el comando
+      // se aplica ahí. Si no (p. ej. todavía no cargó Tiptap, o es un cuadro
+      // de texto del lienzo que sigue con el sistema viejo), usamos el
+      // execCommand clásico como antes.
+      if (cartaActiveEditor && applyTiptapCommand(cartaActiveEditor, command, value)) {
+        scheduleAutosave();
+        return;
+      }
       restoreSavedSelection();
       document.execCommand(command, false, value);
       scheduleAutosave();
+    }
+
+    function applyTiptapCommand(editor, command, value) {
+      if (!editor || editor.isDestroyed) return false;
+      const chain = editor.chain().focus();
+      switch (command) {
+        case 'bold': chain.toggleBold().run(); return true;
+        case 'italic': chain.toggleItalic().run(); return true;
+        case 'underline': chain.toggleUnderline().run(); return true;
+        case 'foreColor': chain.setColor(value).run(); return true;
+        case 'fontName': chain.setFontFamily(value).run(); return true;
+        default: return false;
+      }
     }
 
     // ─── AUTOSAVE ───
@@ -1148,6 +1273,8 @@
     function syncTextStickersContent() {
       currentStickers.forEach((st, idx) => {
         if (st.type === 'text') {
+          const ed = cartaTiptapEditors[idx];
+          if (ed && !ed.isDestroyed) { st.content = ed.getHTML(); return; }
           const node = document.getElementById(`sticker-text-${idx}`);
           if (node) st.content = node.innerHTML;
         }
@@ -2070,8 +2197,55 @@
       };
     }
 
+    // Monta un editor Tiptap dentro de textDiv, para un sticker de texto de
+    // la carta (idx = índice en currentStickers). Formato simple e inline
+    // nada más (negrita/cursiva/subrayado/color/fuente): sin títulos, listas
+    // ni bloques, para que siga comportándose como el cuadro de texto de
+    // siempre y no rompa el resto del sistema de stickers.
+    function mountCartaTextEditor(textDiv, st, idx) {
+      const { Editor, StarterKit, Underline, TextStyle, Color, FontFamily, Placeholder } = window.__TiptapLib;
+
+      const editor = new Editor({
+        element: textDiv,
+        content: st.content || '',
+        editorProps: {
+          attributes: { class: 'tiptap-carta-content' }
+        },
+        extensions: [
+          StarterKit.configure({
+            heading: false, blockquote: false, bulletList: false, orderedList: false,
+            listItem: false, codeBlock: false, horizontalRule: false, code: false, strike: false
+          }),
+          Underline,
+          TextStyle,
+          Color,
+          FontFamily,
+          Placeholder.configure({ placeholder: st.placeholder || '' })
+        ],
+        onUpdate: ({ editor }) => {
+          st.content = editor.getHTML();
+          scheduleAutosave();
+        },
+        onFocus: ({ editor }) => {
+          cartaActiveEditor = editor;
+        }
+      });
+
+      cartaTiptapEditors[idx] = editor;
+    }
+
     function renderStickers(layerContainer, stickersArray, isEditable) {
       if (!layerContainer) return;
+
+      // Si esta capa es la editable (la carta en el panel de admin), destruimos
+      // las instancias de Tiptap anteriores antes de tirar el DOM abajo, para
+      // no dejar editores vivos sin contenedor.
+      if (isEditable) {
+        Object.values(cartaTiptapEditors).forEach((ed) => { try { if (!ed.isDestroyed) ed.destroy(); } catch (e) {} });
+        cartaTiptapEditors = {};
+        cartaActiveEditor = null;
+      }
+
       layerContainer.innerHTML = '';
 
       stickersArray.forEach((st, idx) => {
@@ -2091,20 +2265,29 @@
            const textDiv = document.createElement('div');
            textDiv.className = 'sticker-text-content';
            textDiv.id = `sticker-text-${idx}`;
-           textDiv.contentEditable = isEditable ? "true" : "false";
-           textDiv.innerHTML = st.content || '';
-           if (isEditable && st.placeholder) textDiv.setAttribute('placeholder', st.placeholder);
            textDiv.style.fontSize = (st.fontSize || 16) + 'px';
            if (st.role === 'tag') { textDiv.style.letterSpacing = '0.25em'; textDiv.style.textTransform = 'uppercase'; }
            if (st.role === 'title') { textDiv.style.fontFamily = "'Lora', serif"; textDiv.style.fontStyle = 'italic'; }
            if (st.role === 'sign') { textDiv.style.fontFamily = "'Lora', serif"; textDiv.style.fontStyle = 'italic'; textDiv.style.textAlign = 'right'; }
 
-           textDiv.addEventListener('input', () => {
-             st.content = textDiv.innerHTML;
-             scheduleAutosave();
-           });
-
            wrapper.appendChild(textDiv);
+
+           if (isEditable && window.__TiptapLib) {
+             mountCartaTextEditor(textDiv, st, idx);
+           } else if (isEditable) {
+             // Tiptap no llegó a cargar (sin conexión, CDN caído, etc.): editor clásico de siempre.
+             textDiv.contentEditable = "true";
+             textDiv.innerHTML = st.content || '';
+             if (st.placeholder) textDiv.setAttribute('placeholder', st.placeholder);
+             textDiv.addEventListener('input', () => {
+               st.content = textDiv.innerHTML;
+               scheduleAutosave();
+             });
+           } else {
+             // Vista de lectura (el destinatario): solo mostramos el HTML, sin editor.
+             textDiv.contentEditable = "false";
+             textDiv.innerHTML = st.content || '';
+           }
         } else {
            const img = document.createElement('img');
            img.className = 'sticker-img';
