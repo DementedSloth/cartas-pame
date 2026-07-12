@@ -62,6 +62,10 @@
     #canvas-stage-shell { margin-top: 0 !important; max-height: 100dvh !important; }
     @media (min-width: 481px) {
       #canvas-stage-shell { max-height: calc(100dvh - 0.9rem) !important; }
+      /* En PC no hace falta el aire de arriba: la barra de código y el
+         avatar de perfil dejan de vivir abajo del todo y pasan a ser
+         botones flotantes dentro del marco (ver .desktop-nav-float). */
+      body:has(#login-view.active) { padding-top: 0; }
     }
 
     /* ─── FONDOS FX ─── */
@@ -91,7 +95,10 @@
 
     .view-section { width: 100%; display: none; flex-direction: column; align-items: center; }
     .view-section.active { display: flex; }
-    #login-view { padding-bottom: calc(var(--bottom-nav-h) + 1.4rem); }
+    #login-view { padding-bottom: calc(var(--bottom-nav-h) + 1.4rem); position: relative; }
+    @media (min-width: 481px) {
+      #login-view { padding-bottom: 0; }
+    }
 
     /* En pantallas chicas el lienzo ya ocupa (100dvh - bottom-nav-h) por sí
        solo (ver .ig-stage-shell), así que el padding/margen extra de arriba
@@ -134,13 +141,16 @@
     .form-input:focus { border-color: var(--accent-soft); box-shadow: 0 0 0 3px rgba(160,88,126,0.15); }
     .form-input::placeholder { color: var(--text-muted); opacity: 0.4; font-style: italic; }
 
-    /* ─── CAMPO DE CÓDIGO SIN CAJA, CON BOTÓN INTEGRADO ─── */
+    /* ─── CAMPO DE CÓDIGO: mismo lenguaje visual "IG blur" que los paneles
+       del lienzo (fondo oscuro translúcido + blur), en vez de la caja sólida
+       de antes. ─── */
     .code-entry-wrap {
       width: 100%; max-width: 420px; margin: 0.4rem auto 0;
       display: flex; align-items: center; gap: 0;
-      background: var(--surface); border: 1px solid var(--border); border-radius: 999px;
+      background: rgba(20,16,26,0.55); backdrop-filter: blur(6px);
+      border: 1px solid rgba(255,255,255,0.14); border-radius: 999px;
       padding: 0.3rem 0.3rem 0.3rem 1.05rem;
-      box-shadow: 0 10px 30px -12px rgba(0,0,0,0.6);
+      box-shadow: 0 4px 16px rgba(0,0,0,0.4);
       transition: border-color 0.2s, box-shadow 0.2s;
     }
     .code-entry-wrap:focus-within { border-color: var(--accent-soft); box-shadow: 0 0 0 3px rgba(160,88,126,0.15); }
@@ -160,29 +170,70 @@
     .code-entry-submit:disabled { opacity: 0.4; cursor: not-allowed; transform: none; }
 
     /* ─── BARRA DE NAVEGACIÓN INFERIOR (código + perfil) ───
-       Estilo Material You / Instagram: una barra flotante anclada abajo de
-       la pantalla, con el campo de código y el avatar de perfil. Reemplaza
-       a la vieja fila superior (con el ícono de la app, ya no se usa). */
+       Ya no es una barra sólida de punta a punta: el contenedor solo
+       ordena los elementos en fila; cada botón/campo lleva su propio
+       fondo flotante con blur (mismo lenguaje "IG" que los paneles del
+       lienzo), en vez del ícono de la app de la vieja fila superior. */
     :root { --bottom-nav-h: 78px; }
     .bottom-nav-bar {
       position: fixed; left: 0; right: 0; bottom: 0; z-index: 300;
       display: flex; align-items: center; gap: 0.6rem;
       padding: 0.65rem 0.8rem calc(0.65rem + env(safe-area-inset-bottom));
-      background: rgba(16,13,20,0.82); backdrop-filter: blur(14px);
-      border-top: 1px solid rgba(255,255,255,0.08);
-      box-shadow: 0 -8px 30px rgba(0,0,0,0.4);
+      background: transparent;
+      transition: transform 0.15s ease;
     }
     .bottom-nav-bar .code-entry-wrap { margin: 0; flex: 1; min-width: 0; }
 
+    /* ─── PC: la barra de código + perfil deja de estar anclada abajo de
+       toda la pantalla. El campo de código se reemplaza por un botón
+       circular (mismo tamaño y forma que el avatar de perfil, para quedar
+       simétricos respecto del margen del marco/lienzo): arriba el código,
+       justo debajo el perfil. El campo de texto solo aparece al tocar el
+       botón de código, como un popover al costado. ─── */
+    .code-toggle-btn {
+      display: none; /* solo se usa en PC */
+      flex-shrink: 0; width: 46px; height: 46px; border-radius: 50%;
+      background: rgba(20,16,26,0.55); backdrop-filter: blur(6px);
+      border: 1px solid rgba(255,255,255,0.14); color: var(--text);
+      cursor: pointer; padding: 0; align-items: center; justify-content: center;
+      box-shadow: 0 4px 16px rgba(0,0,0,0.4);
+      transition: border-color 0.2s, transform 0.15s, background 0.2s;
+    }
+    .code-toggle-btn:hover { border-color: rgba(255,255,255,0.28); transform: scale(1.05); }
+    .code-toggle-btn.active { background: var(--accent); border-color: var(--gold); }
+
+    @media (min-width: 481px) {
+      .bottom-nav-bar {
+        position: absolute; left: 0; top: 0; bottom: auto; right: auto;
+        flex-direction: column; align-items: flex-start;
+        width: auto; padding: 0; gap: 0.55rem;
+        z-index: 250;
+      }
+      .code-toggle-btn { display: flex; }
+      .bottom-nav-bar .code-entry-wrap {
+        flex: none; width: 200px; margin: 0;
+        position: absolute; left: calc(100% + 0.55rem); top: 0;
+        opacity: 0; pointer-events: none; transform: translateX(-8px) scale(0.94);
+        transform-origin: left center;
+        transition: opacity 0.2s ease, transform 0.22s cubic-bezier(.34,1.56,.64,1);
+      }
+      .bottom-nav-bar .code-entry-wrap.open {
+        opacity: 1; pointer-events: auto; transform: translateX(0) scale(1);
+      }
+    }
+
     .profile-avatar-btn {
       flex-shrink: 0; width: 46px; height: 46px; border-radius: 50%;
-      border: 2px solid var(--border); background: var(--surface);
+      background: rgba(20,16,26,0.55); backdrop-filter: blur(6px);
+      border: 1px solid rgba(255,255,255,0.14);
       cursor: pointer; overflow: hidden; padding: 0;
       display: flex; align-items: center; justify-content: center;
+      box-shadow: 0 4px 16px rgba(0,0,0,0.4);
       transition: border-color 0.2s, transform 0.15s;
       position: relative;
+
     }
-    .profile-avatar-btn:hover { border-color: var(--accent-soft); transform: scale(1.05); }
+    .profile-avatar-btn:hover { border-color: rgba(255,255,255,0.28); transform: scale(1.05); }
     .profile-avatar-btn img { width: 100%; height: 100%; object-fit: cover; display: block; }
     .profile-avatar-btn .avatar-fallback {
       font-family: 'Lora', serif; font-size: 1.1rem; color: var(--accent-soft);
@@ -1028,30 +1079,56 @@
     /* ═══════════════ BOTÓN "DAR UN TOQUE" ═══════════════ */
     .touch-fab {
       position: fixed; right: 1.1rem; bottom: calc(var(--bottom-nav-h) + 1.1rem + env(safe-area-inset-bottom)); z-index: 500;
-      width: 56px; height: 56px; border-radius: 50%;
-      background: linear-gradient(160deg, var(--accent), var(--accent-dark, #5e2f52));
-      border: 1px solid var(--gold); color: var(--text); font-size: 1.5rem;
+      width: 46px; height: 46px; border-radius: 50%;
+      background: rgba(20,16,26,0.55); backdrop-filter: blur(6px);
+      border: 1px solid rgba(255,255,255,0.14); color: var(--text); font-size: 1.25rem;
       display: flex; align-items: center; justify-content: center; cursor: pointer;
-      box-shadow: 0 10px 30px -8px rgba(124,63,110,0.8);
-      transition: transform 0.15s;
+      box-shadow: 0 4px 16px rgba(0,0,0,0.4);
+      transition: background 0.15s, transform 0.15s, border-color 0.15s;
+      -webkit-tap-highlight-color: transparent;
     }
-    .touch-fab:hover { transform: scale(1.06); }
+    .touch-fab:hover { transform: scale(1.06); border-color: rgba(255,255,255,0.28); }
+    .touch-fab:active { transform: scale(0.92); }
+    .touch-fab.active { background: var(--accent); border-color: var(--gold); }
     .touch-fab.pulse { animation: touchPulse 1.4s ease-out 2; }
     @keyframes touchPulse {
       0% { box-shadow: 0 0 0 0 rgba(160,88,126,0.7); }
       70% { box-shadow: 0 0 0 18px rgba(160,88,126,0); }
       100% { box-shadow: 0 0 0 0 rgba(160,88,126,0); }
     }
-    .touch-menu {
-      position: fixed; right: 1.1rem; bottom: calc(var(--bottom-nav-h) + 4.6rem); z-index: 500;
-      display: none; flex-direction: column; gap: 0.5rem;
-      background: linear-gradient(160deg, var(--surface), #17121e);
-      border: 1px solid var(--border); border-radius: 10px; padding: 0.7rem;
-      box-shadow: 0 20px 50px -15px rgba(0,0,0,0.8); min-width: 190px;
+
+    /* En mobile el toque pasa a vivir en la misma fila que la barra de
+       código, antes que ella, simétrico respecto del avatar de perfil que
+       cierra la fila del otro lado (mismo tamaño de círculo, 46px). */
+    @media (max-width: 480px) {
+      .touch-fab {
+        left: 0.8rem; right: auto;
+        bottom: calc(0.65rem + env(safe-area-inset-bottom));
+      }
+      .bottom-nav-bar { padding-left: calc(46px + 1.35rem); }
     }
-    .touch-menu.visible { display: flex; }
+
+    /* Menú desplegable del toque: mismo lenguaje visual "hoja flotante" que
+       los paneles del lienzo (fondo oscuro con blur + animación de entrada),
+       en vez del display:none/flex sin transición de antes. */
+    .touch-menu {
+      position: fixed; right: 1.1rem; bottom: calc(var(--bottom-nav-h) + 3.9rem); z-index: 500;
+      --kb-shift: 0px;
+      display: flex; flex-direction: column; gap: 0.4rem; min-width: 190px;
+      background: linear-gradient(180deg, rgba(10,8,14,0.7), rgba(8,6,11,0.97) 22%);
+      backdrop-filter: blur(10px);
+      border: 1px solid rgba(255,255,255,0.1); border-radius: 14px; padding: 0.65rem;
+      box-shadow: 0 20px 50px -15px rgba(0,0,0,0.8);
+      opacity: 0; pointer-events: none; transform: translateY(calc(10px + var(--kb-shift))) scale(0.94);
+      transform-origin: bottom right;
+      transition: opacity 0.2s ease, transform 0.22s cubic-bezier(.34,1.56,.64,1);
+    }
+    .touch-menu.visible { opacity: 1; pointer-events: auto; transform: translateY(var(--kb-shift)) scale(1); }
+    @media (max-width: 480px) {
+      .touch-menu { left: 0.8rem; right: auto; bottom: calc(3.1rem + env(safe-area-inset-bottom)); transform-origin: bottom left; }
+    }
     .touch-opt {
-      background: transparent; border: 1px solid var(--border); border-radius: 6px;
+      background: transparent; border: 1px solid rgba(255,255,255,0.1); border-radius: 8px;
       color: var(--text); padding: 0.6rem 0.8rem; text-align: left; font-size: 0.88rem;
       cursor: pointer; transition: background 0.15s, border-color 0.15s; font-family: 'Inter', sans-serif;
     }
@@ -1142,7 +1219,10 @@
 
       <!-- ─── Barra de navegación inferior: código para abrir una carta + perfil ─── -->
       <div class="bottom-nav-bar" id="bottom-nav-bar">
-        <div class="code-entry-wrap">
+        <button type="button" class="code-toggle-btn" id="code-toggle-btn" onclick="toggleCodeEntry()" title="Abrir carta con código" aria-label="Abrir carta con código">
+          <svg viewBox="0 0 24 24" width="19" height="19" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5" width="18" height="14" rx="2"/><line x1="3" y1="9" x2="21" y2="9"/><line x1="7" y1="13" x2="11" y2="13"/></svg>
+        </button>
+        <div class="code-entry-wrap" id="code-entry-wrap">
           <input id="code-input" class="code-entry-input" type="text" placeholder="Código" autocomplete="off" spellcheck="false" />
           <button class="code-entry-submit" id="unlock-btn" onclick="unlock()" title="Abrir carta" aria-label="Abrir carta">
             <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>
@@ -1967,6 +2047,35 @@
     // pierde la selección antes de aplicar el comando. Por eso guardamos la última
     // selección hecha dentro de un cuadro de texto y la restauramos antes de cada comando.
     let savedTextRange = null;
+
+    // ─── Enfoca un cuadro de texto y ubica el cursor en el punto donde la
+    // persona tocó/clickeó, tanto para el contentEditable clásico como para
+    // Tiptap (que monta su editor real como un hijo adentro de textEl). ───
+    function focusTextAtPoint(textEl, x, y) {
+      const editableTarget = textEl.matches('[contenteditable="true"]')
+        ? textEl
+        : (textEl.querySelector('[contenteditable="true"]') || textEl);
+
+      let range = null;
+      if (document.caretRangeFromPoint) {
+        range = document.caretRangeFromPoint(x, y);
+      } else if (document.caretPositionFromPoint) {
+        const pos = document.caretPositionFromPoint(x, y);
+        if (pos) {
+          range = document.createRange();
+          range.setStart(pos.offsetNode, pos.offset);
+          range.collapse(true);
+        }
+      }
+
+      editableTarget.focus();
+
+      if (range && editableTarget.contains(range.startContainer)) {
+        const sel = window.getSelection();
+        sel.removeAllRanges();
+        sel.addRange(range);
+      }
+    }
 
     document.addEventListener('selectionchange', () => {
       const sel = window.getSelection();
@@ -3182,47 +3291,53 @@
         const isMoveControl = e.target.closest('.control-move');
         const isOtherControl = (e.target.closest('.sticker-control') || e.target.closest('.sticker-props-panel')) && !isMoveControl;
         const isText = (stickerData.type === 'text');
-        const isEditingThisText = isText && e.target.closest('.sticker-text-content') && wrapper.classList.contains('selected');
+        const textEl = isText ? wrapper.querySelector('.sticker-text-content') : null;
+        const isActivelyEditing = isText && textEl && (document.activeElement === textEl || textEl.contains(document.activeElement));
 
         if (isOtherControl) return;
 
-        // Un cuadro de texto recién tocado (todavía no seleccionado) solo se
-        // selecciona con el primer toque; ya seleccionado, se puede agarrar
-        // y mover desde cualquier parte (como una imagen), salvo que el toque
-        // caiga justo sobre el texto ya en edición (para poder escribir).
-        if (isText && !wrapper.classList.contains('selected')) {
-           selectedStickerIdx = idx;
-           document.querySelectorAll('.sticker-wrapper').forEach(w => w.classList.remove('selected'));
-           wrapper.classList.add('selected');
-           refreshPropsPanel();
-           return; 
-        }
-        if (isEditingThisText) return;
+        // Si el cuadro de texto ya tiene el foco (se está escribiendo), no
+        // interceptamos: dejamos que el navegador mueva el cursor, marque
+        // selección, etc., con su comportamiento normal.
+        if (isActivelyEditing) return;
 
         e.preventDefault();
-        syncTextStickersContent();
-
-        selectedStickerIdx = idx;
-        document.querySelectorAll('.sticker-wrapper').forEach(w => w.classList.remove('selected'));
-        wrapper.classList.add('selected');
-        wrapper.classList.add('active');
-        refreshPropsPanel();
 
         const clientX = e.touches ? e.touches[0].clientX : e.clientX;
         const clientY = e.touches ? e.touches[0].clientY : e.clientY;
-
-        const containerRect = layerContainer.getBoundingClientRect();
         const startX = clientX;
         const startY = clientY;
-        
-        const initialLeftPx = (stickerData.left / 100) * containerRect.width;
-        const initialTopPx = (stickerData.top / 100) * containerRect.height;
+        const DRAG_THRESHOLD = 6; // px: por debajo de esto es un toque/clic, no un arrastre
 
+        let dragging = false;
+        let containerRect = null;
+        let initialLeftPx = 0;
+        let initialTopPx = 0;
         const deleteZone = document.getElementById('adm-delete-zone');
+
+        function beginDrag() {
+          dragging = true;
+          syncTextStickersContent();
+
+          selectedStickerIdx = idx;
+          document.querySelectorAll('.sticker-wrapper').forEach(w => w.classList.remove('selected'));
+          wrapper.classList.add('selected');
+          wrapper.classList.add('active');
+          refreshPropsPanel();
+
+          containerRect = layerContainer.getBoundingClientRect();
+          initialLeftPx = (stickerData.left / 100) * containerRect.width;
+          initialTopPx = (stickerData.top / 100) * containerRect.height;
+        }
 
         function doMove(moveEvent) {
           const mX = moveEvent.touches ? moveEvent.touches[0].clientX : moveEvent.clientX;
           const mY = moveEvent.touches ? moveEvent.touches[0].clientY : moveEvent.clientY;
+
+          if (!dragging) {
+            if (Math.hypot(mX - startX, mY - startY) < DRAG_THRESHOLD) return;
+            beginDrag();
+          }
 
           const deltaX = mX - startX;
           const deltaY = mY - startY;
@@ -3242,24 +3357,39 @@
           }
         }
 
-        function stopMove() {
-          wrapper.classList.remove('active');
+        function stopMove(upEvent) {
           window.removeEventListener('mousemove', doMove);
           window.removeEventListener('mouseup', stopMove);
           window.removeEventListener('touchmove', doMove);
           window.removeEventListener('touchend', stopMove);
 
-          if (deleteZone && deleteZone.classList.contains('armed')) {
-            deleteZone.classList.remove('visible', 'armed');
-            currentStickers.splice(idx, 1);
-            if (selectedStickerIdx === idx) selectedStickerIdx = null;
-            else if (selectedStickerIdx > idx) selectedStickerIdx--;
-            renderStickers(layerContainer, currentStickers, true);
+          if (dragging) {
+            wrapper.classList.remove('active');
+            if (deleteZone && deleteZone.classList.contains('armed')) {
+              deleteZone.classList.remove('visible', 'armed');
+              currentStickers.splice(idx, 1);
+              if (selectedStickerIdx === idx) selectedStickerIdx = null;
+              else if (selectedStickerIdx > idx) selectedStickerIdx--;
+              renderStickers(layerContainer, currentStickers, true);
+              scheduleAutosave();
+              return;
+            }
+            if (deleteZone) deleteZone.classList.remove('visible', 'armed');
             scheduleAutosave();
             return;
           }
-          if (deleteZone) deleteZone.classList.remove('visible', 'armed');
-          scheduleAutosave();
+
+          // No hubo arrastre: fue un toque/clic simple. Seleccionamos el
+          // cuadro y, si es de texto, lo abrimos para escribir con el
+          // cursor puesto justo donde tocó la persona.
+          selectedStickerIdx = idx;
+          document.querySelectorAll('.sticker-wrapper').forEach(w => w.classList.remove('selected'));
+          wrapper.classList.add('selected');
+          refreshPropsPanel();
+
+          if (isText && textEl) {
+            focusTextAtPoint(textEl, startX, startY);
+          }
         }
 
         window.addEventListener('mousemove', doMove);
@@ -3534,10 +3664,66 @@
       document.getElementById('profile-modal-overlay').classList.add('visible');
       refreshProfileModal();
     }
+
+    // ─── PC: el campo de código vive escondido detrás de un botón circular
+    // (simétrico al avatar de perfil) y se abre/cierra como un popover. ───
+    function toggleCodeEntry(forceOpen) {
+      const wrap = document.getElementById('code-entry-wrap');
+      const btn = document.getElementById('code-toggle-btn');
+      if (!wrap || !btn) return;
+      const open = typeof forceOpen === 'boolean' ? forceOpen : !wrap.classList.contains('open');
+      wrap.classList.toggle('open', open);
+      btn.classList.toggle('active', open);
+      if (open) {
+        const input = document.getElementById('code-input');
+        if (input) setTimeout(() => input.focus(), 50);
+      }
+    }
+    document.addEventListener('click', (e) => {
+      const wrap = document.getElementById('code-entry-wrap');
+      const btn = document.getElementById('code-toggle-btn');
+      if (!wrap || !wrap.classList.contains('open')) return;
+      if (wrap.contains(e.target) || btn.contains(e.target)) return;
+      toggleCodeEntry(false);
+    });
     function closeProfileModal() {
       document.getElementById('profile-modal-overlay').classList.remove('visible');
       updateAvatarDisplay();
     }
+
+    // ─── Mobile: cuando se abre el teclado, la barra de código (fija por
+    // `position: fixed`) queda anclada al viewport de layout, que el
+    // teclado no achica — por eso se ve tapada o "flotando" en un punto
+    // raro. Usamos window.visualViewport (que sí encoge cuando aparece el
+    // teclado) para calcular cuánto ocupa el teclado y subir la barra (y
+    // el fab de toque, que vive en la misma fila) esa misma distancia. ───
+    (function followKeyboard() {
+      const vv = window.visualViewport;
+      if (!vv) return;
+      const nav = document.getElementById('bottom-nav-bar');
+      const fab = document.getElementById('touch-fab');
+      const menu = document.getElementById('touch-menu');
+      let raf = null;
+      function update() {
+        raf = null;
+        // Diferencia entre la altura "de layout" (la de siempre) y la
+        // altura visual real (la que queda libre arriba del teclado).
+        const overlap = Math.max(0, window.innerHeight - vv.height - vv.offsetTop);
+        const shift = overlap > 40 ? overlap : 0; // 40px de margen: evita
+        // temblores por barras de navegación del navegador que achican un
+        // poco el viewport sin que haya teclado de por medio.
+        const px = shift ? `${shift}px` : '';
+        if (nav) nav.style.transform = shift ? `translateY(-${px})` : '';
+        if (fab) fab.style.transform = shift ? `translateY(-${px})` : '';
+        if (menu) menu.style.setProperty('--kb-shift', shift ? `-${shift}px` : '0px');
+      }
+      function onChange() {
+        if (raf) cancelAnimationFrame(raf);
+        raf = requestAnimationFrame(update);
+      }
+      vv.addEventListener('resize', onChange);
+      vv.addEventListener('scroll', onChange);
+    })();
 
     function refreshProfileModal() {
       const imgEl = document.getElementById('profile-modal-img');
@@ -4413,43 +4599,53 @@
         const isMoveControl = e.target.closest('.control-move');
         const isOtherControl = e.target.closest('.sticker-control') && !isMoveControl;
         const isText = (stickerData.type === 'text');
-        const isEditingThisText = isText && e.target.closest('.sticker-text-content') && wrapper.classList.contains('selected');
+        const textEl = isText ? wrapper.querySelector('.sticker-text-content') : null;
+        const isActivelyEditing = isText && textEl && (document.activeElement === textEl || textEl.contains(document.activeElement));
 
         if (isOtherControl) return;
 
-        if (isText && !wrapper.classList.contains('selected')) {
-          canvasSelectedStickerIdx = idx;
-          document.querySelectorAll('#canvas-stickers-layer .sticker-wrapper').forEach(w => w.classList.remove('selected'));
-          wrapper.classList.add('selected');
-          refreshCanvasPropsPanel();
-          return;
-        }
-        if (isEditingThisText) return;
+        // Si el cuadro de texto ya tiene el foco (se está escribiendo), no
+        // interceptamos: dejamos que el navegador mueva el cursor, marque
+        // selección, etc., con su comportamiento normal.
+        if (isActivelyEditing) return;
 
         e.preventDefault();
-        syncCanvasTextStickersContent();
-
-        canvasSelectedStickerIdx = idx;
-        document.querySelectorAll('#canvas-stickers-layer .sticker-wrapper').forEach(w => w.classList.remove('selected'));
-        wrapper.classList.add('selected');
-        wrapper.classList.add('active');
-        refreshCanvasPropsPanel();
 
         const clientX = e.touches ? e.touches[0].clientX : e.clientX;
         const clientY = e.touches ? e.touches[0].clientY : e.clientY;
-
-        const containerRect = layerContainer.getBoundingClientRect();
         const startX = clientX;
         const startY = clientY;
+        const DRAG_THRESHOLD = 6; // px: por debajo de esto es un toque/clic, no un arrastre
 
-        const initialLeftPx = (stickerData.left / 100) * containerRect.width;
-        const initialTopPx = (stickerData.top / 100) * containerRect.height;
-
+        let dragging = false;
+        let containerRect = null;
+        let initialLeftPx = 0;
+        let initialTopPx = 0;
         const deleteZone = document.getElementById('canvas-delete-zone');
+
+        function beginDrag() {
+          dragging = true;
+          syncCanvasTextStickersContent();
+
+          canvasSelectedStickerIdx = idx;
+          document.querySelectorAll('#canvas-stickers-layer .sticker-wrapper').forEach(w => w.classList.remove('selected'));
+          wrapper.classList.add('selected');
+          wrapper.classList.add('active');
+          refreshCanvasPropsPanel();
+
+          containerRect = layerContainer.getBoundingClientRect();
+          initialLeftPx = (stickerData.left / 100) * containerRect.width;
+          initialTopPx = (stickerData.top / 100) * containerRect.height;
+        }
 
         function doMove(moveEvent) {
           const mX = moveEvent.touches ? moveEvent.touches[0].clientX : moveEvent.clientX;
           const mY = moveEvent.touches ? moveEvent.touches[0].clientY : moveEvent.clientY;
+
+          if (!dragging) {
+            if (Math.hypot(mX - startX, mY - startY) < DRAG_THRESHOLD) return;
+            beginDrag();
+          }
 
           const deltaX = mX - startX;
           const deltaY = mY - startY;
@@ -4469,24 +4665,39 @@
           }
         }
 
-        function stopMove() {
-          wrapper.classList.remove('active');
+        function stopMove(upEvent) {
           window.removeEventListener('mousemove', doMove);
           window.removeEventListener('mouseup', stopMove);
           window.removeEventListener('touchmove', doMove);
           window.removeEventListener('touchend', stopMove);
 
-          if (deleteZone && deleteZone.classList.contains('armed')) {
-            deleteZone.classList.remove('visible', 'armed');
-            canvasStickers.splice(idx, 1);
-            if (canvasSelectedStickerIdx === idx) canvasSelectedStickerIdx = null;
-            else if (canvasSelectedStickerIdx > idx) canvasSelectedStickerIdx--;
-            renderCanvasStickers();
+          if (dragging) {
+            wrapper.classList.remove('active');
+            if (deleteZone && deleteZone.classList.contains('armed')) {
+              deleteZone.classList.remove('visible', 'armed');
+              canvasStickers.splice(idx, 1);
+              if (canvasSelectedStickerIdx === idx) canvasSelectedStickerIdx = null;
+              else if (canvasSelectedStickerIdx > idx) canvasSelectedStickerIdx--;
+              renderCanvasStickers();
+              scheduleCanvasSave();
+              return;
+            }
+            if (deleteZone) deleteZone.classList.remove('visible', 'armed');
             scheduleCanvasSave();
             return;
           }
-          if (deleteZone) deleteZone.classList.remove('visible', 'armed');
-          scheduleCanvasSave();
+
+          // No hubo arrastre: fue un toque/clic simple. Seleccionamos el
+          // cuadro y, si es de texto, lo abrimos para escribir con el
+          // cursor puesto justo donde tocó la persona.
+          canvasSelectedStickerIdx = idx;
+          document.querySelectorAll('#canvas-stickers-layer .sticker-wrapper').forEach(w => w.classList.remove('selected'));
+          wrapper.classList.add('selected');
+          refreshCanvasPropsPanel();
+
+          if (isText && textEl) {
+            focusTextAtPoint(textEl, startX, startY);
+          }
         }
 
         window.addEventListener('mousemove', doMove);
