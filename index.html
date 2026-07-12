@@ -9,6 +9,7 @@
   <link rel="manifest" href="manifest.json" />
   <meta name="theme-color" content="#0d0b0f" />
   <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="mobile-web-app-capable" content="yes" />
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
   <meta name="apple-mobile-web-app-title" content="Framecorreo" />
   <link rel="apple-touch-icon" href="apple-touch-icon.png" />
@@ -655,6 +656,182 @@
       .canvas-action-btn { padding: 0.7rem 0.6rem; font-size: 0.76rem; }
     }
 
+    /* ═══════════════════════════════════════════════════════════════
+       ═══ EDITORES ESTILO "STORIES" DE INSTAGRAM (rediseño mobile) ═══
+       ═══════════════════════════════════════════════════════════════ */
+
+    .ig-stage-shell {
+      position: relative;
+      width: 100%;
+      max-width: 460px;
+      aspect-ratio: 8 / 15;
+      max-height: calc(100dvh - 1.2rem);
+      margin: 0.6rem auto 0.9rem;
+      border-radius: 22px;
+      overflow: hidden;
+      background: #000;
+      box-shadow: 0 30px 70px -20px rgba(0,0,0,0.85), 0 0 0 1px rgba(255,255,255,0.05);
+    }
+    @media (max-width: 480px) {
+      .ig-stage-shell {
+        max-width: 100vw;
+        max-height: calc(100dvh - 0.6rem);
+        border-radius: 16px;
+        margin: 0.3rem auto 0.6rem;
+      }
+    }
+
+    .ig-stage-shell .draw-canvas-box,
+    .ig-stage-shell #live-card-container,
+    .ig-stage-shell .letter-card {
+      width: 100% !important; height: 100% !important; max-width: none !important;
+      aspect-ratio: auto !important; border-radius: 0 !important; margin: 0 !important;
+      border: none !important;
+    }
+    .ig-stage-shell #live-card-container { display: flex; align-items: stretch; }
+    .ig-stage-shell .letter-card { flex: 1; min-height: 0 !important; overflow-y: auto; }
+    .ig-stage-shell .workspace-boundary { outline-color: rgba(201,169,110,0.35); }
+
+    .ig-stage-dim {
+      position: absolute; inset: 0; z-index: 40; pointer-events: none;
+      background: radial-gradient(ellipse at center, rgba(0,0,0,0) 55%, rgba(0,0,0,0.55) 100%);
+      opacity: 0; transition: opacity 0.25s ease;
+    }
+    .ig-stage-shell.editing .ig-stage-dim { opacity: 1; }
+
+    .ig-rail {
+      position: absolute; top: 14px; right: 12px; z-index: 60;
+      display: flex; flex-direction: column; gap: 10px; align-items: center;
+    }
+    .ig-rail-btn {
+      width: 46px; height: 46px; border-radius: 50%;
+      background: rgba(20,16,26,0.55); backdrop-filter: blur(6px);
+      border: 1px solid rgba(255,255,255,0.14); color: var(--text);
+      font-size: 1.15rem; display: flex; align-items: center; justify-content: center;
+      cursor: pointer; box-shadow: 0 4px 16px rgba(0,0,0,0.4);
+      transition: background 0.15s, transform 0.1s, border-color 0.15s;
+      -webkit-tap-highlight-color: transparent;
+    }
+    .ig-rail-btn:active { transform: scale(0.9); }
+    .ig-rail-btn.active { background: var(--accent); border-color: var(--gold); }
+    .ig-rail-btn input[type="file"] { display: none; }
+
+    .ig-rail-left {
+      position: absolute; top: 14px; left: 12px; z-index: 60;
+      display: flex; flex-direction: column; gap: 10px; align-items: center;
+    }
+
+    .ig-bottom-bar {
+      position: absolute; left: 0; right: 0; bottom: 0; z-index: 60;
+      display: flex; align-items: center; gap: 0.6rem;
+      padding: 0.9rem 0.9rem calc(0.9rem + env(safe-area-inset-bottom));
+      background: linear-gradient(0deg, rgba(0,0,0,0.75), transparent);
+    }
+
+    .ig-panel {
+      position: absolute; inset: 0; z-index: 90;
+      background: rgba(4,3,6,0.94); backdrop-filter: blur(3px);
+      display: none; flex-direction: column;
+      animation: ig-panel-in 0.22s ease;
+    }
+    .ig-panel.open { display: flex; }
+    @keyframes ig-panel-in { from { opacity: 0; transform: translateY(14px); } to { opacity: 1; transform: translateY(0); } }
+
+    .ig-panel-header {
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 1rem 1rem 0.7rem; flex-shrink: 0;
+    }
+    .ig-panel-title {
+      font-family: 'Lora', serif; font-size: 1.05rem; color: var(--text);
+      letter-spacing: 0.02em;
+    }
+    .ig-panel-close {
+      width: 40px; height: 40px; border-radius: 50%; flex-shrink: 0;
+      background: rgba(255,255,255,0.08); border: 1px solid rgba(255,255,255,0.14);
+      color: var(--text); font-size: 1.2rem; display: flex; align-items: center; justify-content: center;
+      cursor: pointer;
+    }
+    .ig-panel-body {
+      flex: 1; min-height: 0; overflow-y: auto; padding: 0.4rem 1.1rem 1.4rem;
+      display: flex; flex-direction: column; gap: 1.3rem;
+      -webkit-overflow-scrolling: touch;
+    }
+    .ig-panel-section-label {
+      font-size: 0.72rem; letter-spacing: 0.2em; text-transform: uppercase;
+      color: var(--text-muted); margin-bottom: 0.6rem;
+    }
+
+    .ig-action-row {
+      display: flex; align-items: center; gap: 0.9rem; width: 100%;
+      background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1);
+      border-radius: 14px; padding: 0.95rem 1.1rem; cursor: pointer;
+      color: var(--text); font-family: 'Inter', sans-serif; font-size: 1rem;
+      transition: background 0.15s;
+    }
+    .ig-action-row:active { background: rgba(255,255,255,0.12); }
+    .ig-action-row .ig-icn { font-size: 1.3rem; width: 1.6rem; text-align: center; flex-shrink: 0; }
+
+    .ig-toggle-row { display: flex; gap: 0.6rem; }
+    .ig-toggle-btn {
+      flex: 1; padding: 0.95rem 0.5rem; border-radius: 14px; text-align: center;
+      background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.12);
+      color: var(--text); font-size: 1.15rem; cursor: pointer;
+    }
+    .ig-toggle-btn.active { background: var(--accent); border-color: var(--gold); }
+
+    .ig-vscroll {
+      max-height: 46vh; overflow-y: auto; scroll-snap-type: y proximity;
+      display: flex; flex-direction: column; gap: 0.5rem;
+      -webkit-overflow-scrolling: touch; padding: 0.2rem;
+      border-radius: 14px; background: rgba(255,255,255,0.03);
+    }
+    .ig-vscroll-item {
+      scroll-snap-align: center; display: flex; align-items: center; gap: 0.9rem;
+      padding: 0.95rem 1.1rem; border-radius: 12px; cursor: pointer;
+      color: var(--text); font-size: 1.1rem; border: 1px solid transparent;
+      background: transparent; transition: background 0.15s, border-color 0.15s;
+      -webkit-tap-highlight-color: transparent;
+    }
+    .ig-vscroll-item:active { background: rgba(255,255,255,0.08); }
+    .ig-vscroll-item.active {
+      background: rgba(124,63,110,0.35); border-color: var(--accent-soft);
+    }
+    /* Los swatches de color reutilizan la clase .draw-swatch (para no romper
+       el JS existente), pero dentro del picker vertical se ven como filas
+       completas, no como círculos chicos. */
+    .ig-vscroll-item.draw-swatch { width: 100%; height: auto; border-radius: 12px; }
+    .ig-vscroll-item.draw-swatch.active { background: rgba(124,63,110,0.35); border-color: var(--accent-soft); transform: none; }
+    .ig-vscroll-item .ig-swatch {
+      width: 28px; height: 28px; border-radius: 50%; flex-shrink: 0;
+      border: 2px solid rgba(255,255,255,0.25);
+    }
+    .ig-vscroll-item.active .ig-swatch { border-color: var(--gold); }
+    .ig-vscroll-custom-color {
+      display: flex; align-items: center; gap: 0.9rem; padding: 0.95rem 1.1rem;
+      margin-top: 0.4rem; border-radius: 12px; background: rgba(255,255,255,0.05);
+      border: 1px solid rgba(255,255,255,0.12); color: var(--text); font-size: 1rem;
+    }
+    .ig-vscroll-custom-color input[type="color"] {
+      width: 40px; height: 40px; border-radius: 50%; border: 2px solid rgba(255,255,255,0.25);
+      padding: 0; cursor: pointer; background: transparent;
+    }
+    .ig-vscroll-custom-color input[type="color"]::-webkit-color-swatch-wrapper { padding: 0; border-radius: 50%; }
+    .ig-vscroll-custom-color input[type="color"]::-webkit-color-swatch { border: none; border-radius: 50%; }
+
+    .ig-slider-block { display: flex; flex-direction: column; gap: 0.6rem; }
+    .ig-slider-block input[type="range"] { width: 100%; height: 34px; accent-color: var(--accent-soft); cursor: pointer; }
+    .ig-slider-value { text-align: right; font-size: 0.95rem; color: var(--text-muted); }
+
+    .ig-chip-row { display: flex; gap: 0.6rem; flex-wrap: wrap; }
+    .ig-chip {
+      padding: 0.75rem 1rem; border-radius: 999px; background: rgba(255,255,255,0.05);
+      border: 1px solid rgba(255,255,255,0.12); color: var(--text); font-size: 0.95rem; cursor: pointer;
+    }
+    .ig-chip.active { background: var(--accent); border-color: var(--gold); }
+
+    .ig-native-hidden { position: absolute !important; width: 1px !important; height: 1px !important;
+      overflow: hidden !important; opacity: 0 !important; pointer-events: none !important; margin: -1px !important; }
+
     /* ═══════════════ BOTÓN "DAR UN TOQUE" ═══════════════ */
     .touch-fab {
       position: fixed; right: 1.1rem; bottom: 1.1rem; z-index: 500;
@@ -786,89 +963,145 @@
       </div>
 
       <!-- ─── Lienzo compartido: mismo sistema que las cartas (stickers, imágenes,
-           texto con formato), optimizado para mobile. Sin títulos ni estilos por
-           defecto: arranca vacío. ─── -->
+           texto con formato). Rediseño estilo "story" de Instagram: el lienzo
+           ocupa toda la pantalla (relación 15:8) y las herramientas son
+           botones circulares flotantes arriba a la derecha. ─── -->
       <div class="draw-wrapper" id="draw-wrapper">
 
-        <div class="canvas-top-row" id="canvas-top-row">
-          <button type="button" class="draw-tool-btn canvas-undo-top-btn" id="draw-undo-btn" title="Deshacer (Ctrl+Z)">↺</button>
-          <div class="docs-toolbar canvas-format-toolbar" id="canvas-format-toolbar">
+        <div class="ig-stage-shell" id="canvas-stage-shell">
+
+          <div class="draw-canvas-box" id="canvas-stage">
+            <canvas id="draw-canvas"></canvas>
+            <div class="stickers-layer" id="canvas-stickers-layer"></div>
+          </div>
+
+          <div class="ig-stage-dim"></div>
+
+          <!-- Rail izquierdo: deshacer / borrar todo -->
+          <div class="ig-rail-left">
+            <button type="button" class="ig-rail-btn" id="draw-undo-btn" title="Deshacer">↺</button>
+            <button type="button" class="ig-rail-btn" id="draw-clear-btn" title="Borrar todo">🗑️</button>
+          </div>
+
+          <!-- Rail derecho: estilo Instagram Stories, vertical -->
+          <div class="ig-rail">
+            <input type="file" id="canvas-sticker-file" accept="image/*" style="display:none;" onchange="uploadCanvasStickerFile(this)" />
+            <button type="button" class="ig-rail-btn" title="Insertar imagen" onclick="document.getElementById('canvas-sticker-file').click()">🖼️</button>
+            <button type="button" class="ig-rail-btn" title="Agregar texto" onclick="addCanvasTextSticker(); openIgPanel('panel-canvas-text')" style="font-weight:bold;">Aa</button>
+            <button type="button" class="ig-rail-btn" title="Pincel" onclick="openIgPanel('panel-canvas-brush')">🎨</button>
+            <button type="button" class="ig-rail-btn canvas-send-btn" title="Enviar" onclick="openIgPanel('panel-canvas-send')">
+              <svg viewBox="0 0 24 24" width="19" height="19" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
+            </button>
+          </div>
+
+          <!-- Barra flotante de elemento seleccionado (capas / opacidad) -->
+          <div class="sticker-props-bar" id="canvas-sticker-props-bar" style="position:absolute; left:50%; transform:translateX(-50%); top:14px; z-index:70;">
+            <span class="props-bar-label">Elemento seleccionado</span>
             <div class="tb-group">
-              <input type="file" id="canvas-sticker-file" accept="image/*" style="display: none;" onchange="uploadCanvasStickerFile(this)" />
-              <button type="button" class="tb-btn" onclick="document.getElementById('canvas-sticker-file').click()" title="Insertar imagen">🖼️</button>
-              <button type="button" class="tb-btn" onclick="addCanvasTextSticker()" style="font-weight: bold;" title="Agregar cuadro de texto">Aa</button>
+              <button type="button" class="layer-btn" id="canvas-props-layer-down" title="Enviar atrás">⬇</button>
+              <button type="button" class="layer-btn" id="canvas-props-layer-up" title="Traer al frente">⬆</button>
             </div>
             <div class="tb-sep"></div>
             <div class="tb-group">
-              <button type="button" class="tb-btn" onclick="execCanvasCmd('bold')" style="font-weight: bold;" title="Negrita">N</button>
-              <button type="button" class="tb-btn" onclick="execCanvasCmd('italic')" style="font-style: italic;" title="Cursiva">C</button>
-              <button type="button" class="tb-btn" onclick="execCanvasCmd('underline')" style="text-decoration: underline;" title="Subrayado">S</button>
-              <input type="color" id="canvas-text-color" class="tb-color" value="#e8ddd0" onchange="execCanvasCmd('foreColor', this.value)" title="Color del texto">
+              <span class="opacity-label">Opacidad</span>
+              <input type="range" class="opacity-slider" id="canvas-props-opacity" min="0.1" max="1" step="0.05" value="1" title="Opacidad">
             </div>
           </div>
-          <button type="button" class="draw-tool-btn canvas-clear-top-btn" id="draw-clear-btn" title="Borrar todo">🗑️</button>
-        </div>
 
-        <div class="draw-canvas-box" id="canvas-stage">
-          <canvas id="draw-canvas"></canvas>
-          <div class="stickers-layer" id="canvas-stickers-layer"></div>
-        </div>
-
-        <div class="sticker-props-bar" id="canvas-sticker-props-bar">
-          <span class="props-bar-label">Elemento seleccionado</span>
-          <div class="tb-group">
-            <button type="button" class="layer-btn" id="canvas-props-layer-down" title="Enviar atrás">⬇</button>
-            <button type="button" class="layer-btn" id="canvas-props-layer-up" title="Traer al frente">⬆</button>
+          <div class="ig-bottom-bar">
+            <div class="draw-sync-note" id="draw-sync-note" style="margin:0; flex:1; text-align:left;">el dibujo se guarda solo, y aparece del otro lado ✦</div>
           </div>
-          <div class="tb-sep"></div>
-          <div class="tb-group">
-            <span class="opacity-label">Opacidad</span>
-            <input type="range" class="opacity-slider" id="canvas-props-opacity" min="0.1" max="1" step="0.05" value="1" title="Opacidad">
-          </div>
-        </div>
 
-        <div class="draw-toolbar">
-          <div class="draw-top-tools-row">
-            <div class="draw-colors" id="draw-colors">
-              <button type="button" class="draw-swatch active" style="background:#e8ddd0" data-color="#e8ddd0" title="Marfil"></button>
-              <button type="button" class="draw-swatch" style="background:#c9a96e" data-color="#c9a96e" title="Dorado"></button>
-              <button type="button" class="draw-swatch" style="background:#e05656" data-color="#e05656" title="Rojo"></button>
-              <button type="button" class="draw-swatch" style="background:#5fb3d9" data-color="#5fb3d9" title="Celeste"></button>
-              <button type="button" class="draw-swatch" style="background:#0d0b0f; border-color:#3d2e4f;" data-color="#0d0b0f" title="Negro"></button>
-              <button type="button" class="draw-swatch" style="background:#ffffff" data-color="#ffffff" title="Blanco"></button>
-              <input type="color" id="draw-color-custom" class="draw-swatch-custom" title="Elegir color" value="#e8ddd0" />
+          <!-- ─── Panel: pincel (color + tipo + grosor + borrador) ─── -->
+          <div class="ig-panel" id="panel-canvas-brush">
+            <div class="ig-panel-header">
+              <span class="ig-panel-title">Pincel</span>
+              <button type="button" class="ig-panel-close" onclick="closeIgPanel('panel-canvas-brush')">✕</button>
             </div>
-            <select id="draw-brush-type" class="tb-select draw-brush-select" title="Tipo de pincel">
-              <option value="normal">🖌️ Normal</option>
-              <option value="spray">💨 Aerosol</option>
-              <option value="pencil">✏️ Lápiz</option>
-              <option value="highlighter">🖍️ Resaltador</option>
-            </select>
-            <button type="button" class="draw-tool-btn" id="draw-eraser-btn" title="Borrador">🧽</button>
-          </div>
-          <div class="draw-size-wrap">
-            <input type="range" id="draw-size" class="draw-size" min="1" max="90" value="6" title="Grosor" />
-            <span class="draw-size-value" id="draw-size-value">6px</span>
-          </div>
-        </div>
-
-        <div class="canvas-actions-row">
-          <button type="button" class="canvas-action-btn" onclick="saveCanvasAsImage()" title="Guardar como imagen">
-            <span>💾</span> Guardar como imagen
-          </button>
-          <div class="canvas-send-wrap">
-            <button type="button" class="canvas-action-btn canvas-send-btn" onclick="toggleCanvasSendMenu()" title="Enviar por Telegram">
-              <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
-            </button>
-            <div class="canvas-send-menu" id="canvas-send-menu">
-              <span class="canvas-send-menu-label">Enviar por Telegram a:</span>
-              <button type="button" onclick="sendCanvasToTelegram('pame')">💌 Pame</button>
-              <button type="button" onclick="sendCanvasToTelegram('fran')">💌 Fran</button>
+            <div class="ig-panel-body">
+              <div>
+                <div class="ig-panel-section-label">Color</div>
+                <div class="ig-vscroll" id="draw-colors">
+                  <div class="ig-vscroll-item draw-swatch active" data-color="#e8ddd0"><span class="ig-swatch" style="background:#e8ddd0"></span>Marfil</div>
+                  <div class="ig-vscroll-item draw-swatch" data-color="#c9a96e"><span class="ig-swatch" style="background:#c9a96e"></span>Dorado</div>
+                  <div class="ig-vscroll-item draw-swatch" data-color="#e05656"><span class="ig-swatch" style="background:#e05656"></span>Rojo</div>
+                  <div class="ig-vscroll-item draw-swatch" data-color="#5fb3d9"><span class="ig-swatch" style="background:#5fb3d9"></span>Celeste</div>
+                  <div class="ig-vscroll-item draw-swatch" data-color="#0d0b0f"><span class="ig-swatch" style="background:#0d0b0f; border-color:#3d2e4f;"></span>Negro</div>
+                  <div class="ig-vscroll-item draw-swatch" data-color="#ffffff"><span class="ig-swatch" style="background:#ffffff"></span>Blanco</div>
+                </div>
+                <div class="ig-vscroll-custom-color">
+                  <input type="color" id="draw-color-custom" value="#e8ddd0" title="Elegir color" />
+                  <span>Elegir otro color</span>
+                </div>
+              </div>
+              <div>
+                <div class="ig-panel-section-label">Tipo de pincel</div>
+                <select id="draw-brush-type" class="ig-native-hidden" title="Tipo de pincel">
+                  <option value="normal">Normal</option>
+                  <option value="spray">Aerosol</option>
+                  <option value="pencil">Lápiz</option>
+                  <option value="highlighter">Resaltador</option>
+                </select>
+                <div class="ig-chip-row" id="draw-brush-chips">
+                  <button type="button" class="ig-chip active" data-brush="normal">🖌️ Normal</button>
+                  <button type="button" class="ig-chip" data-brush="spray">💨 Aerosol</button>
+                  <button type="button" class="ig-chip" data-brush="pencil">✏️ Lápiz</button>
+                  <button type="button" class="ig-chip" data-brush="highlighter">🖍️ Resaltador</button>
+                  <button type="button" class="ig-chip" id="draw-eraser-btn">🧽 Borrador</button>
+                </div>
+              </div>
+              <div class="ig-slider-block">
+                <div class="ig-panel-section-label">Grosor</div>
+                <input type="range" id="draw-size" min="1" max="90" value="6" title="Grosor" />
+                <span class="ig-slider-value" id="draw-size-value">6px</span>
+              </div>
             </div>
           </div>
-        </div>
 
-        <div class="draw-sync-note" id="draw-sync-note">el dibujo se guarda solo, y aparece del otro lado ✦</div>
+          <!-- ─── Panel: texto (negrita / cursiva / subrayado / color) ─── -->
+          <div class="ig-panel" id="panel-canvas-text">
+            <div class="ig-panel-header">
+              <span class="ig-panel-title">Texto</span>
+              <button type="button" class="ig-panel-close" onclick="closeIgPanel('panel-canvas-text')">✕</button>
+            </div>
+            <div class="ig-panel-body">
+              <div class="ig-toggle-row">
+                <button type="button" class="ig-toggle-btn" style="font-weight:bold;" onclick="execCanvasCmd('bold'); this.classList.toggle('active')">N</button>
+                <button type="button" class="ig-toggle-btn" style="font-style:italic;" onclick="execCanvasCmd('italic'); this.classList.toggle('active')">C</button>
+                <button type="button" class="ig-toggle-btn" style="text-decoration:underline;" onclick="execCanvasCmd('underline'); this.classList.toggle('active')">S</button>
+              </div>
+              <div>
+                <div class="ig-panel-section-label">Color del texto</div>
+                <div class="ig-vscroll" id="canvas-text-colors">
+                  <div class="ig-vscroll-item active" data-color="#e8ddd0"><span class="ig-swatch" style="background:#e8ddd0"></span>Marfil</div>
+                  <div class="ig-vscroll-item" data-color="#c9a96e"><span class="ig-swatch" style="background:#c9a96e"></span>Dorado</div>
+                  <div class="ig-vscroll-item" data-color="#e05656"><span class="ig-swatch" style="background:#e05656"></span>Rojo</div>
+                  <div class="ig-vscroll-item" data-color="#5fb3d9"><span class="ig-swatch" style="background:#5fb3d9"></span>Celeste</div>
+                  <div class="ig-vscroll-item" data-color="#ffffff"><span class="ig-swatch" style="background:#ffffff"></span>Blanco</div>
+                </div>
+                <div class="ig-vscroll-custom-color">
+                  <input type="color" id="canvas-text-color" value="#e8ddd0" title="Elegir color" onchange="execCanvasCmd('foreColor', this.value)" />
+                  <span>Elegir otro color</span>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- ─── Panel: enviar / guardar ─── -->
+          <div class="ig-panel" id="panel-canvas-send">
+            <div class="ig-panel-header">
+              <span class="ig-panel-title">Compartir lienzo</span>
+              <button type="button" class="ig-panel-close" onclick="closeIgPanel('panel-canvas-send')">✕</button>
+            </div>
+            <div class="ig-panel-body">
+              <div class="ig-action-row" onclick="saveCanvasAsImage()"><span class="ig-icn">💾</span> Guardar como imagen</div>
+              <div class="ig-panel-section-label">Enviar por Telegram a</div>
+              <div class="ig-action-row" onclick="sendCanvasToTelegram('pame')"><span class="ig-icn">💌</span> Pame</div>
+              <div class="ig-action-row" onclick="sendCanvasToTelegram('fran')"><span class="ig-icn">💌</span> Fran</div>
+            </div>
+          </div>
+
+        </div>
       </div>
 
       <div class="footer" style="margin-top: 2.2rem; text-align: center; font-size: 0.85rem; color: var(--text-muted); opacity: 0.45;">Fran · 2026</div>
@@ -876,90 +1109,169 @@
 
     <div id="admin-view" class="view-section">
 
-      <div class="code-save-row" id="code-save-row">
-        <button type="button" class="icon-row-btn" onclick="exitAdmin()" title="Salir del panel">←</button>
-        <div class="tb-group" style="flex: 1;">
-          <input list="codes-list" id="adm-code" class="adm-code-input" placeholder="Código" autocomplete="off" title="Código de la carta" />
-          <datalist id="codes-list"></datalist>
+      <!-- Selects nativos, ocultos, siguen existiendo para no romper el JS
+           que lee/escribe su .value (persistLetter, autosave, setupEditorForEdit...) -->
+      <select id="adm-font-select" class="ig-native-hidden" onchange="execCmd('fontName', this.value)" title="Fuente">
+         <option value="Lora">Lora</option>
+         <option value="Inter">Inter</option>
+         <option value="Playfair Display">Playfair</option>
+         <option value="Cormorant Garamond">Cormorant</option>
+         <option value="Cinzel">Cinzel</option>
+         <option value="Montserrat">Montserrat</option>
+         <option value="Raleway">Raleway</option>
+         <option value="Josefin Sans">Josefin</option>
+         <option value="Outfit">Outfit</option>
+         <option value="Dancing Script">Dancing Script</option>
+      </select>
+
+      <div class="ig-stage-shell" id="letter-stage-shell">
+
+        <div id="live-card-container" class="style-a">
+          <div class="letter-card">
+            <div class="stickers-layer" id="live-stickers-layer"></div>
+            <div class="workspace-boundary" id="workspace-boundary-guide"></div>
+          </div>
         </div>
-        <button id="save-btn" class="icon-row-btn save-btn" onclick="saveLetter()" title="Guardar">💾</button>
+
+        <div class="ig-stage-dim"></div>
+
+        <!-- Rail izquierdo -->
+        <div class="ig-rail-left">
+          <button type="button" class="icon-row-btn ig-rail-btn" onclick="exitAdmin()" title="Salir del panel">←</button>
+          <button type="button" class="ig-rail-btn" onclick="openIgPanel('panel-adm-code')" title="Código de la carta">#</button>
+        </div>
+
+        <!-- Rail derecho: estilo Instagram Stories -->
+        <div class="ig-rail">
+          <input type="file" id="adm-sticker-file" accept="image/*" style="display:none;" onchange="uploadStickerFile(this)" />
+          <button type="button" class="ig-rail-btn" title="Insertar imagen" onclick="document.getElementById('adm-sticker-file').click()">🖼️</button>
+          <button type="button" class="ig-rail-btn" title="Texto" style="font-weight:bold;" onclick="addTextSticker(); openIgPanel('panel-adm-text')">Aa</button>
+          <button type="button" class="ig-rail-btn" title="Estilo de la carta" onclick="openIgPanel('panel-adm-style')">🎨</button>
+          <button type="button" class="ig-rail-btn" title="Disponibilidad" onclick="openIgPanel('panel-adm-date')">📅</button>
+          <button type="button" class="ig-rail-btn save-btn" id="save-btn" onclick="saveLetter()" title="Guardar">💾</button>
+        </div>
+
+        <div class="sticker-props-bar" id="sticker-props-bar" style="position:absolute; left:50%; transform:translateX(-50%); top:14px; z-index:70;">
+          <span class="props-bar-label">Elemento seleccionado</span>
+          <div class="tb-group">
+            <button type="button" class="layer-btn" id="props-layer-down" title="Enviar atrás">⬇</button>
+            <button type="button" class="layer-btn" id="props-layer-up" title="Traer al frente">⬆</button>
+          </div>
+          <div class="tb-sep"></div>
+          <div class="tb-group">
+            <span class="opacity-label">Opacidad</span>
+            <input type="range" class="opacity-slider" id="props-opacity" min="0.1" max="1" step="0.05" value="1" title="Opacidad">
+          </div>
+        </div>
+
+        <div class="ig-bottom-bar">
+          <div id="admin-success" class="success-msg" style="margin:0; flex:1; text-align:left;"></div>
+          <div class="autosave-indicator" id="autosave-indicator" style="position:static; margin:0;">borrador guardado localmente</div>
+        </div>
+
+        <!-- ─── Panel: código + guardar ─── -->
+        <div class="ig-panel" id="panel-adm-code">
+          <div class="ig-panel-header">
+            <span class="ig-panel-title">Código de la carta</span>
+            <button type="button" class="ig-panel-close" onclick="closeIgPanel('panel-adm-code')">✕</button>
+          </div>
+          <div class="ig-panel-body">
+            <div class="tb-group" style="width:100%;">
+              <input list="codes-list" id="adm-code" class="adm-code-input" placeholder="Código" autocomplete="off" title="Código de la carta" style="font-size:1.1rem; padding:1rem;" />
+              <datalist id="codes-list"></datalist>
+            </div>
+            <div class="ig-action-row" onclick="saveLetter()"><span class="ig-icn">💾</span> Guardar carta</div>
+          </div>
+        </div>
+
+        <!-- ─── Panel: texto (fuente + color + N/C/S) ─── -->
+        <div class="ig-panel" id="panel-adm-text">
+          <div class="ig-panel-header">
+            <span class="ig-panel-title">Texto</span>
+            <button type="button" class="ig-panel-close" onclick="closeIgPanel('panel-adm-text')">✕</button>
+          </div>
+          <div class="ig-panel-body">
+            <div class="ig-toggle-row">
+              <button type="button" class="ig-toggle-btn" style="font-weight:bold;" onclick="execCmd('bold'); this.classList.toggle('active')">N</button>
+              <button type="button" class="ig-toggle-btn" style="font-style:italic;" onclick="execCmd('italic'); this.classList.toggle('active')">C</button>
+              <button type="button" class="ig-toggle-btn" style="text-decoration:underline;" onclick="execCmd('underline'); this.classList.toggle('active')">S</button>
+            </div>
+            <div>
+              <div class="ig-panel-section-label">Fuente</div>
+              <div class="ig-vscroll" id="adm-font-list">
+                <div class="ig-vscroll-item active" data-font="Lora" style="font-family:'Lora',serif;">Lora</div>
+                <div class="ig-vscroll-item" data-font="Inter" style="font-family:'Inter',sans-serif;">Inter</div>
+                <div class="ig-vscroll-item" data-font="Playfair Display" style="font-family:'Playfair Display',serif;">Playfair</div>
+                <div class="ig-vscroll-item" data-font="Cormorant Garamond" style="font-family:'Cormorant Garamond',serif;">Cormorant</div>
+                <div class="ig-vscroll-item" data-font="Cinzel" style="font-family:'Cinzel',serif;">Cinzel</div>
+                <div class="ig-vscroll-item" data-font="Montserrat" style="font-family:'Montserrat',sans-serif;">Montserrat</div>
+                <div class="ig-vscroll-item" data-font="Raleway" style="font-family:'Raleway',sans-serif;">Raleway</div>
+                <div class="ig-vscroll-item" data-font="Josefin Sans" style="font-family:'Josefin Sans',sans-serif;">Josefin</div>
+                <div class="ig-vscroll-item" data-font="Outfit" style="font-family:'Outfit',sans-serif;">Outfit</div>
+                <div class="ig-vscroll-item" data-font="Dancing Script" style="font-family:'Dancing Script',cursive;">Dancing Script</div>
+              </div>
+            </div>
+            <div>
+              <div class="ig-panel-section-label">Color del texto</div>
+              <div class="ig-vscroll" id="adm-color-list">
+                <div class="ig-vscroll-item active" data-color="#e8ddd0"><span class="ig-swatch" style="background:#e8ddd0"></span>Marfil</div>
+                <div class="ig-vscroll-item" data-color="#c9a96e"><span class="ig-swatch" style="background:#c9a96e"></span>Dorado</div>
+                <div class="ig-vscroll-item" data-color="#e05656"><span class="ig-swatch" style="background:#e05656"></span>Rojo</div>
+                <div class="ig-vscroll-item" data-color="#5fb3d9"><span class="ig-swatch" style="background:#5fb3d9"></span>Celeste</div>
+                <div class="ig-vscroll-item" data-color="#ffffff"><span class="ig-swatch" style="background:#ffffff"></span>Blanco</div>
+              </div>
+              <div class="ig-vscroll-custom-color">
+                <input type="color" id="adm-color" value="#e8ddd0" title="Elegir color" onchange="execCmd('foreColor', this.value)" />
+                <span>Elegir otro color</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- ─── Panel: estilo de la carta ─── -->
+        <div class="ig-panel" id="panel-adm-style">
+          <div class="ig-panel-header">
+            <span class="ig-panel-title">Estilo de la carta</span>
+            <button type="button" class="ig-panel-close" onclick="closeIgPanel('panel-adm-style')">✕</button>
+          </div>
+          <div class="ig-panel-body">
+            <select id="adm-style" class="ig-native-hidden" onchange="updateLiveCardStyle(this.value)" title="Estilo de la carta">
+                <option value="style-a">Estilo A</option>
+                <option value="style-b">Estilo B</option>
+                <option value="style-c">Estilo C</option>
+                <option value="style-d">Estilo D</option>
+            </select>
+            <div class="ig-vscroll" id="adm-style-list">
+              <div class="ig-vscroll-item active" data-style="style-a">Estilo A · claro y minimal</div>
+              <div class="ig-vscroll-item" data-style="style-b">Estilo B · pergamino</div>
+              <div class="ig-vscroll-item" data-style="style-c">Estilo C · terminal</div>
+              <div class="ig-vscroll-item" data-style="style-d">Estilo D · nocturno</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- ─── Panel: disponibilidad / fecha ─── -->
+        <div class="ig-panel" id="panel-adm-date">
+          <div class="ig-panel-header">
+            <span class="ig-panel-title">Disponibilidad</span>
+            <button type="button" class="ig-panel-close" onclick="closeIgPanel('panel-adm-date')">✕</button>
+          </div>
+          <div class="ig-panel-body">
+            <select id="adm-date-type" class="ig-native-hidden" onchange="toggleDateField(this.value)" title="Disponibilidad">
+                <option value="immediate">Inmediata</option>
+                <option value="scheduled">Programada</option>
+                <option value="undefined">Borrador</option>
+            </select>
+            <div class="ig-vscroll" id="adm-date-type-list">
+              <div class="ig-vscroll-item active" data-datetype="immediate">Inmediata</div>
+              <div class="ig-vscroll-item" data-datetype="scheduled">Programada</div>
+              <div class="ig-vscroll-item" data-datetype="undefined">Borrador</div>
+            </div>
+            <input id="adm-date" class="tb-input" type="date" style="display:none; font-size:1.05rem; padding:0.9rem;" />
+          </div>
+        </div>
+
       </div>
-
-      <div class="docs-toolbar" id="docs-toolbar">
-
-        <div class="tb-group">
-          <select id="adm-font-select" class="tb-select" onchange="execCmd('fontName', this.value)" title="Fuente">
-             <option value="Lora">Lora</option>
-             <option value="Inter">Inter</option>
-             <option value="Playfair Display">Playfair</option>
-             <option value="Cormorant Garamond">Cormorant</option>
-             <option value="Cinzel">Cinzel</option>
-             <option value="Montserrat">Montserrat</option>
-             <option value="Raleway">Raleway</option>
-             <option value="Josefin Sans">Josefin</option>
-             <option value="Outfit">Outfit</option>
-             <option value="Dancing Script">Dancing Script</option>
-          </select>
-          <input type="color" id="adm-color" class="tb-color" value="#e8ddd0" onchange="execCmd('foreColor', this.value)" title="Color del texto">
-        </div>
-
-        <div class="tb-sep"></div>
-
-        <div class="tb-group">
-          <button class="tb-btn" onclick="execCmd('bold')" title="Negrita" style="font-weight: bold;">N</button>
-          <button class="tb-btn" onclick="execCmd('italic')" title="Cursiva" style="font-style: italic;">C</button>
-          <button class="tb-btn" onclick="execCmd('underline')" title="Subrayado" style="text-decoration: underline;">S</button>
-        </div>
-
-        <div class="tb-sep"></div>
-
-        <div class="tb-group">
-          <input type="file" id="adm-sticker-file" accept="image/*" style="display: none;" onchange="uploadStickerFile(this)" />
-          <button class="tb-btn" onclick="document.getElementById('adm-sticker-file').click()" title="Insertar Imagen">🖼️</button>
-          <button class="tb-btn" onclick="addTextSticker()" title="Agregar Cuadro de Texto" style="font-weight: bold;">Aa</button>
-        </div>
-
-        <div class="tb-sep"></div>
-
-        <div class="tb-group">
-          <select id="adm-style" class="tb-select" onchange="updateLiveCardStyle(this.value)" title="Estilo de la carta">
-              <option value="style-a">Estilo A</option>
-              <option value="style-b">Estilo B</option>
-              <option value="style-c">Estilo C</option>
-              <option value="style-d">Estilo D</option>
-          </select>
-          <select id="adm-date-type" class="tb-select" onchange="toggleDateField(this.value)" title="Disponibilidad">
-              <option value="immediate">Inmediata</option>
-              <option value="scheduled">Programada</option>
-              <option value="undefined">Borrador</option>
-          </select>
-          <input id="adm-date" class="tb-input" type="date" style="display:none;" />
-        </div>
-
-      </div>
-
-      <div class="sticker-props-bar" id="sticker-props-bar">
-        <span class="props-bar-label">Elemento seleccionado</span>
-        <div class="tb-group">
-          <button type="button" class="layer-btn" id="props-layer-down" title="Enviar atrás">⬇</button>
-          <button type="button" class="layer-btn" id="props-layer-up" title="Traer al frente">⬆</button>
-        </div>
-        <div class="tb-sep"></div>
-        <div class="tb-group">
-          <span class="opacity-label">Opacidad</span>
-          <input type="range" class="opacity-slider" id="props-opacity" min="0.1" max="1" step="0.05" value="1" title="Opacidad">
-        </div>
-      </div>
-
-      <div id="live-card-container" class="style-a">
-        <div class="letter-card">
-          <div class="stickers-layer" id="live-stickers-layer"></div>
-          <div class="workspace-boundary" id="workspace-boundary-guide"></div>
-        </div>
-      </div>
-
-      <div id="admin-success" class="success-msg"></div>
-      <div class="autosave-indicator" id="autosave-indicator">borrador guardado localmente</div>
 
       <div class="gallery-section">
         <div class="gallery-controls">
@@ -1185,6 +1497,7 @@
       initInstallPrompt();
       registerServiceWorker();
       initDrawBoard();
+      initIgAdminPickers();
       restoreCanvasStickers();
       initCanvasSendMenu();
       initToques();
@@ -2142,7 +2455,7 @@
     // Clic afuera para limpiar la selección de stickers
     document.addEventListener('click', (e) => {
       if (!currentAdminView) return;
-      if (!e.target.closest('.sticker-wrapper') && !e.target.closest('.docs-toolbar') && !e.target.closest('.code-save-row') && !e.target.closest('#sticker-props-bar')) {
+      if (!e.target.closest('.sticker-wrapper') && !e.target.closest('.ig-rail') && !e.target.closest('.ig-rail-left') && !e.target.closest('.ig-panel') && !e.target.closest('#sticker-props-bar')) {
         syncTextStickersContent();
         selectedStickerIdx = null;
         document.querySelectorAll('.sticker-wrapper').forEach(w => w.classList.remove('selected'));
@@ -2733,6 +3046,60 @@
     }
 
     // ════════════════════════════════════════════════════════════
+    // ─── PANELES ESTILO "STORIES": abrir/cerrar, oscurecer el fondo ───
+    // ════════════════════════════════════════════════════════════
+    // Vincula un picker vertical (.ig-vscroll con .ig-vscroll-item[data-*])
+    // a un <select> nativo oculto: al tocar un ítem, actualiza el select y
+    // dispara 'change' para que la lógica de siempre (execCmd, updateLiveCardStyle,
+    // toggleDateField...) siga funcionando sin cambios.
+    function wireIgVscrollToSelect(listId, selectId, dataAttr) {
+      const list = document.getElementById(listId);
+      const select = document.getElementById(selectId);
+      if (!list || !select) return;
+      list.querySelectorAll('.ig-vscroll-item').forEach((item) => {
+        item.addEventListener('click', () => {
+          list.querySelectorAll('.ig-vscroll-item').forEach((i) => i.classList.remove('active'));
+          item.classList.add('active');
+          select.value = item.dataset[dataAttr];
+          select.dispatchEvent(new Event('change'));
+        });
+      });
+    }
+    function initIgAdminPickers() {
+      wireIgVscrollToSelect('adm-font-list', 'adm-font-select', 'font');
+      wireIgVscrollToSelect('adm-style-list', 'adm-style', 'style');
+      wireIgVscrollToSelect('adm-date-type-list', 'adm-date-type', 'datetype');
+      const colorList = document.getElementById('adm-color-list');
+      if (colorList) {
+        colorList.querySelectorAll('.ig-vscroll-item').forEach((item) => {
+          item.addEventListener('click', () => {
+            colorList.querySelectorAll('.ig-vscroll-item').forEach((i) => i.classList.remove('active'));
+            item.classList.add('active');
+            const color = item.dataset.color;
+            document.getElementById('adm-color').value = color;
+            execCmd('foreColor', color);
+          });
+        });
+      }
+    }
+
+    function openIgPanel(id) {
+      const panel = document.getElementById(id);
+      if (!panel) return;
+      const shell = panel.closest('.ig-stage-shell');
+      document.querySelectorAll('.ig-panel.open').forEach((p) => p.classList.remove('open'));
+      panel.classList.add('open');
+      if (shell) shell.classList.add('editing');
+    }
+    function closeIgPanel(id) {
+      const panel = document.getElementById(id);
+      if (!panel) return;
+      panel.classList.remove('open');
+      const shell = panel.closest('.ig-stage-shell');
+      if (shell && !shell.querySelector('.ig-panel.open')) shell.classList.remove('editing');
+    }
+
+    // ════════════════════════════════════════════════════════════
     // ─── PIZARRA COMPARTIDA: dibujo entre los dos ───
     // ════════════════════════════════════════════════════════════
     let drawCtx = null;
@@ -2892,6 +3259,29 @@
       // Tipo de pincel (normal, aerosol, lápiz, resaltador)
       document.getElementById('draw-brush-type').addEventListener('change', (e) => {
         drawBrushType = e.target.value;
+      });
+
+      // Chips grandes del panel "Pincel" (sustituyen visualmente al <select>,
+      // pero siguen escribiendo en él para no duplicar lógica)
+      document.querySelectorAll('#draw-brush-chips .ig-chip[data-brush]').forEach((chip) => {
+        chip.addEventListener('click', () => {
+          document.querySelectorAll('#draw-brush-chips .ig-chip[data-brush]').forEach((c) => c.classList.remove('active'));
+          chip.classList.add('active');
+          const sel = document.getElementById('draw-brush-type');
+          sel.value = chip.dataset.brush;
+          sel.dispatchEvent(new Event('change'));
+        });
+      });
+
+      // Color del texto (panel "Texto"): misma lógica que la paleta de dibujo
+      document.querySelectorAll('#canvas-text-colors .ig-vscroll-item').forEach((item) => {
+        item.addEventListener('click', () => {
+          document.querySelectorAll('#canvas-text-colors .ig-vscroll-item').forEach((i) => i.classList.remove('active'));
+          item.classList.add('active');
+          const color = item.dataset.color;
+          document.getElementById('canvas-text-color').value = color;
+          execCanvasCmd('foreColor', color);
+        });
       });
 
       const sizeSlider = document.getElementById('draw-size');
@@ -3504,7 +3894,7 @@
 
     // Clic afuera de un sticker del lienzo: deselecciona
     document.addEventListener('click', (e) => {
-      if (!e.target.closest('#canvas-stickers-layer') && !e.target.closest('#canvas-format-toolbar') && !e.target.closest('#canvas-sticker-props-bar')) {
+      if (!e.target.closest('#canvas-stickers-layer') && !e.target.closest('.ig-rail') && !e.target.closest('.ig-rail-left') && !e.target.closest('.ig-panel') && !e.target.closest('#canvas-sticker-props-bar')) {
         syncCanvasTextStickersContent();
         canvasSelectedStickerIdx = null;
         document.querySelectorAll('#canvas-stickers-layer .sticker-wrapper').forEach(w => w.classList.remove('selected'));
@@ -3629,7 +4019,7 @@
     // ─── TELEGRAM: completá estos 3 datos (ver instrucciones que te pasé) ───
     const TELEGRAM_BOT_TOKEN = "8883767588:AAGv-7Zb4KT2olGBbuXNXbL06wXc7c43hUk";       // ej: "7123456789:AAHk3jX9..."
     const TELEGRAM_CHAT_FRAN = "5933575501";    // ej: "111111111"
-    const TELEGRAM_CHAT_PAME = "8930510565";    // ej: "222222222"
+    const TELEGRAM_CHAT_PAME = "CHAT_ID_DE_PAME";    // ej: "222222222"
     const TELEGRAM_ENABLED = !TELEGRAM_BOT_TOKEN.includes("TU_TOKEN_ACA");
 
     function initTouchFab() {
