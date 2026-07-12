@@ -33,6 +33,8 @@
 
     * { box-sizing: border-box; margin: 0; padding: 0; }
 
+    html { height: 100%; overflow: hidden; }
+    html { height: 100%; }
     body {
       background-color: var(--bg);
       color: var(--text);
@@ -45,6 +47,21 @@
       padding: 0.8rem 1rem;
       position: relative;
       overflow-x: hidden;
+    }
+    /* La pantalla principal (lienzo compartido) es fija, sin scroll: se
+       bloquea el body solo mientras esa vista está activa, para no afectar
+       a las otras vistas (editor de carta, carta recibida) que sí pueden
+       necesitar desplazarse si el contenido es más alto que la pantalla. */
+    body:has(#login-view.active) {
+      height: 100dvh;
+      overflow: hidden;
+      padding-top: 0;
+      padding-bottom: 0;
+    }
+    body:has(#login-view.active) .container { margin-top: 0; }
+    #canvas-stage-shell { margin-top: 0 !important; max-height: 100dvh !important; }
+    @media (min-width: 481px) {
+      #canvas-stage-shell { max-height: calc(100dvh - 0.9rem) !important; }
     }
 
     /* ─── FONDOS FX ─── */
@@ -787,7 +804,7 @@
 
     /* Rail inferior derecho: atrás / código, lejos del área de trabajo */
     .ig-rail-bottom-right {
-      position: absolute; bottom: 14px; right: 12px; z-index: 60;
+      position: absolute; bottom: 14px; right: 12px; z-index: 65;
       display: flex; flex-direction: row; gap: 10px; align-items: center;
     }
 
@@ -800,6 +817,8 @@
        los toques: todo el gesto (pellizcar/arrastrar) mueve la página. */
     .ig-stage-shell.move-tool-active .stickers-layer,
     .ig-stage-shell.move-tool-active #draw-canvas { pointer-events: none; }
+    .ig-stage-shell.move-tool-active { cursor: grab; }
+    .ig-stage-shell.move-tool-active:active { cursor: grabbing; }
 
     /* Zona de "soltar para borrar", estilo Instagram: aparece abajo mientras
        se arrastra un elemento y se puede arrastrar hasta ahí para eliminarlo. */
@@ -1344,11 +1363,6 @@
 
         <div class="ig-stage-dim"></div>
 
-        <!-- Rail izquierdo: solo la herramienta "mover página" (zoom/pan libre) -->
-        <div class="ig-rail-left">
-          <button type="button" class="ig-rail-btn" id="adm-move-tool-btn" title="Mover / hacer zoom en la página" onclick="toggleMoveTool('admin')">✋</button>
-        </div>
-
         <!-- Rail derecho: colapsado detrás de un botón de lápiz para trabajar más limpio -->
         <div class="ig-rail" id="adm-tools-rail">
           <button type="button" class="ig-rail-btn ig-rail-toggle" id="adm-tools-toggle" title="Herramientas" onclick="toggleToolsRail('adm-tools-rail')">✏️</button>
@@ -1358,6 +1372,7 @@
             <button type="button" class="ig-rail-btn" id="adm-text-btn" title="Texto" style="font-weight:bold;" onclick="handleTextToolClick('admin')">Aa</button>
             <button type="button" class="ig-rail-btn" title="Estilo de la carta" onclick="openIgPanel('panel-adm-style')">🎨</button>
             <button type="button" class="ig-rail-btn" title="Disponibilidad" onclick="openIgPanel('panel-adm-date')">📅</button>
+            <button type="button" class="ig-rail-btn" id="adm-move-tool-btn" title="Mover / hacer zoom en la página" onclick="toggleMoveTool('admin')">✋</button>
             <button type="button" class="ig-rail-btn save-btn" id="save-btn" onclick="saveLetter()" title="Guardar">💾</button>
           </div>
         </div>
@@ -1740,6 +1755,7 @@
       let touches = {};
       let startDist = 0, startScale = 1, startTx = 0, startTy = 0, startMidX = 0, startMidY = 0;
       let panStartX = 0, panStartY = 0;
+      let mouseDown = false;
 
       function applyTransform() {
         const st = pageZoomState[shellId];
@@ -1781,6 +1797,22 @@
         }
       }
 
+      // Panear con el mouse (click y arrastrar), para desktop.
+      function onMouseDown(e) {
+        mouseDown = true;
+        panStartX = e.clientX - pageZoomState[shellId].tx;
+        panStartY = e.clientY - pageZoomState[shellId].ty;
+      }
+      function onMouseMove(e) {
+        if (!mouseDown) return;
+        e.preventDefault();
+        const st = pageZoomState[shellId];
+        st.tx = e.clientX - panStartX;
+        st.ty = e.clientY - panStartY;
+        applyTransform();
+      }
+      function onMouseUp() { mouseDown = false; }
+
       function onWheel(e) {
         e.preventDefault();
         const st = pageZoomState[shellId];
@@ -1788,10 +1820,13 @@
         applyTransform();
       }
 
-      shell._zoomHandlers = { onTouchStart, onTouchMove, onWheel };
+      shell._zoomHandlers = { onTouchStart, onTouchMove, onWheel, onMouseDown, onMouseMove, onMouseUp };
       shell.addEventListener('touchstart', onTouchStart, { passive: false });
       shell.addEventListener('touchmove', onTouchMove, { passive: false });
       shell.addEventListener('wheel', onWheel, { passive: false });
+      shell.addEventListener('mousedown', onMouseDown);
+      window.addEventListener('mousemove', onMouseMove);
+      window.addEventListener('mouseup', onMouseUp);
     }
 
     function disablePageZoomPan(shellId, contentSelector) {
@@ -1801,6 +1836,9 @@
         shell.removeEventListener('touchstart', shell._zoomHandlers.onTouchStart);
         shell.removeEventListener('touchmove', shell._zoomHandlers.onTouchMove);
         shell.removeEventListener('wheel', shell._zoomHandlers.onWheel);
+        shell.removeEventListener('mousedown', shell._zoomHandlers.onMouseDown);
+        window.removeEventListener('mousemove', shell._zoomHandlers.onMouseMove);
+        window.removeEventListener('mouseup', shell._zoomHandlers.onMouseUp);
         delete shell._zoomHandlers;
       }
       pageZoomState[shellId] = { scale: 1, tx: 0, ty: 0 };
@@ -2895,7 +2933,7 @@
     // Clic afuera para limpiar la selección de stickers
     document.addEventListener('click', (e) => {
       if (!currentAdminView) return;
-      if (!e.target.closest('.sticker-wrapper') && !e.target.closest('.ig-rail') && !e.target.closest('.ig-rail-left') && !e.target.closest('.ig-panel') && !e.target.closest('#sticker-props-bar')) {
+      if (!e.target.closest('.sticker-wrapper') && !e.target.closest('.ig-rail') && !e.target.closest('.ig-rail-left') && !e.target.closest('.ig-rail-bottom-right') && !e.target.closest('.ig-panel') && !e.target.closest('#sticker-props-bar')) {
         syncTextStickersContent();
         selectedStickerIdx = null;
         document.querySelectorAll('.sticker-wrapper').forEach(w => w.classList.remove('selected'));
