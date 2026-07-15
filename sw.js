@@ -3,7 +3,7 @@
 // 2) Deja el terreno listo para notificaciones push reales en el futuro
 //    (hoy los toques se muestran mientras la app está abierta; ver index.html).
 
-const CACHE_NAME = 'framecorreo-v3'; // subir esta versión en cada deploy: v3, v4, v5...
+const CACHE_NAME = 'framecorreo-v4'; // subir esta versión en cada deploy: v3, v4, v5...
 const APP_SHELL = [
   './',
   './index.html',
