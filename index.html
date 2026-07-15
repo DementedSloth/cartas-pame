@@ -532,8 +532,19 @@
     /* ─── ESTILOS DE CARTA ─── */
     #live-card-container { transition: all 0.4s ease; width: 100%; }
     .letter-card { position: relative; transition: all 0.3s ease; min-height: 700px; overflow: hidden; }
+    /* Visor (destinatario): la carta se muestra como imagen. Si la carta es
+       larga, no la recortamos: dejamos que la imagen crezca a su alto real
+       y que sea la vista (#letter-view) la que scrollee, para poder verla
+       entera de punta a punta. */
+    #letter-view { width: 100%; max-height: 100dvh; overflow-y: auto; -webkit-overflow-scrolling: touch; padding-bottom: 1rem; }
+    #letter-card.showing-image { overflow: visible; min-height: 0; }
+    #letter-card-image { height: auto; }
     /* Límite visible del área de trabajo, solo en el editor (no en la carta final que ve Pame) */
-    .workspace-boundary { position: absolute; inset: 0; pointer-events: none; z-index: 6; outline: 2px dashed rgba(160, 88, 126, 0.6); outline-offset: -2px; }
+    /* El alto de este marco lo fija JS (refreshWorkspaceBoundary) para que
+       siga cubriendo toda la carta aunque sea más alta que la pantalla
+       visible (antes se cortaba en cartas largas porque .letter-card, con
+       overflow-y:auto, sólo mide el alto del viewport recortado). */
+    .workspace-boundary { position: absolute; left: 0; top: 0; width: 100%; height: 100%; pointer-events: none; z-index: 6; outline: 2px dashed rgba(160, 88, 126, 0.6); outline-offset: -2px; }
     #letter-card-image { width: 100%; display: block; border-radius: inherit; }
     /* Cuando se muestra la imagen final ya renderizada, el fondo del estilo se quita para que no se dibuje dos veces */
     #letter-card.showing-image { background: none !important; border: none !important; outline: none !important; box-shadow: none !important; }
@@ -1068,34 +1079,41 @@
     }
 
     .text-tool-slider-wrap {
-      position: absolute; left: 4px; top: 78px; bottom: 128px; z-index: 4;
-      width: 40px; display: flex; align-items: center; justify-content: center;
+      position: absolute; left: 6px; top: 60px; bottom: 108px; z-index: 4;
+      width: 76px; display: flex; align-items: center; justify-content: center;
     }
     .text-tool-slider-track { position: relative; height: 100%; width: 100%; display: flex; align-items: center; justify-content: center; }
     .text-tool-slider-track input[type="range"] {
       -webkit-appearance: none; appearance: none; position: absolute;
-      width: 100%; height: 28px; background: transparent; cursor: pointer;
+      width: 100%; height: 48px; background: transparent; cursor: pointer;
       transform: rotate(-90deg);
     }
     .text-tool-slider-track input[type="range"]::-webkit-slider-runnable-track {
-      height: 4px; border-radius: 2px; background: rgba(255,255,255,0.25);
+      height: 9px; border-radius: 5px; background: rgba(255,255,255,0.25);
     }
     .text-tool-slider-track input[type="range"]::-webkit-slider-thumb {
-      -webkit-appearance: none; width: 20px; height: 20px; border-radius: 50%; margin-top: -8px;
-      background: var(--text); border: 2px solid var(--accent-soft); box-shadow: 0 2px 6px rgba(0,0,0,0.5);
+      -webkit-appearance: none; width: 36px; height: 36px; border-radius: 50%; margin-top: -14px;
+      background: var(--text); border: 3px solid var(--accent-soft); box-shadow: 0 2px 8px rgba(0,0,0,0.55);
+    }
+    .text-tool-slider-track input[type="range"]::-moz-range-track {
+      height: 9px; border-radius: 5px; background: rgba(255,255,255,0.25);
+    }
+    .text-tool-slider-track input[type="range"]::-moz-range-thumb {
+      width: 36px; height: 36px; border-radius: 50%; border: 3px solid var(--accent-soft);
+      background: var(--text); box-shadow: 0 2px 8px rgba(0,0,0,0.55);
     }
     .text-tool-size-preview {
-      position: absolute; left: 46px; transform: translateY(-50%); opacity: 0; pointer-events: none;
-      transition: opacity 0.12s ease; width: 56px; height: 56px; border-radius: 50%;
+      position: absolute; left: 84px; transform: translateY(-50%); opacity: 0; pointer-events: none;
+      transition: opacity 0.12s ease; width: 78px; height: 78px; border-radius: 50%;
       background: rgba(20,16,26,0.85); backdrop-filter: blur(6px);
       border: 1px solid rgba(255,255,255,0.25); color: var(--text);
-      display: flex; align-items: center; justify-content: center; font-family: 'Inter', sans-serif; font-size: 0.95rem;
+      display: flex; align-items: center; justify-content: center; font-family: 'Inter', sans-serif; font-size: 1.3rem;
     }
     .text-tool-size-preview.visible { opacity: 1; }
 
     .text-tool-input-wrap {
       position: relative; z-index: 2; flex: 1; display: flex; align-items: center; justify-content: center;
-      padding: 0 3.2rem; min-height: 0;
+      padding: 0 3.2rem 0 4.6rem; min-height: 0;
     }
     .text-tool-input {
       max-width: 100%; max-height: 100%; overflow-y: auto; width: 100%;
@@ -1464,68 +1482,6 @@
             </div>
           </div>
 
-          <!-- ─── Panel: texto (negrita / cursiva / subrayado / color) ─── -->
-          <div class="ig-panel" id="panel-canvas-text">
-            <div class="ig-panel-header">
-              <span class="ig-panel-title">Texto</span>
-              <button type="button" class="ig-panel-close" onclick="closeIgPanel('panel-canvas-text')">✕</button>
-            </div>
-            <div class="ig-panel-body">
-              <div class="ig-toggle-row">
-                <button type="button" class="ig-toggle-btn" style="font-weight:bold;" onclick="execCanvasCmd('bold'); this.classList.toggle('active')">N</button>
-                <button type="button" class="ig-toggle-btn" style="font-style:italic;" onclick="execCanvasCmd('italic'); this.classList.toggle('active')">C</button>
-                <button type="button" class="ig-toggle-btn" style="text-decoration:underline;" onclick="execCanvasCmd('underline'); this.classList.toggle('active')">S</button>
-              </div>
-              <div class="ig-slider-block">
-                <div class="ig-panel-section-label">Tamaño de letra</div>
-                <input type="range" id="canvas-font-size" min="6" max="120" value="22" title="Tamaño de letra" oninput="setStickerFontSize('canvas', this.value)" />
-                <span class="ig-slider-value" id="canvas-font-size-value">22px</span>
-              </div>
-              <div>
-                <div class="ig-panel-section-label">Fuente</div>
-                <select id="canvas-font-select" class="ig-native-hidden" onchange="execCanvasCmd('fontName', this.value)" title="Fuente">
-                  <option value="Lora">Lora</option>
-                  <option value="Inter">Inter</option>
-                  <option value="Playfair Display">Playfair</option>
-                  <option value="Cormorant Garamond">Cormorant</option>
-                  <option value="Cinzel">Cinzel</option>
-                  <option value="Montserrat">Montserrat</option>
-                  <option value="Raleway">Raleway</option>
-                  <option value="Josefin Sans">Josefin</option>
-                  <option value="Outfit">Outfit</option>
-                  <option value="Dancing Script">Dancing Script</option>
-                </select>
-                <div class="ig-vscroll" id="canvas-font-list">
-                  <div class="ig-vscroll-item active" data-font="Lora" style="font-family:'Lora',serif;">Lora</div>
-                  <div class="ig-vscroll-item" data-font="Inter" style="font-family:'Inter',sans-serif;">Inter</div>
-                  <div class="ig-vscroll-item" data-font="Playfair Display" style="font-family:'Playfair Display',serif;">Playfair</div>
-                  <div class="ig-vscroll-item" data-font="Cormorant Garamond" style="font-family:'Cormorant Garamond',serif;">Cormorant</div>
-                  <div class="ig-vscroll-item" data-font="Cinzel" style="font-family:'Cinzel',serif;">Cinzel</div>
-                  <div class="ig-vscroll-item" data-font="Montserrat" style="font-family:'Montserrat',sans-serif;">Montserrat</div>
-                  <div class="ig-vscroll-item" data-font="Raleway" style="font-family:'Raleway',sans-serif;">Raleway</div>
-                  <div class="ig-vscroll-item" data-font="Josefin Sans" style="font-family:'Josefin Sans',sans-serif;">Josefin</div>
-                  <div class="ig-vscroll-item" data-font="Outfit" style="font-family:'Outfit',sans-serif;">Outfit</div>
-                  <div class="ig-vscroll-item" data-font="Dancing Script" style="font-family:'Dancing Script',cursive;">Dancing Script</div>
-                </div>
-              </div>
-              <div>
-                <div class="ig-panel-section-label">Color del texto</div>
-                <div class="ig-vscroll" id="canvas-text-colors">
-                  <div class="ig-vscroll-item active" data-color="#e8ddd0"><span class="ig-swatch" style="background:#e8ddd0"></span>Marfil</div>
-                  <div class="ig-vscroll-item" data-color="#c9a96e"><span class="ig-swatch" style="background:#c9a96e"></span>Dorado</div>
-                  <div class="ig-vscroll-item" data-color="#e05656"><span class="ig-swatch" style="background:#e05656"></span>Rojo</div>
-                  <div class="ig-vscroll-item" data-color="#5fb3d9"><span class="ig-swatch" style="background:#5fb3d9"></span>Celeste</div>
-                  <div class="ig-vscroll-item" data-color="#ffffff"><span class="ig-swatch" style="background:#ffffff"></span>Blanco</div>
-                </div>
-                <div class="ig-vscroll-custom-color" onclick="openColorPicker(document.getElementById('canvas-text-color').value, (hex) => { document.getElementById('canvas-text-color').value = hex; document.querySelectorAll('#canvas-text-colors .ig-vscroll-item').forEach(i => i.classList.remove('active')); execCanvasCmd('foreColor', hex); })">
-                  <input type="hidden" id="canvas-text-color" value="#e8ddd0" />
-                  <button type="button" class="cc-swatch-btn" title="Elegir color" tabindex="-1"></button>
-                  <span>Otro color</span>
-                </div>
-              </div>
-            </div>
-          </div>
-
           <!-- ─── Panel: enviar / guardar ─── -->
           <div class="ig-panel" id="panel-canvas-send">
             <div class="ig-panel-header">
@@ -1552,7 +1508,7 @@
               <button type="button" class="tt-icon-btn tt-bg-btn" id="tt-bg-btn" title="Fondo de texto" onclick="cycleTextToolBg()">
                 <span class="tt-bg-icon" id="tt-bg-icon">A</span>
               </button>
-              <button type="button" class="tt-done-btn" onclick="closeCanvasTextTool()">Listo</button>
+              <button type="button" class="tt-done-btn" onclick="closeTextTool()">Listo</button>
             </div>
 
             <div class="text-tool-slider-wrap">
@@ -1662,56 +1618,6 @@
               <datalist id="codes-list"></datalist>
             </div>
             <div class="ig-action-row" onclick="saveLetter()"><span class="ig-icn">💾</span> Guardar carta</div>
-          </div>
-        </div>
-
-        <!-- ─── Panel: texto (fuente + color + N/C/S) ─── -->
-        <div class="ig-panel" id="panel-adm-text">
-          <div class="ig-panel-header">
-            <span class="ig-panel-title">Texto</span>
-            <button type="button" class="ig-panel-close" onclick="closeIgPanel('panel-adm-text')">✕</button>
-          </div>
-          <div class="ig-panel-body">
-            <div class="ig-toggle-row">
-              <button type="button" class="ig-toggle-btn" style="font-weight:bold;" onclick="execCmd('bold'); this.classList.toggle('active')">N</button>
-              <button type="button" class="ig-toggle-btn" style="font-style:italic;" onclick="execCmd('italic'); this.classList.toggle('active')">C</button>
-              <button type="button" class="ig-toggle-btn" style="text-decoration:underline;" onclick="execCmd('underline'); this.classList.toggle('active')">S</button>
-            </div>
-            <div class="ig-slider-block">
-              <div class="ig-panel-section-label">Tamaño de letra</div>
-              <input type="range" id="adm-font-size" min="6" max="120" value="16" title="Tamaño de letra" oninput="setStickerFontSize('admin', this.value)" />
-              <span class="ig-slider-value" id="adm-font-size-value">16px</span>
-            </div>
-            <div>
-              <div class="ig-panel-section-label">Fuente</div>
-              <div class="ig-vscroll" id="adm-font-list">
-                <div class="ig-vscroll-item active" data-font="Lora" style="font-family:'Lora',serif;">Lora</div>
-                <div class="ig-vscroll-item" data-font="Inter" style="font-family:'Inter',sans-serif;">Inter</div>
-                <div class="ig-vscroll-item" data-font="Playfair Display" style="font-family:'Playfair Display',serif;">Playfair</div>
-                <div class="ig-vscroll-item" data-font="Cormorant Garamond" style="font-family:'Cormorant Garamond',serif;">Cormorant</div>
-                <div class="ig-vscroll-item" data-font="Cinzel" style="font-family:'Cinzel',serif;">Cinzel</div>
-                <div class="ig-vscroll-item" data-font="Montserrat" style="font-family:'Montserrat',sans-serif;">Montserrat</div>
-                <div class="ig-vscroll-item" data-font="Raleway" style="font-family:'Raleway',sans-serif;">Raleway</div>
-                <div class="ig-vscroll-item" data-font="Josefin Sans" style="font-family:'Josefin Sans',sans-serif;">Josefin</div>
-                <div class="ig-vscroll-item" data-font="Outfit" style="font-family:'Outfit',sans-serif;">Outfit</div>
-                <div class="ig-vscroll-item" data-font="Dancing Script" style="font-family:'Dancing Script',cursive;">Dancing Script</div>
-              </div>
-            </div>
-            <div>
-              <div class="ig-panel-section-label">Color del texto</div>
-              <div class="ig-vscroll" id="adm-color-list">
-                <div class="ig-vscroll-item active" data-color="#e8ddd0"><span class="ig-swatch" style="background:#e8ddd0"></span>Marfil</div>
-                <div class="ig-vscroll-item" data-color="#c9a96e"><span class="ig-swatch" style="background:#c9a96e"></span>Dorado</div>
-                <div class="ig-vscroll-item" data-color="#e05656"><span class="ig-swatch" style="background:#e05656"></span>Rojo</div>
-                <div class="ig-vscroll-item" data-color="#5fb3d9"><span class="ig-swatch" style="background:#5fb3d9"></span>Celeste</div>
-                <div class="ig-vscroll-item" data-color="#ffffff"><span class="ig-swatch" style="background:#ffffff"></span>Blanco</div>
-              </div>
-              <div class="ig-vscroll-custom-color" onclick="openColorPicker(document.getElementById('adm-color').value, (hex) => { document.getElementById('adm-color').value = hex; document.querySelectorAll('#adm-color-list .ig-vscroll-item').forEach(i => i.classList.remove('active')); execCmd('foreColor', hex); })">
-                <input type="hidden" id="adm-color" value="#e8ddd0" />
-                <button type="button" class="cc-swatch-btn" title="Elegir color" tabindex="-1"></button>
-                <span>Otro color</span>
-              </div>
-            </div>
           </div>
         </div>
 
@@ -2097,30 +2003,16 @@
     }
 
     // El botón "Aa": si hay un cuadro de texto seleccionado, edita ese en vez
-    // de crear uno nuevo.
+    // de crear uno nuevo. Misma lógica e interfaz para el lienzo y para la carta:
+    // ambos abren la herramienta de texto a pantalla completa (estilo IG Stories).
     function handleTextToolClick(scope) {
       const isCanvas = scope === 'canvas';
+      if (isCanvas) deactivateCanvasDrawMode();
 
-      if (isCanvas) {
-        deactivateCanvasDrawMode();
-        const idx = canvasSelectedStickerIdx;
-        const isEditingExisting = idx !== null && idx !== undefined && canvasStickers[idx] && canvasStickers[idx].type === 'text';
-        openCanvasTextTool(isEditingExisting ? idx : null);
-        return;
-      }
-
-      const idx = selectedStickerIdx;
-      const arr = currentStickers;
-      const panelId = 'panel-adm-text';
-
-      if (idx !== null && idx !== undefined && arr[idx] && arr[idx].type === 'text') {
-        syncFontSizeSlider(scope);
-        openIgPanel(panelId);
-        focusStickerTextEditor(idx, isCanvas);
-      } else {
-        addTextSticker();
-        openIgPanel(panelId);
-      }
+      const idx = isCanvas ? canvasSelectedStickerIdx : selectedStickerIdx;
+      const arr = isCanvas ? canvasStickers : currentStickers;
+      const isEditingExisting = idx !== null && idx !== undefined && arr[idx] && arr[idx].type === 'text';
+      openTextTool(scope, isEditingExisting ? idx : null);
     }
 
     function updateTextToolButton(scope) {
@@ -3035,9 +2927,13 @@
     }
 
     async function saveLetter() {
-      const code = document.getElementById('adm-code').value.trim().toLowerCase();
+      const codeInput = document.getElementById('adm-code');
+      const code = codeInput.value.trim().toLowerCase();
       if (!code) {
-        alert('Por favor ingresá un código para la carta.');
+        // Todavía no se estableció un código para la carta: abrimos el panel
+        // para que la persona lo cargue, en vez de solo avisar con un alert.
+        openIgPanel('panel-adm-code');
+        setTimeout(() => codeInput.focus(), 60);
         return;
       }
 
@@ -3317,6 +3213,28 @@
       cartaTiptapEditors[idx] = editor;
     }
 
+    // El marco guía (workspace-boundary-guide) tiene que cubrir toda la
+    // carta, no solo lo que entra en la pantalla. Como .letter-card tiene
+    // overflow-y:auto con altura fija (el tamaño del visor), medimos el
+    // punto más bajo real entre todos los stickers + el propio alto del
+    // contenedor, y se lo aplicamos como "height" en píxeles al marco.
+    function refreshWorkspaceBoundary() {
+      const card = document.querySelector('#live-card-container .letter-card');
+      const layer = document.getElementById('live-stickers-layer');
+      const guide = document.getElementById('workspace-boundary-guide');
+      if (!card || !guide) return;
+      let maxBottom = card.clientHeight || 0;
+      if (layer) {
+        maxBottom = Math.max(maxBottom, layer.scrollHeight || 0);
+        Array.from(layer.children).forEach((child) => {
+          const bottom = (child.offsetTop || 0) + (child.offsetHeight || 0);
+          if (bottom > maxBottom) maxBottom = bottom;
+        });
+      }
+      guide.style.height = maxBottom + 'px';
+    }
+    window.addEventListener('resize', () => { if (currentAdminView) refreshWorkspaceBoundary(); });
+
     function renderStickers(layerContainer, stickersArray, isEditable) {
       if (!layerContainer) return;
 
@@ -3348,7 +3266,9 @@
            const textDiv = document.createElement('div');
            textDiv.className = 'sticker-text-content';
            textDiv.id = `sticker-text-${idx}`;
-           textDiv.style.fontSize = (st.fontSize || 16) + 'px';
+           // Mismo estilo que en el lienzo: fuente, color, alineación y fondo
+           // los define la herramienta de texto a pantalla completa (Aa).
+           applyCanvasTextStyle(textDiv, st);
            if (st.role === 'tag') { textDiv.style.letterSpacing = '0.25em'; textDiv.style.textTransform = 'uppercase'; }
            if (st.role === 'title') { textDiv.style.fontFamily = "'Lora', serif"; textDiv.style.fontStyle = 'italic'; }
            if (st.role === 'sign') { textDiv.style.fontFamily = "'Lora', serif"; textDiv.style.fontStyle = 'italic'; textDiv.style.textAlign = 'right'; }
@@ -3445,16 +3365,29 @@
           resBtn.innerHTML = '⤡';
           wrapper.appendChild(resBtn);
 
-          setupStickerDragAndTransform(wrapper, st, layerContainer, rotBtn, resBtn, idx);
+          const sideLeftBtn = document.createElement('div');
+          sideLeftBtn.className = 'sticker-control control-resize-side control-resize-side-left';
+          sideLeftBtn.innerHTML = '⋮';
+          sideLeftBtn.title = 'Ajustar ancho del recuadro';
+          wrapper.appendChild(sideLeftBtn);
+
+          const sideRightBtn = document.createElement('div');
+          sideRightBtn.className = 'sticker-control control-resize-side control-resize-side-right';
+          sideRightBtn.innerHTML = '⋮';
+          sideRightBtn.title = 'Ajustar ancho del recuadro';
+          wrapper.appendChild(sideRightBtn);
+
+          setupStickerDragAndTransform(wrapper, st, layerContainer, rotBtn, resBtn, idx, sideLeftBtn, sideRightBtn);
         }
 
         layerContainer.appendChild(wrapper);
       });
 
       if (isEditable) refreshPropsPanel();
+      if (isEditable) requestAnimationFrame(refreshWorkspaceBoundary);
     }
 
-    function setupStickerDragAndTransform(wrapper, stickerData, layerContainer, rotBtn, resBtn, idx) {
+    function setupStickerDragAndTransform(wrapper, stickerData, layerContainer, rotBtn, resBtn, idx, sideLeftBtn, sideRightBtn) {
       wrapper.addEventListener('dragstart', (e) => e.preventDefault());
 
       // 1. MOVER (DRAG)
@@ -3553,6 +3486,7 @@
             }
             if (deleteZone) deleteZone.classList.remove('visible', 'armed');
             scheduleAutosave();
+            refreshWorkspaceBoundary();
             return;
           }
 
@@ -3629,6 +3563,7 @@
           window.removeEventListener('touchend', stopPinch);
           window.removeEventListener('touchcancel', stopPinch);
           scheduleAutosave();
+          refreshWorkspaceBoundary();
         }
 
         window.addEventListener('touchmove', doPinch, { passive: false });
@@ -3687,12 +3622,71 @@
           window.removeEventListener('touchmove', doResize);
           window.removeEventListener('touchend', stopResize);
           scheduleAutosave();
+          refreshWorkspaceBoundary();
         }
 
         window.addEventListener('mousemove', doResize);
         window.addEventListener('mouseup', stopResize);
         window.addEventListener('touchmove', doResize, { passive: false });
         window.addEventListener('touchend', stopResize);
+      }
+
+      // 2b. REDIMENSIONAR ANCHO DESDE LOS LADOS: cambia el ancho del recuadro
+      // (y, si es texto, cuántas palabras entran por línea) sin afectar el
+      // tamaño de letra ni la altura de una imagen.
+      if (sideLeftBtn) {
+        sideLeftBtn.addEventListener('mousedown', (e) => startResizeSide(e, 'left'));
+        sideLeftBtn.addEventListener('touchstart', (e) => startResizeSide(e, 'left'), { passive: false });
+      }
+      if (sideRightBtn) {
+        sideRightBtn.addEventListener('mousedown', (e) => startResizeSide(e, 'right'));
+        sideRightBtn.addEventListener('touchstart', (e) => startResizeSide(e, 'right'), { passive: false });
+      }
+
+      function startResizeSide(e, side) {
+        e.stopPropagation();
+        e.preventDefault();
+
+        const containerRect = layerContainer.getBoundingClientRect();
+        const startClientX = e.touches ? e.touches[0].clientX : e.clientX;
+        const initialWidthPercent = stickerData.width;
+        const initialLeftPercent = stickerData.left;
+
+        function doResizeSide(moveEvent) {
+          const mX = moveEvent.touches ? moveEvent.touches[0].clientX : moveEvent.clientX;
+          const deltaPercent = ((mX - startClientX) / containerRect.width) * 100;
+
+          let newWidth, newLeft;
+          if (side === 'right') {
+            newWidth = initialWidthPercent + deltaPercent;
+            newLeft = initialLeftPercent;
+          } else {
+            newWidth = initialWidthPercent - deltaPercent;
+            newLeft = initialLeftPercent + deltaPercent;
+          }
+
+          if (newWidth < 12) { newWidth = 12; }
+          if (newWidth > 400) { newWidth = 400; }
+
+          stickerData.width = newWidth;
+          stickerData.left = newLeft;
+          wrapper.style.width = newWidth + '%';
+          wrapper.style.left = newLeft + '%';
+        }
+
+        function stopResizeSide() {
+          window.removeEventListener('mousemove', doResizeSide);
+          window.removeEventListener('mouseup', stopResizeSide);
+          window.removeEventListener('touchmove', doResizeSide);
+          window.removeEventListener('touchend', stopResizeSide);
+          scheduleAutosave();
+          refreshWorkspaceBoundary();
+        }
+
+        window.addEventListener('mousemove', doResizeSide);
+        window.addEventListener('mouseup', stopResizeSide);
+        window.addEventListener('touchmove', doResizeSide, { passive: false });
+        window.addEventListener('touchend', stopResizeSide);
       }
 
       // 3. ROTAR
@@ -4295,7 +4289,7 @@
           const box = drawCanvas.getBoundingClientRect();
           const leftPct = Math.max(4, Math.min(70, (p.x / box.width) * 100 - 5));
           const topPct = Math.max(4, Math.min(70, (p.y / box.height) * 100 - 5));
-          openCanvasTextTool(null, leftPct, topPct);
+          openTextTool('canvas', null, leftPct, topPct);
           return;
         }
         e.preventDefault();
@@ -4599,6 +4593,21 @@
       return idx;
     }
 
+    // Igual que addCanvasTextSticker pero para la carta (panel de admin): así
+    // ambos usan exactamente la misma herramienta de texto a pantalla completa.
+    function addAdminTextSticker(posLeft, posTop) {
+      currentStickers.push({
+        type: 'text', content: '', placeholder: 'Escribí algo...',
+        left: (posLeft != null ? posLeft : 15), top: (posTop != null ? posTop : 38), width: 70, rotation: 0,
+        fontSize: 22, font: 'Lora', color: '#e8ddd0', align: 'center', bgMode: 'none'
+      });
+      const idx = currentStickers.length - 1;
+      selectedStickerIdx = idx;
+      renderStickers(document.getElementById('live-stickers-layer'), currentStickers, true);
+      scheduleAutosave();
+      return idx;
+    }
+
     function uploadCanvasStickerFile(input) {
       deactivateCanvasDrawMode();
       if (input.files && input.files[0]) {
@@ -4763,20 +4772,25 @@
 
     // idx null = crear un cuadro de texto nuevo (en la posición indicada, si
     // se tocó el lienzo vacío) y abrir la herramienta sobre él.
-    function openCanvasTextTool(idx, posLeft, posTop) {
-      deactivateCanvasDrawMode();
+    // scope: 'canvas' (lienzo compartido) o 'admin' (carta): misma lógica e
+    // interfaz para las dos, solo cambia dónde se guarda el sticker.
+    function openTextTool(scope, idx, posLeft, posTop) {
+      const isCanvas = scope === 'canvas';
+      if (isCanvas) deactivateCanvasDrawMode();
+
+      const stickers = isCanvas ? canvasStickers : currentStickers;
       let isNew = false;
       if (idx === null || idx === undefined) {
-        idx = addCanvasTextSticker(posLeft, posTop);
+        idx = isCanvas ? addCanvasTextSticker(posLeft, posTop) : addAdminTextSticker(posLeft, posTop);
         isNew = true;
       }
-      const st = canvasStickers[idx];
+      const st = stickers[idx];
       if (!st) return;
 
-      canvasSelectedStickerIdx = idx;
+      if (isCanvas) canvasSelectedStickerIdx = idx; else selectedStickerIdx = idx;
 
       ttState = {
-        idx, isNew,
+        scope, idx, isNew,
         font: st.font || 'Lora',
         color: st.color || '#e8ddd0',
         align: st.align || 'center',
@@ -4784,7 +4798,13 @@
         fontSize: st.fontSize || 22
       };
 
+      // La herramienta es un único overlay compartido: lo movemos al marco
+      // (lienzo o carta) que corresponda antes de abrirlo, así se posiciona
+      // y hace zoom con position:absolute respecto del marco correcto.
       const overlay = document.getElementById('canvas-text-tool');
+      const targetShell = document.getElementById(isCanvas ? 'canvas-stage-shell' : 'letter-stage-shell');
+      if (overlay && targetShell && overlay.parentElement !== targetShell) targetShell.appendChild(overlay);
+
       const input = document.getElementById('tt-input');
       if (!overlay || !input) return;
 
@@ -4809,15 +4829,20 @@
     }
 
     // cancel=true: descarta los cambios (usado si alguna vez hace falta
-    // cerrar sin guardar; el botón "Listo" siempre guarda).
-    function closeCanvasTextTool(cancel) {
+    // cerrar sin guardar; el botón "Listo" siempre guarda). El scope se lee
+    // de ttState, así que el botón "Listo" no necesita saber cuál es.
+    function closeTextTool(cancel) {
       const overlay = document.getElementById('canvas-text-tool');
       const input = document.getElementById('tt-input');
       if (!overlay) return;
 
+      let scope = ttState ? ttState.scope : 'canvas';
+      const isCanvas = scope === 'canvas';
+
       if (ttState) {
         const idx = ttState.idx;
-        const st = canvasStickers[idx];
+        const stickers = isCanvas ? canvasStickers : currentStickers;
+        const st = stickers[idx];
         const plain = input ? input.textContent.replace(/\u00a0/g, ' ') : '';
 
         if (st) {
@@ -4830,9 +4855,14 @@
             st.fontSize = ttState.fontSize;
           } else if (ttState.isNew || plain.trim() === '') {
             // Se creó nuevo y quedó vacío (o se canceló): lo sacamos.
-            canvasStickers.splice(idx, 1);
-            if (canvasSelectedStickerIdx === idx) canvasSelectedStickerIdx = null;
-            else if (canvasSelectedStickerIdx > idx) canvasSelectedStickerIdx--;
+            stickers.splice(idx, 1);
+            if (isCanvas) {
+              if (canvasSelectedStickerIdx === idx) canvasSelectedStickerIdx = null;
+              else if (canvasSelectedStickerIdx > idx) canvasSelectedStickerIdx--;
+            } else {
+              if (selectedStickerIdx === idx) selectedStickerIdx = null;
+              else if (selectedStickerIdx > idx) selectedStickerIdx--;
+            }
           }
         }
       }
@@ -4844,8 +4874,14 @@
       if (input) input.blur();
       ttState = null;
 
-      renderCanvasStickers();
-      scheduleCanvasSave();
+      if (isCanvas) {
+        renderCanvasStickers();
+        scheduleCanvasSave();
+      } else {
+        renderStickers(document.getElementById('live-stickers-layer'), currentStickers, true);
+        scheduleAutosave();
+        refreshWorkspaceBoundary();
+      }
     }
 
     function applyTextToolStyles() {
@@ -5154,20 +5190,17 @@
         resBtn.innerHTML = '⤡';
         wrapper.appendChild(resBtn);
 
-        let sideLeftBtn = null, sideRightBtn = null;
-        if (st.type === 'text') {
-          sideLeftBtn = document.createElement('div');
-          sideLeftBtn.className = 'sticker-control control-resize-side control-resize-side-left';
-          sideLeftBtn.innerHTML = '⋮';
-          sideLeftBtn.title = 'Ajustar ancho del recuadro';
-          wrapper.appendChild(sideLeftBtn);
+        const sideLeftBtn = document.createElement('div');
+        sideLeftBtn.className = 'sticker-control control-resize-side control-resize-side-left';
+        sideLeftBtn.innerHTML = '⋮';
+        sideLeftBtn.title = 'Ajustar ancho del recuadro';
+        wrapper.appendChild(sideLeftBtn);
 
-          sideRightBtn = document.createElement('div');
-          sideRightBtn.className = 'sticker-control control-resize-side control-resize-side-right';
-          sideRightBtn.innerHTML = '⋮';
-          sideRightBtn.title = 'Ajustar ancho del recuadro';
-          wrapper.appendChild(sideRightBtn);
-        }
+        const sideRightBtn = document.createElement('div');
+        sideRightBtn.className = 'sticker-control control-resize-side control-resize-side-right';
+        sideRightBtn.innerHTML = '⋮';
+        sideRightBtn.title = 'Ajustar ancho del recuadro';
+        wrapper.appendChild(sideRightBtn);
 
         setupCanvasStickerDragAndTransform(wrapper, st, layerContainer, rotBtn, resBtn, idx, sideLeftBtn, sideRightBtn);
 
