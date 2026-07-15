@@ -579,6 +579,12 @@
     .sticker-img { width: 100%; height: auto; display: block; pointer-events: none; }
     
     .sticker-text-content { width: 100%; height: 100%; outline: none; cursor: text; padding: 4px; }
+    /* Modos de fondo del texto (herramienta "Aa" del lienzo): el fondo se
+       aplica pegado a cada línea (no a todo el recuadro), como en Instagram. */
+    .sticker-bg-solid, .sticker-bg-invert {
+      box-decoration-break: clone; -webkit-box-decoration-break: clone;
+      padding: 0.1em 0.3em !important; border-radius: 6px;
+    }
     #admin-view .sticker-wrapper.selected .sticker-text-content { border: 1px dashed rgba(255,255,255,0.2); }
 
     .sticker-control { position: absolute; width: 22px; height: 22px; border-radius: 50%; display: none; align-items: center; justify-content: center; font-size: 11px; font-weight: bold; z-index: 10; cursor: pointer; box-shadow: 0 2px 6px rgba(0,0,0,0.5); }
@@ -1024,6 +1030,112 @@
     .ig-native-hidden { position: absolute !important; width: 1px !important; height: 1px !important;
       overflow: hidden !important; opacity: 0 !important; pointer-events: none !important; margin: -1px !important; }
 
+    /* ═══════════════ HERRAMIENTA DE TEXTO A PANTALLA COMPLETA (lienzo, estilo IG Stories) ═══════════════ */
+    .text-tool-overlay {
+      position: absolute; inset: 0; z-index: 150; display: none; flex-direction: column;
+    }
+    .text-tool-overlay.open { display: flex; }
+    .text-tool-dim {
+      position: absolute; inset: 0; z-index: 0; background: rgba(0,0,0,0.4); pointer-events: none;
+    }
+    .text-tool-top {
+      position: relative; z-index: 3; display: flex; align-items: center; gap: 0.7rem;
+      padding: calc(0.8rem + env(safe-area-inset-top)) 0.9rem 0.5rem;
+    }
+    .tt-icon-btn {
+      width: 38px; height: 38px; border-radius: 50%; border: none; background: transparent;
+      color: var(--text); display: flex; align-items: center; justify-content: center;
+      cursor: pointer; filter: drop-shadow(0 2px 5px rgba(0,0,0,0.7));
+      -webkit-tap-highlight-color: transparent;
+    }
+    .tt-color-wheel {
+      width: 28px; height: 28px; border-radius: 50%;
+      background: conic-gradient(red, yellow, lime, cyan, blue, magenta, red);
+      border: 2px solid rgba(255,255,255,0.6);
+    }
+    .tt-bg-btn .tt-bg-icon {
+      display: flex; align-items: center; justify-content: center;
+      width: 28px; height: 28px; border-radius: 6px;
+      font-family: 'Lora', serif; font-weight: 700; font-size: 1rem; color: var(--text);
+      background: rgba(255,255,255,0.12); border: 1px solid rgba(255,255,255,0.3);
+    }
+    .tt-bg-btn.active .tt-bg-icon { background: var(--accent); border-color: var(--gold); }
+    .tt-bg-btn .tt-bg-icon.tt-bg-icon-invert { background: rgba(255,255,255,0.85); color: #0d0b0f; }
+    .text-tool-top .tt-done-btn {
+      margin-left: auto; background: var(--accent); color: var(--text); border: none;
+      border-radius: 999px; padding: 0.55rem 1.15rem; font-size: 0.85rem; font-family: 'Inter', sans-serif;
+      cursor: pointer;
+    }
+
+    .text-tool-slider-wrap {
+      position: absolute; left: 4px; top: 78px; bottom: 128px; z-index: 4;
+      width: 40px; display: flex; align-items: center; justify-content: center;
+    }
+    .text-tool-slider-track { position: relative; height: 100%; width: 100%; display: flex; align-items: center; justify-content: center; }
+    .text-tool-slider-track input[type="range"] {
+      -webkit-appearance: none; appearance: none; position: absolute;
+      width: 100%; height: 28px; background: transparent; cursor: pointer;
+      transform: rotate(-90deg);
+    }
+    .text-tool-slider-track input[type="range"]::-webkit-slider-runnable-track {
+      height: 4px; border-radius: 2px; background: rgba(255,255,255,0.25);
+    }
+    .text-tool-slider-track input[type="range"]::-webkit-slider-thumb {
+      -webkit-appearance: none; width: 20px; height: 20px; border-radius: 50%; margin-top: -8px;
+      background: var(--text); border: 2px solid var(--accent-soft); box-shadow: 0 2px 6px rgba(0,0,0,0.5);
+    }
+    .text-tool-size-preview {
+      position: absolute; left: 46px; transform: translateY(-50%); opacity: 0; pointer-events: none;
+      transition: opacity 0.12s ease; width: 56px; height: 56px; border-radius: 50%;
+      background: rgba(20,16,26,0.85); backdrop-filter: blur(6px);
+      border: 1px solid rgba(255,255,255,0.25); color: var(--text);
+      display: flex; align-items: center; justify-content: center; font-family: 'Inter', sans-serif; font-size: 0.95rem;
+    }
+    .text-tool-size-preview.visible { opacity: 1; }
+
+    .text-tool-input-wrap {
+      position: relative; z-index: 2; flex: 1; display: flex; align-items: center; justify-content: center;
+      padding: 0 3.2rem; min-height: 0;
+    }
+    .text-tool-input {
+      max-width: 100%; max-height: 100%; overflow-y: auto; width: 100%;
+      outline: none; word-break: break-word; white-space: pre-wrap;
+      font-family: 'Lora', serif; font-size: 22px; color: #e8ddd0; line-height: 1.35; text-align: center;
+      caret-color: currentColor; -webkit-overflow-scrolling: touch;
+    }
+    .text-tool-input:empty:before {
+      content: attr(data-placeholder); color: rgba(255,255,255,0.45); font-style: italic;
+    }
+
+    .text-tool-bottom {
+      position: relative; z-index: 3; display: flex; flex-direction: column; gap: 0.6rem;
+      padding: 0.6rem 0.8rem calc(0.7rem + env(safe-area-inset-bottom));
+      background: linear-gradient(0deg, rgba(0,0,0,0.55), transparent);
+      transition: transform 0.05s linear;
+    }
+    .tt-font-carousel, .tt-color-carousel {
+      display: flex; flex-direction: row; gap: 0.6rem; overflow-x: auto; -webkit-overflow-scrolling: touch;
+      padding: 0.15rem 0.1rem;
+    }
+    .tt-font-carousel::-webkit-scrollbar, .tt-color-carousel::-webkit-scrollbar { height: 0; }
+    .tt-font-btn {
+      flex-shrink: 0; width: 44px; height: 44px; border-radius: 50%;
+      background: rgba(255,255,255,0.08); border: 1px solid rgba(255,255,255,0.18);
+      color: #fff; font-size: 0.92rem; display: flex; align-items: center; justify-content: center;
+      cursor: pointer; -webkit-tap-highlight-color: transparent;
+    }
+    .tt-font-btn.active { background: var(--accent); border-color: var(--gold); }
+    .tt-color-circle {
+      flex-shrink: 0; width: 30px; height: 30px; border-radius: 50%;
+      border: 2px solid rgba(255,255,255,0.35); cursor: pointer; padding: 0;
+    }
+    .tt-color-circle.active { border-color: var(--gold); box-shadow: 0 0 0 2px rgba(201,169,110,0.4); }
+    .tt-eyedropper {
+      flex-shrink: 0; width: 30px; height: 30px; border-radius: 50%;
+      background: rgba(255,255,255,0.1); border: 1px solid rgba(255,255,255,0.25);
+      display: flex; align-items: center; justify-content: center; font-size: 0.9rem; cursor: pointer;
+    }
+
     /* ═══════════════ SELECTOR DE COLOR PERSONALIZADO (reemplaza al <input type="color"> nativo) ═══════════════ */
     .cc-picker-overlay {
       position: fixed; inset: 0; z-index: 2000; display: none;
@@ -1279,7 +1391,7 @@
             <input type="file" id="canvas-sticker-file" accept="image/*" style="display:none;" onchange="uploadCanvasStickerFile(this)" />
             <button type="button" class="ig-rail-btn" title="Insertar imagen" onclick="document.getElementById('canvas-sticker-file').click()">🖼️</button>
             <button type="button" class="ig-rail-btn" id="canvas-text-btn" title="Agregar texto" onclick="handleTextToolClick('canvas')" style="font-weight:bold;">Aa</button>
-            <button type="button" class="ig-rail-btn" title="Pincel" onclick="openIgPanel('panel-canvas-brush')">🎨</button>
+            <button type="button" class="ig-rail-btn" id="canvas-brush-btn" title="Pincel (dibujar)" onclick="toggleCanvasDrawMode()">🎨</button>
             <button type="button" class="ig-rail-btn canvas-send-btn" title="Enviar" onclick="openIgPanel('panel-canvas-send')">
               <svg viewBox="0 0 24 24" width="19" height="19" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
             </button>
@@ -1427,6 +1539,43 @@
               <div class="ig-action-row" onclick="sendCanvasToTelegram('fran')"><span class="ig-icn">💌</span> Fran</div>
             </div>
           </div>
+
+          <!-- ─── Herramienta de texto a pantalla completa (estilo IG Stories) ─── -->
+          <div class="text-tool-overlay" id="canvas-text-tool">
+            <div class="text-tool-dim"></div>
+
+            <div class="text-tool-top">
+              <button type="button" class="tt-icon-btn" id="tt-align-btn" title="Alineación" onclick="cycleTextToolAlign()">
+                <svg id="tt-align-icon" viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><line x1="4" y1="6" x2="20" y2="6"/><line x1="4" y1="12" x2="14" y2="12"/><line x1="4" y1="18" x2="18" y2="18"/></svg>
+              </button>
+              <button type="button" class="tt-icon-btn tt-color-wheel" id="tt-color-wheel-btn" title="Color" onclick="openTextToolColorWheel()"></button>
+              <button type="button" class="tt-icon-btn tt-bg-btn" id="tt-bg-btn" title="Fondo de texto" onclick="cycleTextToolBg()">
+                <span class="tt-bg-icon" id="tt-bg-icon">A</span>
+              </button>
+              <button type="button" class="tt-done-btn" onclick="closeCanvasTextTool()">Listo</button>
+            </div>
+
+            <div class="text-tool-slider-wrap">
+              <div class="text-tool-slider-track">
+                <input type="range" id="tt-font-size" min="14" max="90" value="22" title="Tamaño de letra"
+                  oninput="onTextToolFontSizeInput(this.value)"
+                  onpointerdown="showTextToolSizePreview()" onpointerup="hideTextToolSizePreview()">
+              </div>
+              <div class="text-tool-size-preview" id="tt-size-preview"><span id="tt-size-preview-val">22</span></div>
+            </div>
+
+            <div class="text-tool-input-wrap">
+              <div class="text-tool-input" id="tt-input" contenteditable="true" data-placeholder="Escribí algo..."></div>
+            </div>
+
+            <div class="text-tool-bottom" id="tt-bottom-bar">
+              <div class="tt-font-carousel" id="tt-font-carousel"></div>
+              <div class="tt-color-carousel" id="tt-color-carousel">
+                <button type="button" class="tt-eyedropper" title="Cuentagotas" onclick="useTextToolEyedropper()">💧</button>
+              </div>
+            </div>
+          </div>
+
 
         </div>
       </div>
@@ -1820,6 +1969,7 @@
 
     function toggleMoveTool(scope) {
       const isCanvas = scope === 'canvas';
+      if (isCanvas) deactivateCanvasDrawMode();
       const btn = document.getElementById(isCanvas ? 'canvas-move-tool-btn' : 'adm-move-tool-btn');
       const shellId = isCanvas ? 'canvas-stage-shell' : 'letter-stage-shell';
       const contentSelector = isCanvas ? '#canvas-stage' : '#live-card-container';
@@ -1950,16 +2100,25 @@
     // de crear uno nuevo.
     function handleTextToolClick(scope) {
       const isCanvas = scope === 'canvas';
-      const idx = isCanvas ? canvasSelectedStickerIdx : selectedStickerIdx;
-      const arr = isCanvas ? canvasStickers : currentStickers;
-      const panelId = isCanvas ? 'panel-canvas-text' : 'panel-adm-text';
+
+      if (isCanvas) {
+        deactivateCanvasDrawMode();
+        const idx = canvasSelectedStickerIdx;
+        const isEditingExisting = idx !== null && idx !== undefined && canvasStickers[idx] && canvasStickers[idx].type === 'text';
+        openCanvasTextTool(isEditingExisting ? idx : null);
+        return;
+      }
+
+      const idx = selectedStickerIdx;
+      const arr = currentStickers;
+      const panelId = 'panel-adm-text';
 
       if (idx !== null && idx !== undefined && arr[idx] && arr[idx].type === 'text') {
         syncFontSizeSlider(scope);
         openIgPanel(panelId);
         focusStickerTextEditor(idx, isCanvas);
       } else {
-        if (isCanvas) addCanvasTextSticker(); else addTextSticker();
+        addTextSticker();
         openIgPanel(panelId);
       }
     }
@@ -4018,6 +4177,25 @@
     let drawHistory = []; // snapshots para "deshacer"
     let lastRemoteImg = null;
     let drawSaveTimer = null;
+    // Modo dibujo: por default tocar el lienzo abre la herramienta de texto
+    // (estilo IG Stories). Solo dibuja a mano alzada si este modo está activo,
+    // que se prende tocando el botón de pincel.
+    let canvasDrawModeActive = false;
+
+    function toggleCanvasDrawMode() {
+      canvasDrawModeActive = !canvasDrawModeActive;
+      const btn = document.getElementById('canvas-brush-btn');
+      if (btn) btn.classList.toggle('active', canvasDrawModeActive);
+      if (canvasDrawModeActive) openIgPanel('panel-canvas-brush');
+      else closeIgPanel('panel-canvas-brush');
+    }
+    function deactivateCanvasDrawMode() {
+      if (!canvasDrawModeActive) return;
+      canvasDrawModeActive = false;
+      const btn = document.getElementById('canvas-brush-btn');
+      if (btn) btn.classList.remove('active');
+      closeIgPanel('panel-canvas-brush');
+    }
 
     function initDrawBoard() {
       drawCanvas = document.getElementById('draw-canvas');
@@ -4110,6 +4288,16 @@
       };
 
       const start = (e) => {
+        if (moveToolActiveCanvas) return;
+        if (!canvasDrawModeActive) {
+          e.preventDefault();
+          const p = getPos(e);
+          const box = drawCanvas.getBoundingClientRect();
+          const leftPct = Math.max(4, Math.min(70, (p.x / box.width) * 100 - 5));
+          const topPct = Math.max(4, Math.min(70, (p.y / box.height) * 100 - 5));
+          openCanvasTextTool(null, leftPct, topPct);
+          return;
+        }
         e.preventDefault();
         drawing = true;
         pushHistory();
@@ -4398,16 +4586,21 @@
       scheduleCanvasSave();
     }
 
-    function addCanvasTextSticker() {
-      canvasStickers.push({ type: 'text', content: '', placeholder: 'Escribí algo...', left: 18, top: 40, width: 64, rotation: 0, fontSize: 22 });
+    function addCanvasTextSticker(posLeft, posTop) {
+      canvasStickers.push({
+        type: 'text', content: '', placeholder: 'Escribí algo...',
+        left: (posLeft != null ? posLeft : 15), top: (posTop != null ? posTop : 38), width: 70, rotation: 0,
+        fontSize: 22, font: 'Lora', color: '#e8ddd0', align: 'center', bgMode: 'none'
+      });
       const idx = canvasStickers.length - 1;
       canvasSelectedStickerIdx = idx;
       renderCanvasStickers();
       scheduleCanvasSave();
-      focusStickerTextEditor(idx, true);
+      return idx;
     }
 
     function uploadCanvasStickerFile(input) {
+      deactivateCanvasDrawMode();
       if (input.files && input.files[0]) {
         const reader = new FileReader();
         reader.onload = (e) => addCanvasStickerToData(e.target.result);
@@ -4446,6 +4639,46 @@
     // Monta un editor Tiptap dentro de textDiv, para un sticker de texto del
     // lienzo (idx = índice en canvasStickers). Mismo formato simple e inline
     // que usan las cartas (negrita/cursiva/subrayado/color/fuente).
+    // ─── Estilo del texto: mismo criterio para el sticker final del lienzo
+    // y para el input de la herramienta de texto pantalla completa (así se
+    // ve igual mientras se escribe que una vez guardado). ───
+    function escapeHtml(str) {
+      return String(str).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+    }
+    function contrastColor(hex) {
+      try {
+        const [r, g, b] = hexToRgb(hex);
+        const luminance = (0.299 * r + 0.587 * g + 0.114 * b) / 255;
+        return luminance > 0.6 ? '#0d0b0f' : '#ffffff';
+      } catch (e) { return '#0d0b0f'; }
+    }
+    function hexToRgbaStr(hex, alpha) {
+      try {
+        const [r, g, b] = hexToRgb(hex);
+        return `rgba(${r}, ${g}, ${b}, ${alpha})`;
+      } catch (e) { return hex; }
+    }
+    function applyCanvasTextStyle(el, st) {
+      const color = st.color || '#e8ddd0';
+      const bgMode = st.bgMode || 'none';
+      el.style.fontSize = (st.fontSize || 22) + 'px';
+      el.style.fontFamily = `'${st.font || 'Lora'}', serif`;
+      el.style.textAlign = st.align || 'center';
+      el.classList.remove('sticker-bg-solid', 'sticker-bg-invert');
+      if (bgMode === 'solid') {
+        el.classList.add('sticker-bg-solid');
+        el.style.background = color;
+        el.style.color = contrastColor(color);
+      } else if (bgMode === 'invert') {
+        el.classList.add('sticker-bg-invert');
+        el.style.background = hexToRgbaStr(color, 0.5);
+        el.style.color = contrastColor(color);
+      } else {
+        el.style.background = 'transparent';
+        el.style.color = color;
+      }
+    }
+
     function mountCanvasTextEditor(textDiv, st, idx) {
       const { Editor, StarterKit, Underline, TextStyle, Color, FontFamily, Placeholder } = window.__TiptapLib;
 
@@ -4476,6 +4709,307 @@
       });
 
       canvasTiptapEditors[idx] = editor;
+    }
+
+    // ════════════════════════════════════════════════════════════
+    // ─── HERRAMIENTA DE TEXTO A PANTALLA COMPLETA (lienzo, estilo IG Stories) ───
+    // Se activa tocando "Aa" o tocando el lienzo vacío (ver `start` en
+    // initDrawBoard). Mientras está abierta, ttState guarda el estilo en
+    // edición; recién se escribe al sticker real al tocar "Listo".
+    // ════════════════════════════════════════════════════════════
+    let ttState = null;
+    let ttViewportHandler = null;
+
+    const TT_FONTS = [
+      { name: 'Lora', fam: "'Lora', serif" },
+      { name: 'Inter', fam: "'Inter', sans-serif" },
+      { name: 'Playfair Display', fam: "'Playfair Display', serif" },
+      { name: 'Cormorant Garamond', fam: "'Cormorant Garamond', serif" },
+      { name: 'Cinzel', fam: "'Cinzel', serif" },
+      { name: 'Montserrat', fam: "'Montserrat', sans-serif" },
+      { name: 'Raleway', fam: "'Raleway', sans-serif" },
+      { name: 'Josefin Sans', fam: "'Josefin Sans', sans-serif" },
+      { name: 'Outfit', fam: "'Outfit', sans-serif" },
+      { name: 'Dancing Script', fam: "'Dancing Script', cursive" }
+    ];
+    const TT_COLORS = ['#e8ddd0', '#c9a96e', '#e05656', '#5fb3d9', '#ffffff', '#0d0b0f', '#7c3f6e', '#6ee7b7', '#f4a6c1', '#f2a65a', '#a78bfa', '#94a3b8'];
+    const TT_ALIGN_STATES = ['left', 'center', 'right'];
+    const TT_ALIGN_LINES = {
+      left: [[4, 20], [4, 15], [4, 18]],
+      center: [[4, 20], [7, 17], [6, 18]],
+      right: [[4, 20], [9, 20], [6, 20]]
+    };
+    const TT_BG_STATES = ['none', 'solid', 'invert'];
+
+    function plainTextFromStickerContent(html) {
+      if (!html) return '';
+      const tmp = document.createElement('div');
+      tmp.innerHTML = html;
+      const paras = Array.from(tmp.querySelectorAll('p'));
+      if (paras.length) return paras.map((p) => p.textContent || '').join('\n');
+      return tmp.textContent || '';
+    }
+
+    function placeCaretAtEnd(el) {
+      try {
+        const range = document.createRange();
+        range.selectNodeContents(el);
+        range.collapse(false);
+        const sel = window.getSelection();
+        sel.removeAllRanges();
+        sel.addRange(range);
+      } catch (e) {}
+    }
+
+    // idx null = crear un cuadro de texto nuevo (en la posición indicada, si
+    // se tocó el lienzo vacío) y abrir la herramienta sobre él.
+    function openCanvasTextTool(idx, posLeft, posTop) {
+      deactivateCanvasDrawMode();
+      let isNew = false;
+      if (idx === null || idx === undefined) {
+        idx = addCanvasTextSticker(posLeft, posTop);
+        isNew = true;
+      }
+      const st = canvasStickers[idx];
+      if (!st) return;
+
+      canvasSelectedStickerIdx = idx;
+
+      ttState = {
+        idx, isNew,
+        font: st.font || 'Lora',
+        color: st.color || '#e8ddd0',
+        align: st.align || 'center',
+        bgMode: st.bgMode || 'none',
+        fontSize: st.fontSize || 22
+      };
+
+      const overlay = document.getElementById('canvas-text-tool');
+      const input = document.getElementById('tt-input');
+      if (!overlay || !input) return;
+
+      input.textContent = plainTextFromStickerContent(st.content || '');
+      document.getElementById('tt-font-size').value = ttState.fontSize;
+      document.getElementById('tt-size-preview-val').textContent = Math.round(ttState.fontSize);
+
+      syncTextToolFontCarousel();
+      syncTextToolColorCarousel();
+      syncTextToolAlignIcon();
+      syncTextToolBgIcon();
+      applyTextToolStyles();
+      const wheelBtn = document.getElementById('tt-color-wheel-btn');
+      if (wheelBtn) wheelBtn.style.boxShadow = `0 0 0 2px ${ttState.color}`;
+
+      overlay.classList.add('open');
+      const shell = overlay.closest('.ig-stage-shell');
+      if (shell) shell.classList.add('editing');
+
+      setTimeout(() => { input.focus(); placeCaretAtEnd(input); }, 60);
+      setupTextToolKeyboardAvoidance();
+    }
+
+    // cancel=true: descarta los cambios (usado si alguna vez hace falta
+    // cerrar sin guardar; el botón "Listo" siempre guarda).
+    function closeCanvasTextTool(cancel) {
+      const overlay = document.getElementById('canvas-text-tool');
+      const input = document.getElementById('tt-input');
+      if (!overlay) return;
+
+      if (ttState) {
+        const idx = ttState.idx;
+        const st = canvasStickers[idx];
+        const plain = input ? input.textContent.replace(/\u00a0/g, ' ') : '';
+
+        if (st) {
+          if (!cancel && plain.trim() !== '') {
+            st.content = plain.split('\n').map((line) => `<p>${escapeHtml(line) || '<br>'}</p>`).join('');
+            st.font = ttState.font;
+            st.color = ttState.color;
+            st.align = ttState.align;
+            st.bgMode = ttState.bgMode;
+            st.fontSize = ttState.fontSize;
+          } else if (ttState.isNew || plain.trim() === '') {
+            // Se creó nuevo y quedó vacío (o se canceló): lo sacamos.
+            canvasStickers.splice(idx, 1);
+            if (canvasSelectedStickerIdx === idx) canvasSelectedStickerIdx = null;
+            else if (canvasSelectedStickerIdx > idx) canvasSelectedStickerIdx--;
+          }
+        }
+      }
+
+      overlay.classList.remove('open');
+      const shell = overlay.closest('.ig-stage-shell');
+      if (shell && !shell.querySelector('.ig-panel.open')) shell.classList.remove('editing');
+      teardownTextToolKeyboardAvoidance();
+      if (input) input.blur();
+      ttState = null;
+
+      renderCanvasStickers();
+      scheduleCanvasSave();
+    }
+
+    function applyTextToolStyles() {
+      const input = document.getElementById('tt-input');
+      if (!input || !ttState) return;
+      applyCanvasTextStyle(input, ttState);
+    }
+
+    function syncTextToolFontCarousel() {
+      const wrap = document.getElementById('tt-font-carousel');
+      if (!wrap) return;
+      wrap.innerHTML = '';
+      TT_FONTS.forEach((f) => {
+        const btn = document.createElement('button');
+        btn.type = 'button';
+        btn.className = 'tt-font-btn' + (ttState && ttState.font === f.name ? ' active' : '');
+        btn.style.fontFamily = f.fam;
+        btn.title = f.name;
+        btn.textContent = 'Aa';
+        btn.onclick = () => selectTextToolFont(f.name);
+        wrap.appendChild(btn);
+      });
+    }
+    function selectTextToolFont(fontName) {
+      if (!ttState) return;
+      ttState.font = fontName;
+      applyTextToolStyles();
+      syncTextToolFontCarousel();
+    }
+
+    function syncTextToolColorCarousel() {
+      const wrap = document.getElementById('tt-color-carousel');
+      if (!wrap) return;
+      wrap.querySelectorAll('.tt-color-circle').forEach((c) => c.remove());
+      TT_COLORS.forEach((hex) => {
+        const btn = document.createElement('button');
+        btn.type = 'button';
+        btn.className = 'tt-color-circle' + (ttState && ttState.color.toLowerCase() === hex.toLowerCase() ? ' active' : '');
+        btn.style.background = hex;
+        btn.title = hex;
+        btn.onclick = () => selectTextToolColor(hex);
+        wrap.appendChild(btn);
+      });
+    }
+    function selectTextToolColor(hex) {
+      setTextToolColor(hex);
+      syncTextToolColorCarousel();
+    }
+    function setTextToolColor(hex) {
+      if (!ttState) return;
+      ttState.color = hex;
+      applyTextToolStyles();
+      const wheelBtn = document.getElementById('tt-color-wheel-btn');
+      if (wheelBtn) wheelBtn.style.boxShadow = `0 0 0 2px ${hex}`;
+    }
+    function openTextToolColorWheel() {
+      if (!ttState) return;
+      openColorPicker(ttState.color, (hex) => {
+        setTextToolColor(hex);
+        syncTextToolColorCarousel();
+      });
+    }
+
+    function cycleTextToolAlign() {
+      if (!ttState) return;
+      const i = TT_ALIGN_STATES.indexOf(ttState.align);
+      ttState.align = TT_ALIGN_STATES[(i + 1) % TT_ALIGN_STATES.length];
+      applyTextToolStyles();
+      syncTextToolAlignIcon();
+    }
+    function syncTextToolAlignIcon() {
+      const svg = document.getElementById('tt-align-icon');
+      if (!svg) return;
+      const lines = svg.querySelectorAll('line');
+      const coords = TT_ALIGN_LINES[ttState ? ttState.align : 'center'] || TT_ALIGN_LINES.center;
+      lines.forEach((ln, i) => {
+        if (coords[i]) { ln.setAttribute('x1', coords[i][0]); ln.setAttribute('x2', coords[i][1]); }
+      });
+    }
+
+    function cycleTextToolBg() {
+      if (!ttState) return;
+      const i = TT_BG_STATES.indexOf(ttState.bgMode);
+      ttState.bgMode = TT_BG_STATES[(i + 1) % TT_BG_STATES.length];
+      applyTextToolStyles();
+      syncTextToolBgIcon();
+    }
+    function syncTextToolBgIcon() {
+      const icon = document.getElementById('tt-bg-icon');
+      const btn = document.getElementById('tt-bg-btn');
+      if (!icon || !btn) return;
+      const mode = ttState ? ttState.bgMode : 'none';
+      btn.classList.toggle('active', mode !== 'none');
+      icon.classList.toggle('tt-bg-icon-invert', mode === 'invert');
+    }
+
+    function onTextToolFontSizeInput(val) {
+      if (!ttState) return;
+      ttState.fontSize = parseFloat(val);
+      applyTextToolStyles();
+      const label = document.getElementById('tt-size-preview-val');
+      if (label) label.textContent = Math.round(ttState.fontSize);
+      positionTextToolSizePreview(val);
+    }
+    function positionTextToolSizePreview(val) {
+      const slider = document.getElementById('tt-font-size');
+      const preview = document.getElementById('tt-size-preview');
+      if (!slider || !preview) return;
+      const min = parseFloat(slider.min), max = parseFloat(slider.max);
+      const pct = (parseFloat(val) - min) / (max - min);
+      // El slider está rotado -90°, así que el extremo mínimo queda abajo.
+      preview.style.top = ((1 - pct) * 100) + '%';
+    }
+    function showTextToolSizePreview() {
+      const preview = document.getElementById('tt-size-preview');
+      const slider = document.getElementById('tt-font-size');
+      if (preview) preview.classList.add('visible');
+      if (slider) positionTextToolSizePreview(slider.value);
+    }
+    function hideTextToolSizePreview() {
+      const preview = document.getElementById('tt-size-preview');
+      if (preview) preview.classList.remove('visible');
+    }
+
+    async function useTextToolEyedropper() {
+      if (!window.EyeDropper) {
+        alert('Tu navegador todavía no soporta el cuentagotas. Elegí un color de la lista.');
+        return;
+      }
+      try {
+        const ed = new window.EyeDropper();
+        const result = await ed.open();
+        if (result && result.sRGBHex) {
+          setTextToolColor(result.sRGBHex);
+          syncTextToolColorCarousel();
+        }
+      } catch (e) {
+        // El usuario canceló el cuentagotas: no hacemos nada.
+      }
+    }
+
+    // Equivalente web de un KeyboardAvoidingView: cuando aparece el teclado
+    // virtual, la barra de fuentes/colores se desplaza hacia arriba para
+    // quedar pegada justo encima de él.
+    function setupTextToolKeyboardAvoidance() {
+      const bar = document.getElementById('tt-bottom-bar');
+      if (!bar || !window.visualViewport) return;
+      const vv = window.visualViewport;
+      ttViewportHandler = () => {
+        const kb = Math.max(0, window.innerHeight - vv.height - vv.offsetTop);
+        bar.style.transform = kb > 4 ? `translateY(-${kb}px)` : '';
+      };
+      vv.addEventListener('resize', ttViewportHandler);
+      vv.addEventListener('scroll', ttViewportHandler);
+      ttViewportHandler();
+    }
+    function teardownTextToolKeyboardAvoidance() {
+      const bar = document.getElementById('tt-bottom-bar');
+      if (bar) bar.style.transform = '';
+      if (window.visualViewport && ttViewportHandler) {
+        window.visualViewport.removeEventListener('resize', ttViewportHandler);
+        window.visualViewport.removeEventListener('scroll', ttViewportHandler);
+      }
+      ttViewportHandler = null;
     }
 
     function refreshCanvasPropsPanel() {
@@ -4553,9 +5087,7 @@
           const textDiv = document.createElement('div');
           textDiv.className = 'sticker-text-content';
           textDiv.id = `canvas-sticker-text-${idx}`;
-          textDiv.style.fontSize = (st.fontSize || 22) + 'px';
-          textDiv.style.fontFamily = "'Lora', serif";
-          textDiv.style.color = '#e8ddd0';
+          applyCanvasTextStyle(textDiv, st);
 
           wrapper.appendChild(textDiv);
 
@@ -4981,6 +5513,7 @@
 
     // Clic afuera de un sticker del lienzo: deselecciona
     document.addEventListener('click', (e) => {
+      if (e.target.closest('#canvas-text-tool')) return; // la herramienta de texto se maneja sola (botón "Listo")
       if (!e.target.closest('#canvas-stickers-layer') && !e.target.closest('.ig-rail') && !e.target.closest('.ig-rail-left') && !e.target.closest('.ig-panel') && !e.target.closest('#canvas-sticker-props-bar')) {
         syncCanvasTextStickersContent();
         canvasSelectedStickerIdx = null;
