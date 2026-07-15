@@ -3,7 +3,7 @@
 // 2) Deja el terreno listo para notificaciones push reales en el futuro
 //    (hoy los toques se muestran mientras la app está abierta; ver index.html).
 
-const CACHE_NAME = 'framecorreo-v2'; // v2: el SW ya no intercepta pedidos cross-origin (Firebase/Telegram)
+const CACHE_NAME = 'framecorreo-v3'; // subir esta versión en cada deploy: v3, v4, v5...
 const APP_SHELL = [
   './',
   './index.html',
@@ -13,10 +13,20 @@ const APP_SHELL = [
 ];
 
 self.addEventListener('install', (event) => {
-  self.skipWaiting();
+  // Ya NO hacemos self.skipWaiting() acá. El SW nuevo se instala y se
+  // queda esperando ("waiting") hasta que el usuario confirme la
+  // actualización desde el banner en index.html.
   event.waitUntil(
     caches.open(CACHE_NAME).then((cache) => cache.addAll(APP_SHELL).catch(() => {}))
   );
+});
+
+// Mensaje que manda el botón "Actualizar" del banner cuando el usuario
+// decide instalar la versión nueva.
+self.addEventListener('message', (event) => {
+  if (event.data === 'SKIP_WAITING') {
+    self.skipWaiting();
+  }
 });
 
 self.addEventListener('activate', (event) => {
