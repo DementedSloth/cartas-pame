@@ -1195,6 +1195,24 @@
     }
     .install-btn.visible { display: flex; }
     .install-btn:hover { border-color: var(--gold); color: var(--gold); }
+
+    /* ═══════════════ AVISO DE ACTUALIZACIÓN DISPONIBLE ═══════════════ */
+    .update-banner {
+      position: fixed; left: 0; right: 0; bottom: 0;
+      display: none; align-items: center; justify-content: space-between; gap: 0.75rem;
+      background: linear-gradient(160deg, var(--surface), #17121e);
+      border-top: 1px solid var(--border);
+      padding: 0.85rem 1.1rem; padding-bottom: calc(0.85rem + env(safe-area-inset-bottom));
+      z-index: 9999;
+      font-family: 'Inter', sans-serif; font-size: 0.85rem; color: var(--text);
+    }
+    .update-banner.visible { display: flex; }
+    .update-banner button {
+      background: var(--accent); border: none; color: var(--text);
+      border-radius: 999px; padding: 0.5rem 1rem; font-size: 0.8rem;
+      white-space: nowrap; cursor: pointer; flex-shrink: 0;
+    }
+    .update-banner button:hover { background: var(--accent-soft); }
   </style>
 </head>
 <body>
@@ -3798,12 +3816,54 @@
       document.getElementById('install-btn').classList.remove('visible');
     }
 
+    let waitingWorker = null;
+
     function registerServiceWorker() {
-      if ('serviceWorker' in navigator) {
-        navigator.serviceWorker.register('sw.js').catch(() => {
-          // Si falla (por ejemplo abriendo el archivo local sin servidor), no rompe nada.
+      if (!('serviceWorker' in navigator)) return;
+
+      navigator.serviceWorker.register('sw.js').then((reg) => {
+        // Caso 1: ya había un SW esperando cuando abrimos la app.
+        if (reg.waiting) showUpdateBanner(reg.waiting);
+
+        // Caso 2: se está instalando uno nuevo mientras la app está abierta.
+        reg.addEventListener('updatefound', () => {
+          const newWorker = reg.installing;
+          if (!newWorker) return;
+          newWorker.addEventListener('statechange', () => {
+            // "installed" + ya había un controller = es una actualización,
+            // no la primera instalación.
+            if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
+              showUpdateBanner(newWorker);
+            }
+          });
         });
-      }
+
+        // Revisa si hay versión nueva cada vez que la app vuelve a primer plano.
+        document.addEventListener('visibilitychange', () => {
+          if (document.visibilityState === 'visible') reg.update();
+        });
+      }).catch(() => {
+        // Si falla (por ejemplo abriendo el archivo local sin servidor), no rompe nada.
+      });
+
+      // Cuando el SW nuevo toma control (porque se tocó "Actualizar"), recargamos.
+      let refreshing = false;
+      navigator.serviceWorker.addEventListener('controllerchange', () => {
+        if (refreshing) return;
+        refreshing = true;
+        window.location.reload();
+      });
+    }
+
+    function showUpdateBanner(worker) {
+      waitingWorker = worker;
+      document.getElementById('update-banner').classList.add('visible');
+    }
+
+    function applyUpdate() {
+      if (!waitingWorker) return;
+      waitingWorker.postMessage('SKIP_WAITING');
+      document.getElementById('update-banner').classList.remove('visible');
     }
 
     // ════════════════════════════════════════════════════════════
@@ -5185,5 +5245,10 @@
       } catch (e) {}
     }
   </script>
+
+  <div id="update-banner" class="update-banner">
+    <span>Hay una versión nueva de Framecorreo ✨</span>
+    <button id="update-banner-btn" onclick="applyUpdate()">Actualizar</button>
+  </div>
 </body>
 </html>
