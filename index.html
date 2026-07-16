@@ -1047,7 +1047,7 @@
     }
     .text-tool-overlay.open { display: flex; }
     .text-tool-dim {
-      position: absolute; inset: 0; z-index: 0; background: rgba(0,0,0,0.4); pointer-events: none;
+      position: absolute; inset: 0; z-index: 0; background: rgba(0,0,0,0.7); pointer-events: none;
     }
     .text-tool-top {
       position: relative; z-index: 3; display: flex; align-items: center; gap: 0.7rem;
@@ -1084,9 +1084,9 @@
     }
     .text-tool-slider-track { position: relative; height: 100%; width: 100%; display: flex; align-items: center; justify-content: center; }
     .text-tool-slider-track input[type="range"] {
-      -webkit-appearance: none; appearance: none; position: absolute;
-      width: 100%; height: 48px; background: transparent; cursor: pointer;
-      transform: rotate(-90deg);
+      -webkit-appearance: none; appearance: none; position: absolute; top: 50%; left: 50%;
+      width: clamp(180px, 58vh, 420px); height: 54px; background: transparent; cursor: pointer;
+      transform: translate(-50%, -50%) rotate(-90deg);
     }
     .text-tool-slider-track input[type="range"]::-webkit-slider-runnable-track {
       height: 9px; border-radius: 5px; background: rgba(255,255,255,0.25);
@@ -1121,10 +1121,6 @@
       font-family: 'Lora', serif; font-size: 22px; color: #e8ddd0; line-height: 1.35; text-align: center;
       caret-color: currentColor; -webkit-overflow-scrolling: touch;
     }
-    .text-tool-input:empty:before {
-      content: attr(data-placeholder); color: rgba(255,255,255,0.45); font-style: italic;
-    }
-
     .text-tool-bottom {
       position: relative; z-index: 3; display: flex; flex-direction: column; gap: 0.6rem;
       padding: 0.6rem 0.8rem calc(0.7rem + env(safe-area-inset-bottom));
@@ -1153,6 +1149,94 @@
       background: rgba(255,255,255,0.1); border: 1px solid rgba(255,255,255,0.25);
       display: flex; align-items: center; justify-content: center; font-size: 0.9rem; cursor: pointer;
     }
+
+    /* ═══════════════ MODO DIBUJO: interfaz dedicada a pantalla completa
+       (mismo lenguaje visual que la herramienta de texto de arriba) ═══════════════ */
+    #canvas-stage-shell.draw-mode-active .ig-rail,
+    #canvas-stage-shell.draw-mode-active .ig-rail-left,
+    #canvas-stage-shell.draw-mode-active .ig-bottom-bar { display: none !important; }
+
+    .draw-mode-ui {
+      position: absolute; inset: 0; z-index: 140; display: none; flex-direction: column; pointer-events: none;
+    }
+    .draw-mode-ui.open { display: flex; }
+    .draw-mode-top {
+      position: relative; z-index: 3; display: flex; align-items: center; justify-content: space-between;
+      gap: 0.6rem; padding: calc(0.8rem + env(safe-area-inset-top)) 0.9rem 0.5rem; pointer-events: auto;
+    }
+    .dm-icon-btn {
+      width: 38px; height: 38px; border-radius: 50%; border: none; background: rgba(255,255,255,0.08);
+      color: var(--text); display: flex; align-items: center; justify-content: center; cursor: pointer;
+      font-size: 1.1rem; filter: drop-shadow(0 2px 5px rgba(0,0,0,0.7)); -webkit-tap-highlight-color: transparent;
+      flex-shrink: 0;
+    }
+    .dm-icon-btn:disabled { opacity: 0.3; cursor: not-allowed; }
+    .dm-brush-select {
+      display: flex; flex-direction: row; gap: 0.35rem; background: rgba(20,16,26,0.55);
+      backdrop-filter: blur(6px); padding: 0.3rem; border-radius: 999px; border: 1px solid rgba(255,255,255,0.12);
+    }
+    .dm-brush-btn {
+      width: 34px; height: 34px; border-radius: 50%; border: 1px solid transparent; background: rgba(255,255,255,0.06);
+      font-size: 0.95rem; display: flex; align-items: center; justify-content: center; cursor: pointer;
+      color: var(--text); -webkit-tap-highlight-color: transparent;
+    }
+    .dm-brush-btn.active { border-color: #fff; background: rgba(255,255,255,0.2); box-shadow: 0 0 0 1px rgba(255,255,255,0.45); }
+    .dm-done-btn {
+      background: var(--accent); color: var(--text); border: none; border-radius: 999px;
+      padding: 0.55rem 1.15rem; font-size: 0.85rem; font-family: 'Inter', sans-serif; cursor: pointer; flex-shrink: 0;
+    }
+
+    .dm-size-wrap {
+      position: absolute; left: 6px; top: 60px; bottom: 108px; z-index: 4;
+      width: 76px; display: flex; align-items: center; justify-content: center; pointer-events: auto;
+    }
+    .dm-size-track { position: relative; height: 100%; width: 100%; display: flex; align-items: center; justify-content: center; }
+    .dm-size-track input[type="range"] {
+      -webkit-appearance: none; appearance: none; position: absolute; top: 50%; left: 50%;
+      width: clamp(180px, 58vh, 420px); height: 54px; background: transparent; cursor: pointer;
+      transform: translate(-50%, -50%) rotate(-90deg);
+    }
+    .dm-size-track input[type="range"]::-webkit-slider-runnable-track { height: 9px; border-radius: 5px; background: rgba(255,255,255,0.25); }
+    .dm-size-track input[type="range"]::-webkit-slider-thumb {
+      -webkit-appearance: none; width: 36px; height: 36px; border-radius: 50%; margin-top: -14px;
+      background: var(--text); border: 3px solid var(--accent-soft); box-shadow: 0 2px 8px rgba(0,0,0,0.55);
+    }
+    .dm-size-track input[type="range"]::-moz-range-track { height: 9px; border-radius: 5px; background: rgba(255,255,255,0.25); }
+    .dm-size-track input[type="range"]::-moz-range-thumb {
+      width: 36px; height: 36px; border-radius: 50%; border: 3px solid var(--accent-soft);
+      background: var(--text); box-shadow: 0 2px 8px rgba(0,0,0,0.55);
+    }
+    .dm-size-preview {
+      position: absolute; left: 90px; top: 50%; transform: translateY(-50%); opacity: 0; pointer-events: none;
+      transition: opacity 0.12s ease; display: flex; flex-direction: column; align-items: center; gap: 0.35rem; z-index: 5;
+    }
+    .dm-size-preview.visible { opacity: 1; }
+    .dm-size-preview-dot {
+      display: block; border-radius: 50%; box-shadow: 0 2px 10px rgba(0,0,0,0.5);
+    }
+    .dm-size-preview-val {
+      font-family: 'Inter', sans-serif; font-size: 0.8rem; color: var(--text);
+      background: rgba(20,16,26,0.85); backdrop-filter: blur(6px); border: 1px solid rgba(255,255,255,0.25);
+      border-radius: 999px; padding: 0.15rem 0.6rem; white-space: nowrap;
+    }
+
+    .dm-palette {
+      position: relative; z-index: 3; display: flex; flex-direction: row; align-items: center; gap: 0.6rem;
+      overflow-x: auto; -webkit-overflow-scrolling: touch; margin-top: auto; pointer-events: auto;
+      padding: 0.6rem 0.8rem calc(0.8rem + env(safe-area-inset-bottom));
+      background: linear-gradient(0deg, rgba(0,0,0,0.55), transparent);
+    }
+    .dm-palette::-webkit-scrollbar { height: 0; }
+    .dm-eyedropper {
+      flex-shrink: 0; width: 30px; height: 30px; border-radius: 50%;
+      background: rgba(255,255,255,0.1); border: 1px solid rgba(255,255,255,0.25);
+      display: flex; align-items: center; justify-content: center; font-size: 0.9rem; cursor: pointer;
+    }
+    .dm-color-circle {
+      flex-shrink: 0; width: 30px; height: 30px; border-radius: 50%;
+      border: 2px solid rgba(255,255,255,0.35); cursor: pointer; padding: 0;
+    }
+    .dm-color-circle.active { border-color: var(--gold); box-shadow: 0 0 0 2px rgba(201,169,110,0.4); }
 
     /* ═══════════════ SELECTOR DE COLOR PERSONALIZADO (reemplaza al <input type="color"> nativo) ═══════════════ */
     .cc-picker-overlay {
@@ -1435,50 +1519,41 @@
             <div class="draw-sync-note" id="draw-sync-note" style="margin:0; flex:1; text-align:left;">el dibujo se guarda solo, y aparece del otro lado ✦</div>
           </div>
 
-          <!-- ─── Panel: pincel (color + tipo + grosor + borrador) ─── -->
-          <div class="ig-panel" id="panel-canvas-brush">
-            <div class="ig-panel-header">
-              <span class="ig-panel-title">Pincel</span>
-              <button type="button" class="ig-panel-close" onclick="closeIgPanel('panel-canvas-brush')">✕</button>
+          <!-- ─── MODO DIBUJO: interfaz dedicada a pantalla completa. El lienzo
+               intercepta todos los gestos táctiles mientras está abierta.
+               Reutiliza el mismo lenguaje visual que la herramienta de texto
+               (barra superior con "Listo", slider vertical con previsualización
+               flotante, carrusel horizontal inferior) para que ambas se sientan
+               coherentes. ─── -->
+          <div class="draw-mode-ui" id="draw-mode-ui">
+            <div class="draw-mode-top">
+              <button type="button" class="dm-icon-btn" id="dm-undo-btn" title="Deshacer" onclick="undoDraw()" disabled>↺</button>
+
+              <div class="dm-brush-select" id="dm-brush-select">
+                <button type="button" class="dm-brush-btn active" data-brush="normal" title="Marcador">🖊️</button>
+                <button type="button" class="dm-brush-btn" data-brush="arrow" title="Flecha">↗️</button>
+                <button type="button" class="dm-brush-btn" data-brush="highlighter" title="Resaltador">🖍️</button>
+                <button type="button" class="dm-brush-btn" data-brush="neon" title="Pincel neón">✨</button>
+                <button type="button" class="dm-brush-btn" data-brush="eraser" title="Goma de borrar">🧽</button>
+              </div>
+
+              <button type="button" class="dm-done-btn" onclick="toggleCanvasDrawMode()">Listo</button>
             </div>
-            <div class="ig-panel-body">
-              <div>
-                <div class="ig-panel-section-label">Color</div>
-                <div class="ig-vscroll" id="draw-colors">
-                  <div class="ig-vscroll-item draw-swatch active" data-color="#e8ddd0"><span class="ig-swatch" style="background:#e8ddd0"></span>Marfil</div>
-                  <div class="ig-vscroll-item draw-swatch" data-color="#c9a96e"><span class="ig-swatch" style="background:#c9a96e"></span>Dorado</div>
-                  <div class="ig-vscroll-item draw-swatch" data-color="#e05656"><span class="ig-swatch" style="background:#e05656"></span>Rojo</div>
-                  <div class="ig-vscroll-item draw-swatch" data-color="#5fb3d9"><span class="ig-swatch" style="background:#5fb3d9"></span>Celeste</div>
-                  <div class="ig-vscroll-item draw-swatch" data-color="#0d0b0f"><span class="ig-swatch" style="background:#0d0b0f; border-color:#3d2e4f;"></span>Negro</div>
-                  <div class="ig-vscroll-item draw-swatch" data-color="#ffffff"><span class="ig-swatch" style="background:#ffffff"></span>Blanco</div>
-                </div>
-                <div class="ig-vscroll-custom-color" onclick="openColorPicker(drawColor, (hex) => { drawColor = hex; document.getElementById('draw-color-custom').value = hex; document.querySelectorAll('.draw-swatch').forEach(s => s.classList.remove('active')); eraserOn = false; document.getElementById('draw-eraser-btn').classList.remove('active'); })">
-                  <input type="hidden" id="draw-color-custom" value="#e8ddd0" />
-                  <button type="button" class="cc-swatch-btn" title="Elegir color" tabindex="-1"></button>
-                  <span>Otro color</span>
-                </div>
+
+            <div class="dm-size-wrap">
+              <div class="dm-size-track">
+                <input type="range" id="dm-size-slider" min="1" max="90" value="6" title="Grosor"
+                  oninput="onDrawSizeInput(this.value)"
+                  onpointerdown="showDrawSizePreview()" onpointerup="hideDrawSizePreview()">
               </div>
-              <div>
-                <div class="ig-panel-section-label">Tipo de pincel</div>
-                <select id="draw-brush-type" class="ig-native-hidden" title="Tipo de pincel">
-                  <option value="normal">Normal</option>
-                  <option value="spray">Aerosol</option>
-                  <option value="pencil">Lápiz</option>
-                  <option value="highlighter">Resaltador</option>
-                </select>
-                <div class="ig-chip-row" id="draw-brush-chips">
-                  <button type="button" class="ig-chip active" data-brush="normal">🖌️ Normal</button>
-                  <button type="button" class="ig-chip" data-brush="spray">💨 Aerosol</button>
-                  <button type="button" class="ig-chip" data-brush="pencil">✏️ Lápiz</button>
-                  <button type="button" class="ig-chip" data-brush="highlighter">🖍️ Resaltador</button>
-                  <button type="button" class="ig-chip" id="draw-eraser-btn">🧽 Borrador</button>
-                </div>
-              </div>
-              <div class="ig-slider-block">
-                <div class="ig-panel-section-label">Grosor</div>
-                <input type="range" id="draw-size" min="1" max="90" value="6" title="Grosor" />
-                <span class="ig-slider-value" id="draw-size-value">6px</span>
-              </div>
+            </div>
+            <div class="dm-size-preview" id="dm-size-preview">
+              <span class="dm-size-preview-dot" id="dm-size-preview-dot"></span>
+              <span class="dm-size-preview-val" id="dm-size-preview-val">6px</span>
+            </div>
+
+            <div class="dm-palette" id="dm-palette">
+              <button type="button" class="dm-eyedropper" title="Cuentagotas" onclick="useDrawEyedropper()">💧</button>
             </div>
           </div>
 
@@ -1497,7 +1572,7 @@
           </div>
 
           <!-- ─── Herramienta de texto a pantalla completa (estilo IG Stories) ─── -->
-          <div class="text-tool-overlay" id="canvas-text-tool">
+          <div class="text-tool-overlay" id="canvas-text-tool" onclick="handleTextToolBackgroundTap(event)">
             <div class="text-tool-dim"></div>
 
             <div class="text-tool-top">
@@ -1521,7 +1596,7 @@
             </div>
 
             <div class="text-tool-input-wrap">
-              <div class="text-tool-input" id="tt-input" contenteditable="true" data-placeholder="Escribí algo..."></div>
+              <div class="text-tool-input" id="tt-input" contenteditable="true"></div>
             </div>
 
             <div class="text-tool-bottom" id="tt-bottom-bar">
@@ -4166,29 +4241,36 @@
     let drawing = false;
     let drawColor = '#e8ddd0';
     let drawSize = 6;
-    let drawBrushType = 'normal'; // normal | spray | pencil | highlighter
-    let eraserOn = false;
+    let drawBrushType = 'normal'; // normal | arrow | highlighter | neon | eraser
     let drawHistory = []; // snapshots para "deshacer"
     let lastRemoteImg = null;
     let drawSaveTimer = null;
     // Modo dibujo: por default tocar el lienzo abre la herramienta de texto
     // (estilo IG Stories). Solo dibuja a mano alzada si este modo está activo,
-    // que se prende tocando el botón de pincel.
+    // que se prende tocando el botón de pincel. Mientras está activo, la
+    // interfaz normal del lienzo (rail de herramientas, barra inferior) se
+    // esconde y se muestra la interfaz dedicada de dibujo a pantalla completa.
     let canvasDrawModeActive = false;
 
     function toggleCanvasDrawMode() {
       canvasDrawModeActive = !canvasDrawModeActive;
-      const btn = document.getElementById('canvas-brush-btn');
-      if (btn) btn.classList.toggle('active', canvasDrawModeActive);
-      if (canvasDrawModeActive) openIgPanel('panel-canvas-brush');
-      else closeIgPanel('panel-canvas-brush');
+      const railBtn = document.getElementById('canvas-brush-btn');
+      if (railBtn) railBtn.classList.toggle('active', canvasDrawModeActive);
+      const shell = document.getElementById('canvas-stage-shell');
+      const ui = document.getElementById('draw-mode-ui');
+      if (shell) shell.classList.toggle('draw-mode-active', canvasDrawModeActive);
+      if (ui) ui.classList.toggle('open', canvasDrawModeActive);
+      if (canvasDrawModeActive) updateDrawUndoBtnState();
     }
     function deactivateCanvasDrawMode() {
       if (!canvasDrawModeActive) return;
       canvasDrawModeActive = false;
-      const btn = document.getElementById('canvas-brush-btn');
-      if (btn) btn.classList.remove('active');
-      closeIgPanel('panel-canvas-brush');
+      const railBtn = document.getElementById('canvas-brush-btn');
+      if (railBtn) railBtn.classList.remove('active');
+      const shell = document.getElementById('canvas-stage-shell');
+      const ui = document.getElementById('draw-mode-ui');
+      if (shell) shell.classList.remove('draw-mode-active');
+      if (ui) ui.classList.remove('open');
     }
 
     function initDrawBoard() {
@@ -4229,41 +4311,42 @@
         return { x: clientX - rect.left, y: clientY - rect.top };
       };
 
-      // Dibuja una nube de puntitos dispersos alrededor del punto (efecto aerosol).
-      const sprayDot = (p) => {
-        const radius = Math.max(4, drawSize);
-        const density = Math.round(6 + drawSize * 0.4);
+      // Dibuja una flecha recta entre dos puntos (línea + punta triangular).
+      const drawArrowShape = (from, to) => {
+        const width = Math.max(2, drawSize);
+        const headLen = Math.max(14, width * 3.2);
+        const angle = Math.atan2(to.y - from.y, to.x - from.x);
         drawCtx.save();
-        drawCtx.globalAlpha = 0.55;
+        drawCtx.globalAlpha = 1;
+        drawCtx.strokeStyle = drawColor;
         drawCtx.fillStyle = drawColor;
-        for (let i = 0; i < density; i++) {
-          const angle = Math.random() * Math.PI * 2;
-          const dist = Math.random() * radius;
-          const dotSize = Math.random() * 1.6 + 0.4;
-          drawCtx.beginPath();
-          drawCtx.arc(p.x + Math.cos(angle) * dist, p.y + Math.sin(angle) * dist, dotSize, 0, Math.PI * 2);
-          drawCtx.fill();
-        }
+        drawCtx.lineCap = 'round';
+        drawCtx.lineJoin = 'round';
+        drawCtx.lineWidth = width;
+        drawCtx.beginPath();
+        drawCtx.moveTo(from.x, from.y);
+        drawCtx.lineTo(to.x, to.y);
+        drawCtx.stroke();
+        drawCtx.beginPath();
+        drawCtx.moveTo(to.x, to.y);
+        drawCtx.lineTo(to.x - headLen * Math.cos(angle - Math.PI / 7), to.y - headLen * Math.sin(angle - Math.PI / 7));
+        drawCtx.lineTo(to.x - headLen * Math.cos(angle + Math.PI / 7), to.y - headLen * Math.sin(angle + Math.PI / 7));
+        drawCtx.closePath();
+        drawCtx.fill();
         drawCtx.restore();
       };
 
       // Aplica el estilo de trazo según el pincel elegido, antes de cada segmento.
       const applyStrokeStyle = () => {
-        drawCtx.globalAlpha = 1;
-        if (eraserOn) {
-          drawCtx.strokeStyle = '#0a080d';
-          drawCtx.lineCap = 'round';
-          drawCtx.lineJoin = 'round';
-          drawCtx.lineWidth = drawSize;
-          return;
-        }
+        drawCtx.shadowBlur = 0;
+        drawCtx.shadowColor = 'transparent';
         switch (drawBrushType) {
-          case 'pencil':
-            drawCtx.globalAlpha = 0.55;
-            drawCtx.strokeStyle = drawColor;
+          case 'eraser':
+            drawCtx.globalAlpha = 1;
+            drawCtx.strokeStyle = '#0a080d';
             drawCtx.lineCap = 'round';
             drawCtx.lineJoin = 'round';
-            drawCtx.lineWidth = Math.max(1, drawSize * 0.55);
+            drawCtx.lineWidth = drawSize;
             break;
           case 'highlighter':
             drawCtx.globalAlpha = 0.28;
@@ -4272,13 +4355,61 @@
             drawCtx.lineJoin = 'round';
             drawCtx.lineWidth = drawSize * 1.9;
             break;
-          default:
+          case 'neon':
+            drawCtx.globalAlpha = 1;
+            drawCtx.strokeStyle = drawColor;
+            drawCtx.lineCap = 'round';
+            drawCtx.lineJoin = 'round';
+            drawCtx.lineWidth = Math.max(2, drawSize * 0.6);
+            drawCtx.shadowBlur = Math.max(10, drawSize * 1.6);
+            drawCtx.shadowColor = drawColor;
+            break;
+          default: // normal / arrow (mientras se arrastra, la flecha usa el mismo trazo base)
             drawCtx.globalAlpha = 1;
             drawCtx.strokeStyle = drawColor;
             drawCtx.lineCap = 'round';
             drawCtx.lineJoin = 'round';
             drawCtx.lineWidth = drawSize;
         }
+      };
+
+      // ─── Easter egg: mantener presionado en una zona vacía del lienzo
+      // rellena toda la pantalla con el color elegido (sólido con el
+      // marcador, translúcido con el resaltador). ───
+      let dmLongPressTimer = null;
+      let dmLongPressTriggered = false;
+      let dmPressStartPos = null;
+      let arrowBaseSnapshot = null;
+      const DM_LONG_PRESS_MS = 550;
+      const DM_LONG_PRESS_TOLERANCE = 6;
+
+      const isCanvasPointEmpty = (p) => {
+        try {
+          const ratio = window.devicePixelRatio || 1;
+          const x = Math.max(0, Math.round(p.x * ratio)), y = Math.max(0, Math.round(p.y * ratio));
+          const d = drawCtx.getImageData(x, y, 1, 1).data;
+          return Math.abs(d[0] - 10) < 14 && Math.abs(d[1] - 8) < 14 && Math.abs(d[2] - 13) < 14;
+        } catch (e) { return false; }
+      };
+
+      const fillDrawCanvasWithColor = () => {
+        const w = drawCanvas.clientWidth, h = drawCanvas.clientHeight;
+        drawCtx.save();
+        if (drawBrushType === 'eraser') {
+          drawCtx.globalAlpha = 1;
+          drawCtx.fillStyle = '#0a080d';
+        } else if (drawBrushType === 'highlighter') {
+          drawCtx.globalAlpha = 0.28;
+          drawCtx.fillStyle = drawColor;
+        } else {
+          drawCtx.globalAlpha = 1;
+          drawCtx.fillStyle = drawColor;
+        }
+        drawCtx.fillRect(0, 0, w, h);
+        drawCtx.restore();
+        scheduleDrawSave();
+        updateDrawUndoBtnState();
+        if (navigator.vibrate) navigator.vibrate(30);
       };
 
       const start = (e) => {
@@ -4293,20 +4424,38 @@
           return;
         }
         e.preventDefault();
+        const p = getPos(e);
+        dmPressStartPos = p;
+        dmLongPressTriggered = false;
+        clearTimeout(dmLongPressTimer);
+        dmLongPressTimer = setTimeout(() => {
+          if (drawing && isCanvasPointEmpty(p)) {
+            dmLongPressTriggered = true;
+            fillDrawCanvasWithColor();
+          }
+        }, DM_LONG_PRESS_MS);
+
         drawing = true;
         pushHistory();
-        const p = getPos(e);
+        updateDrawUndoBtnState();
+        if (drawBrushType === 'arrow') {
+          arrowBaseSnapshot = drawCtx.getImageData(0, 0, drawCanvas.width, drawCanvas.height);
+        }
         drawCtx.beginPath();
         drawCtx.moveTo(p.x, p.y);
-        if (!eraserOn && drawBrushType === 'spray') sprayDot(p);
       };
       const move = (e) => {
         if (!drawing) return;
         e.preventDefault();
         const p = getPos(e);
-        if (!eraserOn && drawBrushType === 'spray') {
-          sprayDot(p);
-          drawCtx.moveTo(p.x, p.y);
+        if (dmPressStartPos && dmLongPressTimer) {
+          const dx = p.x - dmPressStartPos.x, dy = p.y - dmPressStartPos.y;
+          if (Math.hypot(dx, dy) > DM_LONG_PRESS_TOLERANCE) { clearTimeout(dmLongPressTimer); dmLongPressTimer = null; }
+        }
+        if (dmLongPressTriggered) return;
+        if (drawBrushType === 'arrow') {
+          if (arrowBaseSnapshot) drawCtx.putImageData(arrowBaseSnapshot, 0, 0);
+          drawArrowShape(dmPressStartPos, p);
           return;
         }
         applyStrokeStyle();
@@ -4314,9 +4463,14 @@
         drawCtx.stroke();
       };
       const end = (e) => {
+        clearTimeout(dmLongPressTimer);
+        dmLongPressTimer = null;
         if (!drawing) return;
         drawing = false;
+        dmLongPressTriggered = false;
+        arrowBaseSnapshot = null;
         drawCtx.globalAlpha = 1;
+        drawCtx.shadowBlur = 0;
         scheduleDrawSave();
       };
 
@@ -4327,39 +4481,18 @@
       drawCanvas.addEventListener('touchmove', move, { passive: false });
       drawCanvas.addEventListener('touchend', end);
 
-      // Paleta de colores
-      document.querySelectorAll('.draw-swatch').forEach((sw) => {
-        sw.addEventListener('click', () => {
-          document.querySelectorAll('.draw-swatch').forEach((s) => s.classList.remove('active'));
-          sw.classList.add('active');
-          drawColor = sw.dataset.color;
-          eraserOn = false;
-          document.getElementById('draw-eraser-btn').classList.remove('active');
-        });
-      });
-      document.getElementById('draw-color-custom').addEventListener('input', (e) => {
-        drawColor = e.target.value;
-        eraserOn = false;
-        document.querySelectorAll('.draw-swatch').forEach((s) => s.classList.remove('active'));
-        document.getElementById('draw-eraser-btn').classList.remove('active');
+      // ─── Selector de pinceles de la nueva interfaz de dibujo ───
+      document.querySelectorAll('#dm-brush-select .dm-brush-btn').forEach((btn) => {
+        btn.addEventListener('click', () => selectDrawBrush(btn.dataset.brush));
       });
 
-      // Tipo de pincel (normal, aerosol, lápiz, resaltador)
-      document.getElementById('draw-brush-type').addEventListener('change', (e) => {
-        drawBrushType = e.target.value;
-      });
+      // ─── Paleta de colores (misma lista que la herramienta de texto, para
+      // que ambas interfaces sean coherentes) + cuentagotas ───
+      renderDrawPalette();
 
-      // Chips grandes del panel "Pincel" (sustituyen visualmente al <select>,
-      // pero siguen escribiendo en él para no duplicar lógica)
-      document.querySelectorAll('#draw-brush-chips .ig-chip[data-brush]').forEach((chip) => {
-        chip.addEventListener('click', () => {
-          document.querySelectorAll('#draw-brush-chips .ig-chip[data-brush]').forEach((c) => c.classList.remove('active'));
-          chip.classList.add('active');
-          const sel = document.getElementById('draw-brush-type');
-          sel.value = chip.dataset.brush;
-          sel.dispatchEvent(new Event('change'));
-        });
-      });
+      // ─── Slider vertical de grosor con previsualización flotante ───
+      const dmSizeSlider = document.getElementById('dm-size-slider');
+      if (dmSizeSlider) dmSizeSlider.value = drawSize;
 
       // Fuente del texto (panel "Texto"): misma lógica que en las cartas
       wireIgVscrollToSelect('canvas-font-list', 'canvas-font-select', 'font');
@@ -4375,22 +4508,11 @@
         });
       });
 
-      const sizeSlider = document.getElementById('draw-size');
-      const sizeValue = document.getElementById('draw-size-value');
-      sizeSlider.addEventListener('input', (e) => {
-        drawSize = parseInt(e.target.value, 10);
-        if (sizeValue) sizeValue.textContent = drawSize + 'px';
-      });
-
-      document.getElementById('draw-eraser-btn').addEventListener('click', (e) => {
-        eraserOn = !eraserOn;
-        e.currentTarget.classList.toggle('active', eraserOn);
-      });
-
       document.getElementById('draw-undo-btn').addEventListener('click', undoDraw);
 
       document.getElementById('draw-clear-btn').addEventListener('click', () => {
         pushHistory();
+        updateDrawUndoBtnState();
         const w = drawCanvas.clientWidth, h = drawCanvas.clientHeight;
         drawCtx.globalAlpha = 1;
         drawCtx.fillStyle = '#0a080d';
@@ -4422,6 +4544,90 @@
       const prev = drawHistory.pop();
       drawCtx.putImageData(prev, 0, 0);
       scheduleDrawSave();
+      updateDrawUndoBtnState();
+    }
+
+    function updateDrawUndoBtnState() {
+      const btn = document.getElementById('dm-undo-btn');
+      if (btn) btn.disabled = !drawHistory.length;
+    }
+
+    // ─── Paleta de colores del modo dibujo: reutiliza la misma lista de
+    // colores que la herramienta de texto (TT_COLORS), para que ambas
+    // interfaces se sientan coherentes entre sí. ───
+    function renderDrawPalette() {
+      const wrap = document.getElementById('dm-palette');
+      if (!wrap) return;
+      wrap.querySelectorAll('.dm-color-circle').forEach((c) => c.remove());
+      TT_COLORS.forEach((hex) => {
+        const btn = document.createElement('button');
+        btn.type = 'button';
+        btn.className = 'dm-color-circle' + (drawColor.toLowerCase() === hex.toLowerCase() ? ' active' : '');
+        btn.style.background = hex;
+        btn.title = hex;
+        btn.onclick = () => selectDrawColor(hex);
+        wrap.appendChild(btn);
+      });
+    }
+    function selectDrawColor(hex) {
+      drawColor = hex;
+      if (drawBrushType === 'eraser') selectDrawBrush('normal');
+      renderDrawPalette();
+      updateDrawSizePreviewVisual();
+    }
+    async function useDrawEyedropper() {
+      if (!window.EyeDropper) {
+        alert('Tu navegador todavía no soporta el cuentagotas. Elegí un color de la lista.');
+        return;
+      }
+      try {
+        const ed = new window.EyeDropper();
+        const result = await ed.open();
+        if (result && result.sRGBHex) selectDrawColor(result.sRGBHex);
+      } catch (e) {
+        // El usuario canceló el cuentagotas: no hacemos nada.
+      }
+    }
+
+    function selectDrawBrush(type) {
+      drawBrushType = type;
+      document.querySelectorAll('#dm-brush-select .dm-brush-btn').forEach((b) => {
+        b.classList.toggle('active', b.dataset.brush === type);
+      });
+      updateDrawSizePreviewVisual();
+    }
+
+    function onDrawSizeInput(val) {
+      drawSize = parseFloat(val);
+      updateDrawSizePreviewVisual();
+    }
+    function updateDrawSizePreviewVisual() {
+      const dot = document.getElementById('dm-size-preview-dot');
+      const val = document.getElementById('dm-size-preview-val');
+      if (!dot || !val) return;
+      const visualSize = Math.max(8, Math.min(90, drawSize));
+      dot.style.width = visualSize + 'px';
+      dot.style.height = visualSize + 'px';
+      if (drawBrushType === 'eraser') {
+        dot.style.background = 'rgba(255,255,255,0.18)';
+        dot.style.border = '1px dashed rgba(255,255,255,0.5)';
+      } else if (drawBrushType === 'highlighter') {
+        dot.style.background = hexToRgbaStr(drawColor, 0.35);
+        dot.style.border = '1px solid rgba(255,255,255,0.35)';
+      } else {
+        dot.style.background = drawColor;
+        dot.style.border = '1px solid rgba(255,255,255,0.35)';
+      }
+      val.textContent = Math.round(drawSize) + 'px';
+    }
+    function showDrawSizePreview() {
+      const preview = document.getElementById('dm-size-preview');
+      if (preview) preview.classList.add('visible');
+      updateDrawSizePreviewVisual();
+    }
+    function hideDrawSizePreview() {
+      const preview = document.getElementById('dm-size-preview');
+      if (preview) preview.classList.remove('visible');
     }
 
     function pushHistory() {
@@ -4882,6 +5088,16 @@
         scheduleAutosave();
         refreshWorkspaceBoundary();
       }
+    }
+
+    // Tocar en cualquier parte alejada del campo de texto (el fondo oscurecido,
+    // el espacio vacío alrededor de los botones, etc.) cancela la entrada,
+    // igual que si se hubiera tocado "afuera" de un modal. Los controles
+    // interactivos quedan excluidos para no interferir con su uso normal.
+    function handleTextToolBackgroundTap(e) {
+      if (!ttState) return;
+      if (e.target.closest('.tt-icon-btn, .tt-done-btn, .text-tool-slider-wrap, .text-tool-input, .tt-font-carousel, .tt-color-carousel')) return;
+      closeTextTool(true);
     }
 
     function applyTextToolStyles() {
