@@ -26,7 +26,7 @@
       --accent: #7c3f6e;
       --accent-soft: #a0587e;
       --gold: #c9a96e;
-      --text: #e8ddd0;
+      --text: #ffffff;
       --text-muted: #8a7a6e;
       --wa-blue: #34b7f1;
     }
@@ -59,13 +59,50 @@
       padding-bottom: 0;
     }
     body:has(#login-view.active) .container { margin-top: 0; }
-    #canvas-stage-shell { margin-top: 0 !important; max-height: 100dvh !important; }
-    @media (min-width: 481px) {
-      #canvas-stage-shell { max-height: calc(100dvh - 0.9rem) !important; }
-      /* En PC no hace falta el aire de arriba: la barra de código y el
-         avatar de perfil dejan de vivir abajo del todo y pasan a ser
-         botones flotantes dentro del marco (ver .desktop-nav-float). */
-      body:has(#login-view.active) { padding-top: 0; }
+
+    /* El editor de cartas (#admin-view) puede ser más alto que la pantalla
+       (el marco de la carta + la galería debajo). Como <html> tiene
+       overflow:hidden (ver arriba), el scroll de toda la página queda
+       desactivado a nivel global; por eso hacía falta convertir al body,
+       mientras esta vista está activa, en su propio contenedor con scroll
+       propio — si no, todo lo que sobra debajo del marco (la galería)
+       quedaba recortado y era imposible llegar a ella. */
+    body:has(#admin-view.active) {
+      height: 100dvh;
+      overflow-y: auto;
+      overflow-x: hidden;
+      -webkit-overflow-scrolling: touch;
+    }
+
+    /* La pantalla principal ya no lleva el lienzo compartido: ahora es
+       simplemente una tarjeta centrada con el código, así que la vista
+       vuelve a poder scrollear como cualquier otra si hiciera falta. */
+    body:has(#login-view.active) { height: auto; overflow-x: hidden; overflow-y: auto; }
+
+    /* ─── Pantalla de inicio: tarjeta centrada con el código ─── */
+    .home-hero {
+      width: 100%; flex: 1; min-height: calc(100dvh - 2rem);
+      display: flex; flex-direction: column; align-items: center; justify-content: center;
+      position: relative; padding: 1.5rem 0;
+    }
+    .home-card {
+      width: 100%; max-width: 400px; margin: 0 auto;
+      background: linear-gradient(160deg, var(--surface), #17121e);
+      border: 1px solid var(--border); border-radius: 16px;
+      padding: 2.6rem 1.8rem; text-align: center;
+      box-shadow: 0 30px 70px -20px rgba(0,0,0,0.85), 0 0 0 1px rgba(255,255,255,0.04);
+    }
+    .home-card-icon { font-size: 1.8rem; margin-bottom: 0.7rem; opacity: 0.85; }
+    .home-card-icon img { width: 64px; height: 64px; display: block; margin: 0 auto; border-radius: 18px; }
+    .home-card-title { font-family: 'Lora', serif; font-size: 1.9rem; font-style: italic; color: var(--text); margin-bottom: 0.5rem; }
+    .home-card-sub { font-size: 0.85rem; color: var(--text-muted); margin-bottom: 1.6rem; letter-spacing: 0.02em; }
+    .home-card .code-entry-wrap { max-width: none; margin: 0; }
+    .home-card .error-msg:not(:empty) { margin-top: 1rem; }
+    .home-card .error-block { text-align: left; }
+    .home-profile-btn { position: absolute; top: 0; right: 0.3rem; }
+    @media (max-width: 480px) {
+      .home-hero { min-height: calc(100dvh - 1.6rem); padding: 1rem 0; }
+      .home-card { padding: 2.2rem 1.5rem; }
     }
 
     /* ─── FONDOS FX ─── */
@@ -95,19 +132,14 @@
 
     .view-section { width: 100%; display: none; flex-direction: column; align-items: center; }
     .view-section.active { display: flex; }
-    #login-view { padding-bottom: calc(var(--bottom-nav-h) + 1.4rem); position: relative; }
-    @media (min-width: 481px) {
-      #login-view { padding-bottom: 0; }
-    }
+    #login-view { padding-bottom: 0; position: relative; }
 
-    /* En pantallas chicas el lienzo ya ocupa (100dvh - bottom-nav-h) por sí
-       solo (ver .ig-stage-shell), así que el padding/margen extra de arriba
-       y abajo de la pantalla de inicio sobra: eso es lo que generaba scroll
-       y franjas vacías. Achicamos body y #login-view a cero en ese caso. */
+    /* Ya no hay lienzo ocupando la pantalla: la vista de inicio es solo la
+       tarjeta centrada con el código, así que en pantallas chicas alcanza
+       con sacar el padding/margen extra de arriba, sin bloquear el scroll. */
     @media (max-width: 480px) {
-      body { padding-top: 0; padding-bottom: 0; overflow: hidden; }
+      body { padding-top: 0; padding-bottom: 0; }
       .container { margin-top: 0; }
-      #login-view { padding-bottom: 0; }
       #login-view .install-btn.visible { margin: 0.4rem auto 0; }
     }
 
@@ -426,7 +458,13 @@
     }
 
     /* ─── GALERÍAS ─── */
-    .gallery-section { margin-top: 3.5rem; border-top: 1px dashed #382c47; padding-top: 2rem; width: 100%; max-width: 900px; margin-left: auto; margin-right: auto; }
+    #gallery-view { padding: 1.4rem 1.2rem 2rem; }
+    .gallery-view-header {
+      width: 100%; max-width: 900px; margin: 0 auto 1.2rem; display: flex; align-items: center; gap: 0.8rem;
+    }
+    .gallery-view-header .icon-row-btn { position: static; }
+    .gallery-view-title { font-family: 'Lora', serif; font-style: italic; font-size: 1.3rem; color: var(--text); }
+    .gallery-section { width: 100%; max-width: 900px; margin-left: auto; margin-right: auto; }
 
     .gallery-controls { display: flex; align-items: center; gap: 0.7rem; margin-bottom: 0.9rem; }
     .hamburger-btn {
@@ -532,25 +570,20 @@
     /* ─── ESTILOS DE CARTA ─── */
     #live-card-container { transition: all 0.4s ease; width: 100%; }
     .letter-card { position: relative; transition: all 0.3s ease; min-height: 700px; overflow: hidden; }
-    /* Visor (destinatario): la carta se muestra como imagen. Si la carta es
-       larga, no la recortamos: dejamos que la imagen crezca a su alto real
-       y que sea la vista (#letter-view) la que scrollee, para poder verla
-       entera de punta a punta. */
+    /* Visor (destinatario): la carta se muestra como texto real (tag/título/
+       cuerpo/firma), igual que en el editor. Si la carta es larga, no la
+       recortamos: dejamos que .letter-card crezca a su alto real y que sea
+       la vista (#letter-view) la que scrollee, para poder verla entera de
+       punta a punta. */
     #letter-view { width: 100%; max-height: 100dvh; overflow-y: auto; -webkit-overflow-scrolling: touch; padding-bottom: 1rem; }
-    #letter-card.showing-image { overflow: visible; min-height: 0; }
-    #letter-card-image { height: auto; }
     /* Límite visible del área de trabajo, solo en el editor (no en la carta final que ve Pame) */
     /* El alto de este marco lo fija JS (refreshWorkspaceBoundary) para que
        siga cubriendo toda la carta aunque sea más alta que la pantalla
        visible (antes se cortaba en cartas largas porque .letter-card, con
        overflow-y:auto, sólo mide el alto del viewport recortado). */
     .workspace-boundary { position: absolute; left: 0; top: 0; width: 100%; height: 100%; pointer-events: none; z-index: 6; outline: 2px dashed rgba(160, 88, 126, 0.6); outline-offset: -2px; }
-    #letter-card-image { width: 100%; display: block; border-radius: inherit; }
-    /* Cuando se muestra la imagen final ya renderizada, el fondo del estilo se quita para que no se dibuje dos veces */
-    #letter-card.showing-image { background: none !important; border: none !important; outline: none !important; box-shadow: none !important; }
-    #letter-card.showing-image::before { content: none !important; display: none !important; }
 
-    .style-a .letter-card { padding: 1rem 0; background: transparent; border: none; }
+    .style-a .letter-card { padding: 1rem 2.2rem; background: transparent; border: none; }
     .style-a .letter-tag { font-size: 0.75rem; letter-spacing: 0.3em; text-transform: uppercase; color: var(--text-muted); margin-bottom: 2rem; display: block; }
     .style-a .letter-title { font-family: 'Lora', serif; font-size: 2rem; font-weight: 400; font-style: italic; color: var(--text); margin-bottom: 2.5rem; line-height: 1.2; border-bottom: 1px solid var(--border); padding-bottom: 1.5rem; }
     .style-a .letter-body { font-family: 'Lora', serif; font-size: 1.05rem; line-height: 2; color: #d4c9bc; min-height: 180px; }
@@ -638,6 +671,20 @@
     .opacity-label { font-size: 0.72rem; color: var(--text-muted); white-space: nowrap; flex-shrink: 0; }
     .opacity-slider { width: 100%; min-width: 60px; height: 22px; cursor: pointer; flex: 1; accent-color: var(--accent-soft); }
     .sticker-props-bar .props-opacity-group { flex: 1; min-width: 0; }
+
+    /* Barrita mínima de formato (Negrita/Cursiva/Subrayado) para el cuerpo
+       fijo de la carta (#adm-body). Reutiliza el mismo look que sticker-props-bar. */
+    .body-format-bar {
+      position: absolute; left: 12px; right: 12px;
+      bottom: calc(3.5rem + env(safe-area-inset-bottom));
+      z-index: 65;
+      display: none; align-items: center; justify-content: center; gap: 0.5rem;
+      background: rgba(16,13,20,0.9); backdrop-filter: blur(6px);
+      border: 1px solid rgba(255,255,255,0.14); border-radius: 14px;
+      padding: 0.4rem 0.6rem; margin: 0;
+      box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+    }
+    .body-format-bar.visible { display: flex; }
 
     /* ═══════════════ PIZARRA COMPARTIDA (DIBUJO) ═══════════════ */
     .draw-wrapper {
@@ -1443,172 +1490,34 @@
 
       <button class="install-btn" id="install-btn" onclick="installApp()">📲 Instalar Framecorreo</button>
 
-      <div class="error-msg" id="error-msg"></div>
-      <div class="error-block" id="error-block">
-        <div class="error-block-msg" id="error-block-msg">Ups, hubo un problema de conexión. ¿Probamos de nuevo?</div>
-        <button class="retry-btn" onclick="retryUnlock()">↻ Reintentar</button>
-      </div>
+      <!-- ─── Pantalla de inicio: ya sin el lienzo compartido, solo una
+           tarjeta centrada con el campo para abrir una carta por código. ─── -->
+      <div class="home-hero">
 
-      <!-- ─── Barra de navegación inferior: código para abrir una carta + perfil ─── -->
-      <div class="bottom-nav-bar" id="bottom-nav-bar">
-        <button type="button" class="code-toggle-btn" id="code-toggle-btn" onclick="toggleCodeEntry()" title="Abrir carta con código" aria-label="Abrir carta con código">
-          <svg viewBox="0 0 24 24" width="19" height="19" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5" width="18" height="14" rx="2"/><line x1="3" y1="9" x2="21" y2="9"/><line x1="7" y1="13" x2="11" y2="13"/></svg>
-        </button>
-        <div class="code-entry-wrap" id="code-entry-wrap">
-          <input id="code-input" class="code-entry-input" type="text" placeholder="Código" autocomplete="off" spellcheck="false" />
-          <button class="code-entry-submit" id="unlock-btn" onclick="unlock()" title="Abrir carta" aria-label="Abrir carta">
-            <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>
-          </button>
-        </div>
-        <button type="button" class="profile-avatar-btn" id="profile-avatar-btn" onclick="openProfileModal()" title="Cambiar de perfil">
+        <button type="button" class="profile-avatar-btn home-profile-btn" id="profile-avatar-btn" onclick="openProfileModal()" title="Cambiar de perfil">
           <span class="avatar-fallback" id="avatar-fallback">?</span>
           <img id="avatar-img" style="display:none;" alt="Perfil" />
         </button>
-      </div>
 
-      <!-- ─── Lienzo compartido: mismo sistema que las cartas (stickers, imágenes,
-           texto con formato). Rediseño estilo "story" de Instagram: el lienzo
-           ocupa toda la pantalla (relación 15:8) y las herramientas son
-           botones circulares flotantes arriba a la derecha. ─── -->
-      <div class="draw-wrapper" id="draw-wrapper">
+        <div class="home-card">
+          <div class="home-card-icon"><img src="icon-192.png" alt="Framecorreo" /></div>
+          <div class="home-card-title">Framecorreo</div>
+          <div class="home-card-sub">Ingresá el código de tu carta</div>
 
-        <div class="ig-stage-shell" id="canvas-stage-shell">
-
-          <div class="draw-canvas-box" id="canvas-stage">
-            <canvas id="draw-canvas"></canvas>
-            <div class="stickers-layer" id="canvas-stickers-layer"></div>
-          </div>
-
-          <div class="ig-stage-dim"></div>
-
-          <!-- Rail izquierdo: deshacer / borrar todo / mover página -->
-          <div class="ig-rail-left">
-            <button type="button" class="ig-rail-btn" id="draw-undo-btn" title="Deshacer">↺</button>
-            <button type="button" class="ig-rail-btn" id="draw-clear-btn" title="Borrar todo">🗑️</button>
-            <button type="button" class="ig-rail-btn" id="canvas-move-tool-btn" title="Mover / hacer zoom en la página" onclick="toggleMoveTool('canvas')">✋</button>
-          </div>
-
-          <!-- Rail derecho: estilo Instagram Stories, vertical -->
-          <div class="ig-rail">
-            <input type="file" id="canvas-sticker-file" accept="image/*" style="display:none;" onchange="uploadCanvasStickerFile(this)" />
-            <button type="button" class="ig-rail-btn" title="Insertar imagen" onclick="document.getElementById('canvas-sticker-file').click()">🖼️</button>
-            <button type="button" class="ig-rail-btn" id="canvas-text-btn" title="Agregar texto" onclick="handleTextToolClick('canvas')" style="font-weight:bold;">Aa</button>
-            <button type="button" class="ig-rail-btn" id="canvas-brush-btn" title="Pincel (dibujar)" onclick="toggleCanvasDrawMode()">🎨</button>
-            <button type="button" class="ig-rail-btn canvas-send-btn" title="Enviar" onclick="openIgPanel('panel-canvas-send')">
-              <svg viewBox="0 0 24 24" width="19" height="19" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
+          <div class="code-entry-wrap" id="code-entry-wrap">
+            <input id="code-input" class="code-entry-input" type="text" placeholder="Código" autocomplete="off" spellcheck="false" />
+            <button class="code-entry-submit" id="unlock-btn" onclick="unlock()" title="Abrir carta" aria-label="Abrir carta">
+              <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>
             </button>
           </div>
 
-          <div class="delete-drop-zone" id="canvas-delete-zone"><span>✕</span></div>
-
-          <!-- Barra flotante de elemento seleccionado (capas / opacidad) -->
-          <div class="sticker-props-bar" id="canvas-sticker-props-bar">
-            <span class="props-bar-label">Elemento</span>
-            <div class="tb-group">
-              <button type="button" class="layer-btn" id="canvas-props-layer-down" title="Enviar atrás">⬇</button>
-              <button type="button" class="layer-btn" id="canvas-props-layer-up" title="Traer al frente">⬆</button>
-            </div>
-            <div class="tb-sep"></div>
-            <div class="tb-group props-opacity-group">
-              <span class="opacity-label">Opacidad</span>
-              <input type="range" class="opacity-slider" id="canvas-props-opacity" min="0.1" max="1" step="0.05" value="1" title="Opacidad">
-            </div>
+          <div class="error-msg" id="error-msg"></div>
+          <div class="error-block" id="error-block">
+            <div class="error-block-msg" id="error-block-msg">Ups, hubo un problema de conexión. ¿Probamos de nuevo?</div>
+            <button class="retry-btn" onclick="retryUnlock()">↻ Reintentar</button>
           </div>
-
-          <div class="ig-bottom-bar">
-            <div class="draw-sync-note" id="draw-sync-note" style="margin:0; flex:1; text-align:left;">el dibujo se guarda solo, y aparece del otro lado ✦</div>
-          </div>
-
-          <!-- ─── MODO DIBUJO: interfaz dedicada a pantalla completa. El lienzo
-               intercepta todos los gestos táctiles mientras está abierta.
-               Reutiliza el mismo lenguaje visual que la herramienta de texto
-               (barra superior con "Listo", slider vertical con previsualización
-               flotante, carrusel horizontal inferior) para que ambas se sientan
-               coherentes. ─── -->
-          <div class="draw-mode-ui" id="draw-mode-ui">
-            <div class="draw-mode-top">
-              <button type="button" class="dm-icon-btn" id="dm-undo-btn" title="Deshacer" onclick="undoDraw()" disabled>↺</button>
-
-              <div class="dm-brush-select" id="dm-brush-select">
-                <button type="button" class="dm-brush-btn active" data-brush="normal" title="Marcador">🖊️</button>
-                <button type="button" class="dm-brush-btn" data-brush="arrow" title="Flecha">↗️</button>
-                <button type="button" class="dm-brush-btn" data-brush="highlighter" title="Resaltador">🖍️</button>
-                <button type="button" class="dm-brush-btn" data-brush="neon" title="Pincel neón">✨</button>
-                <button type="button" class="dm-brush-btn" data-brush="eraser" title="Goma de borrar">🧽</button>
-              </div>
-
-              <button type="button" class="dm-done-btn" onclick="toggleCanvasDrawMode()">Listo</button>
-            </div>
-
-            <div class="dm-size-wrap">
-              <div class="dm-size-track">
-                <input type="range" id="dm-size-slider" min="1" max="90" value="6" title="Grosor"
-                  oninput="onDrawSizeInput(this.value)"
-                  onpointerdown="showDrawSizePreview()" onpointerup="hideDrawSizePreview()">
-              </div>
-            </div>
-            <div class="dm-size-preview" id="dm-size-preview">
-              <span class="dm-size-preview-dot" id="dm-size-preview-dot"></span>
-              <span class="dm-size-preview-val" id="dm-size-preview-val">6px</span>
-            </div>
-
-            <div class="dm-palette" id="dm-palette">
-              <button type="button" class="dm-eyedropper" title="Cuentagotas" onclick="useDrawEyedropper()">💧</button>
-            </div>
-          </div>
-
-          <!-- ─── Panel: enviar / guardar ─── -->
-          <div class="ig-panel" id="panel-canvas-send">
-            <div class="ig-panel-header">
-              <span class="ig-panel-title">Compartir lienzo</span>
-              <button type="button" class="ig-panel-close" onclick="closeIgPanel('panel-canvas-send')">✕</button>
-            </div>
-            <div class="ig-panel-body">
-              <div class="ig-action-row" onclick="saveCanvasAsImage()"><span class="ig-icn">💾</span> Guardar como imagen</div>
-              <div class="ig-panel-section-label">Enviar por Telegram a</div>
-              <div class="ig-action-row" onclick="sendCanvasToTelegram('pame')"><span class="ig-icn">💌</span> Pame</div>
-              <div class="ig-action-row" onclick="sendCanvasToTelegram('fran')"><span class="ig-icn">💌</span> Fran</div>
-            </div>
-          </div>
-
-          <!-- ─── Herramienta de texto a pantalla completa (estilo IG Stories) ─── -->
-          <div class="text-tool-overlay" id="canvas-text-tool" onclick="handleTextToolBackgroundTap(event)">
-            <div class="text-tool-dim"></div>
-
-            <div class="text-tool-top">
-              <button type="button" class="tt-icon-btn" id="tt-align-btn" title="Alineación" onclick="cycleTextToolAlign()">
-                <svg id="tt-align-icon" viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><line x1="4" y1="6" x2="20" y2="6"/><line x1="4" y1="12" x2="14" y2="12"/><line x1="4" y1="18" x2="18" y2="18"/></svg>
-              </button>
-              <button type="button" class="tt-icon-btn tt-color-wheel" id="tt-color-wheel-btn" title="Color" onclick="openTextToolColorWheel()"></button>
-              <button type="button" class="tt-icon-btn tt-bg-btn" id="tt-bg-btn" title="Fondo de texto" onclick="cycleTextToolBg()">
-                <span class="tt-bg-icon" id="tt-bg-icon">A</span>
-              </button>
-              <button type="button" class="tt-done-btn" onclick="closeTextTool()">Listo</button>
-            </div>
-
-            <div class="text-tool-slider-wrap">
-              <div class="text-tool-slider-track">
-                <input type="range" id="tt-font-size" min="14" max="90" value="22" title="Tamaño de letra"
-                  oninput="onTextToolFontSizeInput(this.value)"
-                  onpointerdown="showTextToolSizePreview()" onpointerup="hideTextToolSizePreview()">
-              </div>
-              <div class="text-tool-size-preview" id="tt-size-preview"><span id="tt-size-preview-val">22</span></div>
-            </div>
-
-            <div class="text-tool-input-wrap">
-              <div class="text-tool-input" id="tt-input" contenteditable="true"></div>
-            </div>
-
-            <div class="text-tool-bottom" id="tt-bottom-bar">
-              <div class="tt-font-carousel" id="tt-font-carousel"></div>
-              <div class="tt-color-carousel" id="tt-color-carousel">
-                <button type="button" class="tt-eyedropper" title="Cuentagotas" onclick="useTextToolEyedropper()">💧</button>
-              </div>
-            </div>
-          </div>
-
-
         </div>
+
       </div>
 
     </div>
@@ -1636,7 +1545,26 @@
           <div class="letter-card">
             <div class="stickers-layer" id="live-stickers-layer"></div>
             <div class="workspace-boundary" id="workspace-boundary-guide"></div>
+            <span class="letter-tag">
+              <input id="adm-tag" class="card-editor-input" type="text" placeholder="PARA LEER CUANDO..." value="PARA LEER CUANDO" />
+            </span>
+            <h2 class="letter-title">
+              <input id="adm-title" class="card-editor-input" type="text" placeholder="Escribí un hermoso título..." />
+            </h2>
+            <div class="letter-body">
+              <div id="adm-body" class="card-editor-div" contenteditable="true" placeholder="Escribí el cuerpo de tu carta acá... seleccioná el texto y usá la barra de abajo para darle formato"></div>
+            </div>
+            <div class="letter-sign">
+              <input id="adm-sign" class="card-editor-input" type="text" placeholder="— Tu Firma" value="— Fran" />
+            </div>
           </div>
+        </div>
+
+        <!-- Barrita mínima de formato para el cuerpo de la carta: aparece al enfocar #adm-body -->
+        <div class="body-format-bar" id="body-format-bar">
+          <button type="button" class="tb-btn" onmousedown="event.preventDefault()" onclick="execCmdBody('bold')" title="Negrita" style="font-weight:bold;">N</button>
+          <button type="button" class="tb-btn" onmousedown="event.preventDefault()" onclick="execCmdBody('italic')" title="Cursiva" style="font-style:italic;">C</button>
+          <button type="button" class="tb-btn" onmousedown="event.preventDefault()" onclick="execCmdBody('underline')" title="Subrayado" style="text-decoration:underline;">S</button>
         </div>
 
         <div class="ig-stage-dim"></div>
@@ -1658,6 +1586,7 @@
         <!-- Rail inferior derecho: salir del panel / código de la carta (fuera del paso, ya no estorban) -->
         <div class="ig-rail-bottom-right">
           <button type="button" class="icon-row-btn ig-rail-btn" onclick="exitAdmin()" title="Salir del panel">←</button>
+          <button type="button" class="icon-row-btn ig-rail-btn" onclick="openGalleryView()" title="Galería de cartas">🗂️</button>
           <button type="button" class="ig-rail-btn" onclick="openIgPanel('panel-adm-code')" title="Código de la carta">#</button>
         </div>
 
@@ -1739,6 +1668,53 @@
           </div>
         </div>
 
+        <!-- ─── Herramienta de texto a pantalla completa (estilo IG Stories).
+             Es un overlay único y compartido (ver openTextTool): antes también
+             se usaba para el lienzo de la pantalla de inicio, hoy solo para
+             el cuerpo de la carta. ─── -->
+        <div class="text-tool-overlay" id="canvas-text-tool" onclick="handleTextToolBackgroundTap(event)">
+          <div class="text-tool-dim"></div>
+
+          <div class="text-tool-top">
+            <button type="button" class="tt-icon-btn" id="tt-align-btn" title="Alineación" onclick="cycleTextToolAlign()">
+              <svg id="tt-align-icon" viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><line x1="4" y1="6" x2="20" y2="6"/><line x1="4" y1="12" x2="14" y2="12"/><line x1="4" y1="18" x2="18" y2="18"/></svg>
+            </button>
+            <button type="button" class="tt-icon-btn tt-color-wheel" id="tt-color-wheel-btn" title="Color" onclick="openTextToolColorWheel()"></button>
+            <button type="button" class="tt-icon-btn tt-bg-btn" id="tt-bg-btn" title="Fondo de texto" onclick="cycleTextToolBg()">
+              <span class="tt-bg-icon" id="tt-bg-icon">A</span>
+            </button>
+            <button type="button" class="tt-done-btn" onclick="closeTextTool()">Listo</button>
+          </div>
+
+          <div class="text-tool-slider-wrap">
+            <div class="text-tool-slider-track">
+              <input type="range" id="tt-font-size" min="14" max="90" value="22" title="Tamaño de letra"
+                oninput="onTextToolFontSizeInput(this.value)"
+                onpointerdown="showTextToolSizePreview()" onpointerup="hideTextToolSizePreview()">
+            </div>
+            <div class="text-tool-size-preview" id="tt-size-preview"><span id="tt-size-preview-val">22</span></div>
+          </div>
+
+          <div class="text-tool-input-wrap">
+            <div class="text-tool-input" id="tt-input" contenteditable="true"></div>
+          </div>
+
+          <div class="text-tool-bottom" id="tt-bottom-bar">
+            <div class="tt-font-carousel" id="tt-font-carousel"></div>
+            <div class="tt-color-carousel" id="tt-color-carousel">
+              <button type="button" class="tt-eyedropper" title="Cuentagotas" onclick="useTextToolEyedropper()">💧</button>
+            </div>
+          </div>
+        </div>
+
+      </div>
+
+    </div>
+
+    <div id="gallery-view" class="view-section">
+      <div class="gallery-view-header">
+        <button type="button" class="icon-row-btn" onclick="closeGalleryView()" title="Volver al editor">←</button>
+        <span class="gallery-view-title">Galería de cartas</span>
       </div>
 
       <div class="gallery-section">
@@ -1770,7 +1746,6 @@
           <div class="gallery-empty">Cargando colección...</div>
         </div>
       </div>
-
     </div>
 
     <div class="bulk-actions-bar" id="bulk-actions-bar">
@@ -1782,8 +1757,11 @@
     <div id="letter-view" class="view-section">
       <div id="letter-card-wrapper">
         <div class="letter-card" id="letter-card">
-          <img id="letter-card-image" style="display:none;" alt="Carta" />
           <div class="stickers-layer" id="view-stickers-layer"></div>
+          <span class="letter-tag" id="letter-tag"></span>
+          <h2 class="letter-title" id="letter-title"></h2>
+          <div class="letter-body" id="letter-body"></div>
+          <div class="letter-sign" id="letter-sign"></div>
         </div>
       </div>
       <button class="back-btn" onclick="goBackFromLetter()">← volver</button>
@@ -2268,6 +2246,40 @@
       }
     }
 
+    // ─── COMANDO DE FORMATO PARA EL CUERPO FIJO DE LA CARTA (#adm-body) ───
+    // #adm-body es un contentEditable clásico (no Tiptap), igual que en la
+    // versión vieja: usa document.execCommand directamente, sin pasar por
+    // execCmd/applyTiptapCommand (que son para los cuadros de texto-sticker).
+    function execCmdBody(command, value = null) {
+      const bodyEl = document.getElementById('adm-body');
+      if (bodyEl) bodyEl.focus();
+      document.execCommand(command, false, value);
+      scheduleAutosave();
+    }
+
+    // Muestra/oculta la barrita de formato del cuerpo al enfocar/desenfocar
+    // #adm-body. Los botones de la barra usan onmousedown=preventDefault
+    // para no robarle el foco al cuerpo antes de ejecutar el comando.
+    (function setupBodyFormatBar() {
+      const bodyEl = document.getElementById('adm-body');
+      const bar = document.getElementById('body-format-bar');
+      if (!bodyEl || !bar) return;
+      bodyEl.addEventListener('focus', () => bar.classList.add('visible'));
+      bodyEl.addEventListener('blur', () => {
+        setTimeout(() => {
+          if (document.activeElement !== bodyEl) bar.classList.remove('visible');
+        }, 150);
+      });
+    })();
+
+    // El marco guía del área de trabajo también tiene que reaccionar cuando
+    // crece/achica el cuerpo de la carta a medida que se escribe (no solo
+    // cuando se agregan/mueven stickers decorativos).
+    ['adm-tag', 'adm-title', 'adm-body', 'adm-sign'].forEach((id) => {
+      const el = document.getElementById(id);
+      if (el) el.addEventListener('input', () => { if (currentAdminView) requestAnimationFrame(refreshWorkspaceBoundary); });
+    });
+
     // ─── AUTOSAVE ───
     function scheduleAutosave() {
       clearTimeout(autosaveTimer);
@@ -2279,6 +2291,10 @@
           style: document.getElementById('adm-style').value,
           dateType: document.getElementById('adm-date-type').value,
           releaseDate: document.getElementById('adm-date').value,
+          tag: document.getElementById('adm-tag').value,
+          title: document.getElementById('adm-title').value,
+          body: document.getElementById('adm-body').innerHTML,
+          sign: document.getElementById('adm-sign').value,
           stickers: currentStickers
         };
         try {
@@ -2314,6 +2330,10 @@
         if (draft.style) { document.getElementById('adm-style').value = draft.style; updateLiveCardStyle(draft.style); }
         if (draft.dateType) { document.getElementById('adm-date-type').value = draft.dateType; toggleDateField(draft.dateType); }
         if (draft.releaseDate) document.getElementById('adm-date').value = draft.releaseDate;
+        if (draft.tag) document.getElementById('adm-tag').value = draft.tag;
+        if (draft.title) document.getElementById('adm-title').value = draft.title;
+        if (draft.body) document.getElementById('adm-body').innerHTML = draft.body;
+        if (draft.sign) document.getElementById('adm-sign').value = draft.sign;
         if (draft.stickers && draft.stickers.length) {
           currentStickers = draft.stickers;
           renderStickers(document.getElementById('live-stickers-layer'), currentStickers, true);
@@ -2322,7 +2342,7 @@
     }
 
     function attachAutosaveListeners() {
-      ['adm-code','adm-style','adm-date-type','adm-date'].forEach(id => {
+      ['adm-code','adm-style','adm-date-type','adm-date','adm-tag','adm-title','adm-body','adm-sign'].forEach(id => {
         const el = document.getElementById(id);
         if (el) {
           el.addEventListener('input', scheduleAutosave);
@@ -2420,57 +2440,55 @@
       setLoadingState(false);
     }
 
-    // ─── TEXTO COMO CUADROS-STICKER (todo el texto de la carta vive acá) ───
-    function createDefaultTextStickers() {
-      return [
-        { type: 'text', role: 'tag', content: 'PARA LEER CUANDO', left: 8, top: 5, width: 84, rotation: 0, fontSize: 12 },
-        { type: 'text', role: 'title', content: '', placeholder: 'Título', left: 8, top: 8, width: 84, rotation: 0, fontSize: 30 },
-        { type: 'text', role: 'body', content: '', placeholder: 'Cuerpo de la carta...', left: 8, top: 16, width: 84, rotation: 0, fontSize: 16 },
-        { type: 'text', role: 'sign', content: '— Fran', left: 8, top: 70, width: 84, rotation: 0, fontSize: 16 }
-      ];
+    // ─── CAMPOS FIJOS DE LA CARTA (tag/título/cuerpo/firma) ───
+    // Antes todo el texto vivía como cuadros-sticker con Tiptap; ahora son
+    // campos fijos otra vez (como en la versión vieja), así que la carta
+    // fluye y se puede scrollear en vez de cortarse en un lienzo de alto fijo.
+    // Los stickers ahora son solo decoración (imágenes / cuadros de texto libres).
+    //
+    // Compatibilidad: si una carta quedó guardada con el sistema viejo de
+    // cuadros-sticker con role (tag/title/body/sign), estas funciones
+    // recuperan el texto automáticamente desde ahí; no se pierde nada de lo
+    // ya escrito.
+    function extractStickerRoleText(carta, role) {
+      if (Array.isArray(carta.stickers)) {
+        const st = carta.stickers.find(s => s.role === role);
+        if (st && st.content) {
+          const div = document.createElement('div');
+          div.innerHTML = st.content;
+          return div.textContent.trim();
+        }
+      }
+      return '';
     }
 
-    // Convierte cartas guardadas con el formato viejo (tag/title/body/sign fijos) a cuadros de texto
-    function migrateLetterToStickers(carta) {
-      let list = Array.isArray(carta.stickers) ? carta.stickers.slice() : [];
-      list.forEach(st => { if (st.type === 'text' && !st.fontSize) st.fontSize = 16; });
-      const hasRoleTexts = list.some(st => st.role);
-      if (!hasRoleTexts && (carta.tag || carta.title || carta.body || carta.sign)) {
-        const legacy = [];
-        if (carta.tag) legacy.push({ type: 'text', role: 'tag', content: carta.tag, left: 8, top: 5, width: 84, rotation: 0, fontSize: 12 });
-        if (carta.title) legacy.push({ type: 'text', role: 'title', content: carta.title, left: 8, top: 10, width: 84, rotation: 0, fontSize: 30 });
-        if (carta.body) legacy.push({ type: 'text', role: 'body', content: carta.body, left: 8, top: 22, width: 84, rotation: 0, fontSize: 16 });
-        if (carta.sign) legacy.push({ type: 'text', role: 'sign', content: carta.sign, left: 8, top: 70, width: 84, rotation: 0, fontSize: 16 });
-        list = legacy.concat(list);
+    function extractStickerRoleHtml(carta, role) {
+      if (Array.isArray(carta.stickers)) {
+        const st = carta.stickers.find(s => s.role === role);
+        if (st && st.content) return st.content;
       }
-      return list;
+      return '';
+    }
+
+    function getCartaTag(carta) { return carta.tag || extractStickerRoleText(carta, 'tag'); }
+    function getCartaTitleRaw(carta) { return carta.title || extractStickerRoleText(carta, 'title'); }
+    function getCartaBody(carta) { return carta.body || extractStickerRoleHtml(carta, 'body'); }
+    function getCartaSign(carta) { return carta.sign || extractStickerRoleText(carta, 'sign'); }
+
+    // Stickers decorativos nomás: los que tenían role (tag/title/body/sign)
+    // ya se leyeron arriba como campos fijos, no hace falta mostrarlos también
+    // como cuadros arrastrables.
+    function getDecorativeStickers(carta) {
+      return Array.isArray(carta.stickers) ? carta.stickers.filter(st => !st.role) : [];
     }
 
     function getCartaTitleText(carta) {
-      if (carta.title) return carta.title;
-      if (Array.isArray(carta.stickers)) {
-        const t = carta.stickers.find(s => s.role === 'title');
-        if (t && t.content) {
-          const div = document.createElement('div');
-          div.innerHTML = t.content;
-          const txt = div.textContent.trim();
-          if (txt) return txt;
-        }
-      }
-      return '(Sin título)';
+      const t = getCartaTitleRaw(carta);
+      return t || '(Sin título)';
     }
 
     function getCartaTagText(carta) {
-      if (Array.isArray(carta.stickers)) {
-        const t = carta.stickers.find(s => s.role === 'tag');
-        if (t && t.content) {
-          const div = document.createElement('div');
-          div.innerHTML = t.content;
-          const txt = div.textContent.trim();
-          if (txt) return txt;
-        }
-      }
-      return carta.tag || '';
+      return getCartaTag(carta);
     }
 
     function formatEditedLabel(ts) {
@@ -2492,7 +2510,11 @@
       document.getElementById('adm-code').value = '';
       document.getElementById('adm-style').value = 'style-a';
       document.getElementById('adm-date-type').value = 'immediate';
-      currentStickers = createDefaultTextStickers();
+      document.getElementById('adm-tag').value = 'PARA LEER CUANDO';
+      document.getElementById('adm-title').value = '';
+      document.getElementById('adm-body').innerHTML = '';
+      document.getElementById('adm-sign').value = '— Fran';
+      currentStickers = [];
       selectedStickerIdx = null;
       renderStickers(document.getElementById('live-stickers-layer'), currentStickers, true);
       toggleDateField('immediate');
@@ -2542,24 +2564,32 @@
 
         document.getElementById('letter-card-wrapper').className = carta.style || 'style-a';
 
-        const imgEl = document.getElementById('letter-card-image');
-        const viewLayer = document.getElementById('view-stickers-layer');
-        const cardEl = document.getElementById('letter-card');
+        document.getElementById('letter-tag').textContent = getCartaTag(carta);
+        document.getElementById('letter-title').textContent = getCartaTitleRaw(carta);
 
-        if (carta.cardImage) {
-          // Se muestra la imagen final tal cual se guardó (estilo "story")
-          imgEl.src = carta.cardImage;
-          imgEl.style.display = 'block';
-          viewLayer.style.display = 'none';
-          viewLayer.innerHTML = '';
-          cardEl.classList.add('showing-image');
-        } else {
-          // Carta vieja / nunca re-guardada con el sistema nuevo: se arma en vivo
-          imgEl.style.display = 'none';
-          viewLayer.style.display = '';
-          cardEl.classList.remove('showing-image');
-          renderStickers(viewLayer, migrateLetterToStickers(carta), false);
+        const bodyEl = document.getElementById('letter-body');
+        const signEl = document.getElementById('letter-sign');
+        bodyEl.innerHTML = '';
+        signEl.textContent = '';
+
+        const bodyHtml = getCartaBody(carta);
+        if (bodyHtml) {
+          if (bodyHtml.includes('<') && bodyHtml.includes('>')) {
+            bodyEl.innerHTML = bodyHtml;
+          } else {
+            bodyHtml.split(/\n+/).forEach(para => {
+              if (para.trim()) {
+                const p = document.createElement('p');
+                p.textContent = para.trim();
+                bodyEl.appendChild(p);
+              }
+            });
+          }
         }
+        signEl.textContent = getCartaSign(carta);
+
+        const viewLayer = document.getElementById('view-stickers-layer');
+        renderStickers(viewLayer, getDecorativeStickers(carta), false);
 
         switchView('letter-view');
       } catch (err) {
@@ -2859,6 +2889,7 @@
       editBtn.onclick = (e) => {
         e.stopPropagation();
         if (selectionMode) return;
+        switchView('admin-view');
         setupEditorForEdit(code, carta);
       };
 
@@ -2894,6 +2925,17 @@
     function setupEditorForEdit(code, carta) {
       document.getElementById('adm-code').value = code;
       document.getElementById('adm-style').value = carta.style || 'style-a';
+      document.getElementById('adm-tag').value = getCartaTag(carta);
+      document.getElementById('adm-title').value = getCartaTitleRaw(carta);
+
+      const bodyHtml = getCartaBody(carta);
+      if (bodyHtml) {
+        document.getElementById('adm-body').innerHTML = bodyHtml.includes('<') ? bodyHtml : bodyHtml.replace(/\n/g, '<br>');
+      } else {
+        document.getElementById('adm-body').innerHTML = '';
+      }
+
+      document.getElementById('adm-sign').value = getCartaSign(carta);
 
       const dateType = carta.dateType || 'immediate';
       document.getElementById('adm-date-type').value = dateType;
@@ -2903,8 +2945,10 @@
         document.getElementById('adm-date').value = carta.releaseDate || '';
       }
 
-      currentStickers = migrateLetterToStickers(carta);
-      if (!currentStickers.length) currentStickers = createDefaultTextStickers();
+      // Solo quedan en stickers los elementos decorativos (imágenes / cuadros
+      // de texto libres); el texto de tag/título/cuerpo/firma ya se extrajo
+      // arriba a los campos fijos.
+      currentStickers = getDecorativeStickers(carta);
       selectedStickerIdx = null;
       renderStickers(document.getElementById('live-stickers-layer'), currentStickers, true);
 
@@ -2954,11 +2998,18 @@
       const style = document.getElementById('adm-style').value;
       const releaseDate = document.getElementById('adm-date').value;
       let dateType = document.getElementById('adm-date-type').value;
+      const tag = document.getElementById('adm-tag').value.trim();
+      const title = document.getElementById('adm-title').value.trim();
+      const body = document.getElementById('adm-body').innerHTML;
+      const sign = document.getElementById('adm-sign').value.trim();
 
       if (isAutosave) {
         dateType = 'undefined';
       } else if (dateType === 'scheduled' && !releaseDate) {
         alert('Falta ingresar la fecha de liberación.');
+        return false;
+      } else if (!title || !body) {
+        alert('Por favor completá al menos el Título y el Cuerpo.');
         return false;
       }
 
@@ -2975,12 +3026,15 @@
           }
         } catch(e) {}
 
+        // El PNG ya no se usa para mostrarle la carta a Pame (ahora ve texto
+        // real), pero se sigue generando para la miniatura de la galería del admin.
         const cardImage = await renderCardSnapshot();
         renderStickers(document.getElementById('live-stickers-layer'), currentStickers, true);
 
         const now = Date.now();
         const nuevaCarta = {
-          style, dateType, releaseDate, views: existingViews, stickers: currentStickers, cardImage,
+          style, dateType, releaseDate, tag, title, body, sign,
+          views: existingViews, stickers: currentStickers, cardImage,
           createdAt: existingCreatedAt || now, updatedAt: now
         };
 
@@ -3053,18 +3107,31 @@
       if (viewId === 'admin-view') adminView.classList.add('active');
       else adminView.classList.remove('active');
 
+      const galleryView = document.getElementById('gallery-view');
+      if (viewId === 'gallery-view') galleryView.classList.add('active');
+      else galleryView.classList.remove('active');
+
       const letterView = document.getElementById('letter-view');
       if (viewId === 'letter-view') letterView.classList.add('active');
       else letterView.classList.remove('active');
 
-      // El FAB de "dar un toque" no tiene sentido dentro del editor
+      // El FAB de "dar un toque" no tiene sentido dentro del editor ni la galería
       const fab = document.getElementById('touch-fab');
       const menu = document.getElementById('touch-menu');
-      const hideFab = (viewId === 'admin-view');
+      const hideFab = (viewId === 'admin-view' || viewId === 'gallery-view');
       if (fab) fab.style.display = hideFab ? 'none' : 'flex';
       if (menu && hideFab) menu.classList.remove('visible');
 
       window.scrollTo(0, 0);
+    }
+
+    function openGalleryView() {
+      switchView('gallery-view');
+      loadGallery();
+    }
+
+    function closeGalleryView() {
+      switchView('admin-view');
     }
 
     function goBackFromLetter() {
