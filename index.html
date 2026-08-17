@@ -99,7 +99,7 @@
     .home-card .code-entry-wrap { max-width: none; margin: 0; }
     .home-card .error-msg:not(:empty) { margin-top: 1rem; }
     .home-card .error-block { text-align: left; }
-    .profile-avatar-btn.home-profile-btn { position: absolute; top: 0; left: 0.3rem; width: 54px; height: 54px; }
+    .profile-avatar-btn.home-profile-btn { position: absolute; top: 0.6rem; right: 0.3rem; width: 54px; height: 54px; }
     @media (max-width: 480px) {
       .home-hero { min-height: calc(100dvh - 1.6rem); padding: 1rem 0; }
       .home-card { padding: 2.2rem 1.5rem; }
@@ -406,6 +406,11 @@
       align-items: center; justify-content: center; font-size: 0.9rem; cursor: pointer; transition: all 0.2s;
     }
     .tb-btn:hover { background: #2a1f35; color: var(--text); }
+    .tb-color-swatch {
+      width: 15px; height: 15px; border-radius: 50%;
+      border: 1px solid rgba(255,255,255,0.4); pointer-events: none;
+      background: #e8ddd0;
+    }
 
     /* Ocultar flechita por defecto en webkit para el input combo si queres un look más limpio,
        pero el datalist ya la provee de forma nativa */
@@ -612,14 +617,19 @@
 
     /* ─── Estilo E: correo aéreo / vintage. Papel crema con el clásico
        marco a rayas rojas y azules de sobre "par avion", en sintonía con
-       el nombre de la app. El marco se dibuja con un solo pseudo-elemento
-       (mask-composite) para no depender de imágenes. ─── */
-    .style-e .letter-card { background: #f4ecd8; border-radius: 5px; padding: 2.6rem 2.1rem; position: relative; box-shadow: 0 20px 50px -18px rgba(0,0,0,0.55); }
-    .style-e .letter-card::before {
-      content: ''; position: absolute; inset: 0; border-radius: 5px; padding: 9px;
-      background: repeating-linear-gradient(-45deg, #a4283a 0 10px, #f4ecd8 10px 20px, #f4ecd8 20px 30px, #24417a 30px 40px, #f4ecd8 40px 50px, #f4ecd8 50px 60px);
-      -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
-      -webkit-mask-composite: xor; mask-composite: exclude; z-index: 0; pointer-events: none;
+       el nombre de la app. El marco se dibuja como un border-image real
+       (dos capas de background con background-clip), no como un
+       pseudo-elemento position:absolute: así queda pegado al borde real
+       de la tarjeta y no se corta cuando el cuerpo tiene mucho texto y
+       .letter-card scrollea internamente (antes el pseudo-elemento
+       quedaba anclado a la altura visible inicial y no acompañaba el
+       scroll). ─── */
+    .style-e .letter-card {
+      background: #f4ecd8; border-radius: 5px; padding: 2.6rem 2.1rem; position: relative;
+      box-shadow: 0 20px 50px -18px rgba(0,0,0,0.55);
+      border: 9px solid transparent;
+      background-image: linear-gradient(#f4ecd8, #f4ecd8), repeating-linear-gradient(-45deg, #a4283a 0 10px, #f4ecd8 10px 20px, #f4ecd8 20px 30px, #24417a 30px 40px, #f4ecd8 40px 50px, #f4ecd8 50px 60px);
+      background-origin: border-box; background-clip: content-box, border-box;
     }
     .style-e .letter-tag { font-family: 'Space Mono', monospace; font-size: 0.68rem; letter-spacing: 0.18em; text-transform: uppercase; color: #a4283a; margin-bottom: 1.4rem; display: block; position: relative; z-index: 1; }
     .style-e .letter-title { font-family: 'Cormorant Garamond', serif; font-weight: 600; font-size: 2.15rem; font-style: italic; color: #2b2118; margin-bottom: 1.8rem; line-height: 1.25; position: relative; z-index: 1; }
@@ -1428,15 +1438,12 @@
       100% { box-shadow: 0 0 0 0 rgba(160,88,126,0); }
     }
 
-    /* En mobile el toque pasa a vivir en la misma fila que la barra de
-       código, antes que ella, simétrico respecto del avatar de perfil que
-       cierra la fila del otro lado (mismo tamaño de círculo, 46px). */
+    /* En mobile el toque se mantiene del lado derecho, igual que el avatar
+       de perfil, en vez de pasar al lado izquierdo. */
     @media (max-width: 480px) {
       .touch-fab {
-        left: 0.8rem; right: auto;
         bottom: calc(0.65rem + env(safe-area-inset-bottom));
       }
-      .bottom-nav-bar { padding-left: calc(46px + 1.35rem); }
     }
 
     /* Menú desplegable del toque: mismo lenguaje visual "hoja flotante" que
@@ -1527,23 +1534,25 @@
     .install-btn.visible { display: flex; }
     .install-btn:hover { border-color: var(--gold); color: var(--gold); }
 
-    /* ═══════════════ AVISO DE ACTUALIZACIÓN DISPONIBLE ═══════════════ */
-    .update-banner {
-      position: fixed; left: 0; right: 0; bottom: 0;
-      display: none; align-items: center; justify-content: space-between; gap: 0.75rem;
+    /* ═══════════════ AVISO DE ACTUALIZACIÓN (auto, sin preguntar) ═══════════════
+       Framecorreo ahora se autoactualiza sola apenas hay una versión nueva
+       (sin banner ni botón "Actualizar" para confirmar): esto es solo un
+       avisito temporal que confirma a qué versión se actualizó, y se
+       autodescarta solo. */
+    .update-toast {
+      position: fixed; left: 50%; bottom: calc(1.2rem + env(safe-area-inset-bottom));
+      transform: translateX(-50%) translateY(12px);
+      max-width: calc(100% - 2.4rem);
+      display: flex; align-items: center; gap: 0.6rem;
       background: linear-gradient(160deg, var(--surface), #17121e);
-      border-top: 1px solid var(--border);
-      padding: 0.85rem 1.1rem; padding-bottom: calc(0.85rem + env(safe-area-inset-bottom));
-      z-index: 9999;
-      font-family: 'Inter', sans-serif; font-size: 0.85rem; color: var(--text);
+      border: 1px solid var(--border); border-radius: 999px;
+      padding: 0.7rem 1.2rem; box-shadow: 0 12px 34px rgba(0,0,0,0.55);
+      z-index: 9999; opacity: 0; pointer-events: none;
+      font-family: 'Inter', sans-serif; font-size: 0.82rem; color: var(--text);
+      transition: opacity 0.25s ease, transform 0.25s ease;
+      text-align: center;
     }
-    .update-banner.visible { display: flex; }
-    .update-banner button {
-      background: var(--accent); border: none; color: var(--text);
-      border-radius: 999px; padding: 0.5rem 1rem; font-size: 0.8rem;
-      white-space: nowrap; cursor: pointer; flex-shrink: 0;
-    }
-    .update-banner button:hover { background: var(--accent-soft); }
+    .update-toast.visible { opacity: 1; transform: translateX(-50%) translateY(0); }
   </style>
 </head>
 <body>
@@ -1572,7 +1581,7 @@
         <div class="home-card">
           <div class="home-card-icon"><img src="icon-192.png" alt="Framecorreo" /></div>
           <div class="home-card-title">Framecorreo</div>
-          <div class="home-card-sub">Ingresá el código de tu carta</div>
+          <div class="home-card-sub">Ingresá un código</div>
 
           <div class="code-entry-wrap" id="code-entry-wrap">
             <input id="code-input" class="code-entry-input" type="text" placeholder="Código" autocomplete="off" spellcheck="false" />
@@ -1634,6 +1643,7 @@
           <button type="button" class="tb-btn" onmousedown="event.preventDefault()" onclick="execCmdBody('bold')" title="Negrita" style="font-weight:bold;">N</button>
           <button type="button" class="tb-btn" onmousedown="event.preventDefault()" onclick="execCmdBody('italic')" title="Cursiva" style="font-style:italic;">C</button>
           <button type="button" class="tb-btn" onmousedown="event.preventDefault()" onclick="execCmdBody('underline')" title="Subrayado" style="text-decoration:underline;">S</button>
+          <button type="button" class="tb-btn" onmousedown="event.preventDefault()" onclick="openBodyColorPicker()" title="Color de fuente"><span class="tb-color-swatch" id="body-color-swatch"></span></button>
         </div>
 
         <div class="ig-stage-dim"></div>
@@ -2319,6 +2329,28 @@
       }
     }
 
+    // Pegado sin formato para los cuadros de texto Tiptap (stickers de la
+    // carta y del lienzo): si se pega texto con estilos propios (color,
+    // tipografía...) desde afuera, sobrepisa el estilo del cuadro y puede
+    // volverse ilegible (p. ej. texto negro sobre fondo oscuro). Tomamos
+    // solo el texto plano del portapapeles e insertamos saltos de línea
+    // como hardBreak, sin ningún estilo pegado.
+    function tiptapPastePlainText(view, event) {
+      const cd = event.clipboardData || window.clipboardData;
+      const text = cd ? cd.getData('text/plain') : '';
+      if (!text) return false;
+      event.preventDefault();
+      const { state } = view;
+      const hardBreak = state.schema.nodes.hardBreak;
+      let tr = state.tr;
+      text.split(/\r\n|\r|\n/).forEach((line, i) => {
+        if (i > 0) tr = hardBreak ? tr.replaceSelectionWith(hardBreak.create(), true) : tr.insertText('\n');
+        if (line) tr = tr.insertText(line);
+      });
+      view.dispatch(tr);
+      return true;
+    }
+
     // ─── COMANDO DE FORMATO PARA EL CUERPO FIJO DE LA CARTA (#adm-body) ───
     // #adm-body es un contentEditable clásico (no Tiptap), igual que en la
     // versión vieja: usa document.execCommand directamente, sin pasar por
@@ -2328,6 +2360,38 @@
       if (bodyEl) bodyEl.focus();
       document.execCommand(command, false, value);
       scheduleAutosave();
+    }
+
+    // ─── COLOR DE FUENTE PARA EL CUERPO FIJO DE LA CARTA (#adm-body) ───
+    // Guardamos la selección de texto antes de abrir la hojita de color
+    // (comparte el mismo selector que usa el cuadro de texto del lienzo),
+    // porque al tocar los controles de la hojita el foco se va de #adm-body
+    // y se pierde la selección si no la restauramos antes de aplicar el color.
+    let savedBodyRange = null;
+    function openBodyColorPicker() {
+      const bodyEl = document.getElementById('adm-body');
+      if (!bodyEl) return;
+      const sel = window.getSelection();
+      savedBodyRange = (sel && sel.rangeCount && bodyEl.contains(sel.anchorNode)) ? sel.getRangeAt(0).cloneRange() : null;
+      const swatch = document.getElementById('body-color-swatch');
+      openColorPicker(swatch ? rgbStringToHex(getComputedStyle(swatch).backgroundColor) : '#e8ddd0', (hex) => {
+        const bodyEl2 = document.getElementById('adm-body');
+        if (!bodyEl2) return;
+        bodyEl2.focus();
+        if (savedBodyRange) {
+          const sel2 = window.getSelection();
+          sel2.removeAllRanges();
+          sel2.addRange(savedBodyRange);
+        }
+        document.execCommand('foreColor', false, hex);
+        if (swatch) swatch.style.background = hex;
+        scheduleAutosave();
+      });
+    }
+    function rgbStringToHex(rgbStr) {
+      const m = (rgbStr || '').match(/\d+/g);
+      if (!m || m.length < 3) return '#e8ddd0';
+      return rgbToHex(+m[0], +m[1], +m[2]);
     }
 
     // Cartas viejas (de la etapa de cuadros-sticker con Tiptap) pueden traer
@@ -2360,6 +2424,14 @@
         setTimeout(() => {
           if (document.activeElement !== bodyEl) bar.classList.remove('visible');
         }, 150);
+      });
+      // Pegar siempre como texto plano: si se pega desde Word/Notion/etc.
+      // suele venir con estilos inline (color negro, tipografía propia...)
+      // que pisan el color del estilo elegido y el texto queda invisible.
+      bodyEl.addEventListener('paste', (e) => {
+        e.preventDefault();
+        const text = (e.clipboardData || window.clipboardData).getData('text/plain');
+        document.execCommand('insertText', false, text);
       });
     })();
 
@@ -2626,7 +2698,7 @@
 
         if (!carta) {
           if (!currentAdminView) {
-            document.getElementById('error-msg').textContent = 'Ese código no existe... o todavía no es el momento.';
+            document.getElementById('error-msg').textContent = 'Código incorrecto';
           } else {
             alert('No se encontró la carta buscada.');
           }
@@ -2635,13 +2707,13 @@
 
         if (!currentAdminView) {
           if (carta.dateType === 'undefined') {
-            document.getElementById('error-msg').textContent = '¿No es muy pronto, amorcito?';
+            document.getElementById('error-msg').textContent = 'Código incorrecto';
             return;
           }
           if (carta.dateType === 'scheduled' && carta.releaseDate) {
             const today = new Date().toISOString().split('T')[0]; 
             if (today < carta.releaseDate) {
-              document.getElementById('error-msg').textContent = '¿No es muy pronto, amorcito?';
+              document.getElementById('error-msg').textContent = 'Código incorrecto';
               return;
             }
           }
@@ -3427,7 +3499,8 @@
         element: textDiv,
         content: st.content || '',
         editorProps: {
-          attributes: { class: 'tiptap-carta-content' }
+          attributes: { class: 'tiptap-carta-content' },
+          handlePaste: (view, event) => tiptapPastePlainText(view, event)
         },
         extensions: [
           StarterKit.configure({
@@ -4208,14 +4281,23 @@
       document.getElementById('install-btn').classList.remove('visible');
     }
 
-    let waitingWorker = null;
-
     function registerServiceWorker() {
       if (!('serviceWorker' in navigator)) return;
 
+      // Si venimos de recargar justo después de una auto-actualización,
+      // mostramos el aviso de "se actualizó a..." con la versión que nos
+      // mandó el Service Worker antes del reload (ver mensaje SKIP_WAITING).
+      try {
+        const updatedVersion = sessionStorage.getItem('fc_updated_version');
+        if (updatedVersion) {
+          sessionStorage.removeItem('fc_updated_version');
+          showUpdateToast(updatedVersion);
+        }
+      } catch (e) {}
+
       navigator.serviceWorker.register('sw.js').then((reg) => {
         // Caso 1: ya había un SW esperando cuando abrimos la app.
-        if (reg.waiting) showUpdateBanner(reg.waiting);
+        if (reg.waiting) applyUpdateSilently(reg.waiting);
 
         // Caso 2: se está instalando uno nuevo mientras la app está abierta.
         reg.addEventListener('updatefound', () => {
@@ -4225,7 +4307,7 @@
             // "installed" + ya había un controller = es una actualización,
             // no la primera instalación.
             if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
-              showUpdateBanner(newWorker);
+              applyUpdateSilently(newWorker);
             }
           });
         });
@@ -4238,7 +4320,17 @@
         // Si falla (por ejemplo abriendo el archivo local sin servidor), no rompe nada.
       });
 
-      // Cuando el SW nuevo toma control (porque se tocó "Actualizar"), recargamos.
+      // El Service Worker nuevo nos contesta con su versión (CACHE_NAME)
+      // justo antes de tomar el control, así podemos mostrar el aviso
+      // después de recargar.
+      navigator.serviceWorker.addEventListener('message', (event) => {
+        if (event.data && event.data.type === 'FRAMECORREO_UPDATED') {
+          try { sessionStorage.setItem('fc_updated_version', event.data.version || ''); } catch (e) {}
+        }
+      });
+
+      // Cuando el SW nuevo toma control (apenas se auto-instala), recargamos
+      // sin preguntar nada.
       let refreshing = false;
       navigator.serviceWorker.addEventListener('controllerchange', () => {
         if (refreshing) return;
@@ -4247,15 +4339,21 @@
       });
     }
 
-    function showUpdateBanner(worker) {
-      waitingWorker = worker;
-      document.getElementById('update-banner').classList.add('visible');
+    // Instala la versión nueva apenas está disponible, sin banner ni
+    // confirmación del usuario.
+    function applyUpdateSilently(worker) {
+      if (!worker) return;
+      worker.postMessage('SKIP_WAITING');
     }
 
-    function applyUpdate() {
-      if (!waitingWorker) return;
-      waitingWorker.postMessage('SKIP_WAITING');
-      document.getElementById('update-banner').classList.remove('visible');
+    // Avisito temporal (se autodescarta solo) confirmando a qué versión se
+    // actualizó la app, usando el mismo texto que figura en CACHE_NAME.
+    function showUpdateToast(version) {
+      const el = document.getElementById('update-toast');
+      if (!el) return;
+      el.textContent = version ? `Framecorreo se actualizó a la versión ${version} ✨` : 'Framecorreo se actualizó ✨';
+      el.classList.add('visible');
+      setTimeout(() => el.classList.remove('visible'), 4000);
     }
 
     // ════════════════════════════════════════════════════════════
@@ -5065,7 +5163,8 @@
         element: textDiv,
         content: st.content || '',
         editorProps: {
-          attributes: { class: 'tiptap-carta-content' }
+          attributes: { class: 'tiptap-carta-content' },
+          handlePaste: (view, event) => tiptapPastePlainText(view, event)
         },
         extensions: [
           StarterKit.configure({
@@ -6213,9 +6312,6 @@
     }
   </script>
 
-  <div id="update-banner" class="update-banner">
-    <span>Hay una versión nueva de Framecorreo ✨</span>
-    <button id="update-banner-btn" onclick="applyUpdate()">Actualizar</button>
-  </div>
+  <div id="update-toast" class="update-toast"></div>
 </body>
 </html>
