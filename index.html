@@ -201,6 +201,30 @@
     .code-entry-submit:hover { background: var(--accent-soft); transform: scale(1.05); }
     .code-entry-submit:disabled { opacity: 0.4; cursor: not-allowed; transform: none; }
 
+    /* ─── Indicador de "Cargando…" al abrir una carta por código ─── */
+    .code-loading {
+      display: none; align-items: center; justify-content: center; gap: 0.5rem;
+      margin-top: 0.9rem; font-size: 0.83rem; color: var(--text-muted); letter-spacing: 0.02em;
+    }
+    .code-loading.visible { display: flex; }
+    .code-loading-spinner {
+      width: 14px; height: 14px; border-radius: 50%; flex-shrink: 0;
+      border: 2px solid rgba(255,255,255,0.18); border-top-color: var(--accent-soft);
+      animation: code-loading-spin 0.7s linear infinite;
+    }
+    @keyframes code-loading-spin { to { transform: rotate(360deg); } }
+
+    /* ─── Tip compartido: lo escribe Fran desde la pantalla principal con
+       "/tip <texto>" (y se borra con "/tip del"); se guarda en Firebase y
+       lo ven los dos perfiles debajo del recuadro de código. ─── */
+    .home-tip {
+      display: none; margin-top: 1.1rem; padding: 0.75rem 1rem;
+      background: rgba(201,169,110,0.08); border: 1px solid rgba(201,169,110,0.22);
+      border-radius: 10px; font-size: 0.82rem; line-height: 1.5; color: var(--accent-soft);
+      font-style: italic; text-align: left;
+    }
+    .home-tip:not(:empty) { display: block; }
+
     /* ─── BARRA DE NAVEGACIÓN INFERIOR (código + perfil) ───
        Ya no es una barra sólida de punta a punta: el contenedor solo
        ordena los elementos en fila; cada botón/campo lleva su propio
@@ -558,6 +582,19 @@
     .gallery-filter-btn:hover { border-color: var(--accent-soft); color: var(--text); }
     .gallery-filter-btn.active { background: var(--accent); border-color: var(--accent-soft); color: var(--text); }
 
+    /* Categorías de la galería: Cartas / URLs / Imágenes. Mismo lenguaje
+       visual que .gallery-filter-btn pero un poco más grandes, porque son
+       la elección principal (arriba de todo); el filtro por disponibilidad
+       de abajo solo tiene sentido para la categoría Cartas. */
+    .gallery-category-tabs { display: flex; gap: 0.5rem; margin-bottom: 1rem; }
+    .gallery-category-btn {
+      flex: 1; background: var(--surface); border: 1px solid var(--border); color: var(--text-muted);
+      font-family: 'Inter', sans-serif; font-size: 0.8rem; letter-spacing: 0.02em;
+      padding: 0.65rem 0.6rem; border-radius: 12px; cursor: pointer; transition: all 0.2s;
+    }
+    .gallery-category-btn:hover { border-color: var(--accent-soft); color: var(--text); }
+    .gallery-category-btn.active { background: var(--accent); border-color: var(--accent-soft); color: var(--text); }
+
     /* ─── BARRA DE ACCIONES EN MASA ─── */
     .bulk-actions-bar {
       position: fixed; left: 50%; bottom: 20px; transform: translateX(-50%); z-index: 210;
@@ -627,8 +664,8 @@
     .style-e .letter-card {
       background: #f4ecd8; border-radius: 5px; padding: 2.6rem 2.1rem; position: relative;
       box-shadow: 0 20px 50px -18px rgba(0,0,0,0.55);
-      border: 9px solid transparent;
-      background-image: linear-gradient(#f4ecd8, #f4ecd8), repeating-linear-gradient(-45deg, #a4283a 0 10px, #f4ecd8 10px 20px, #f4ecd8 20px 30px, #24417a 30px 40px, #f4ecd8 40px 50px, #f4ecd8 50px 60px);
+      border: 4px solid transparent;
+      background-image: linear-gradient(#f4ecd8, #f4ecd8), repeating-linear-gradient(-45deg, #a4283a 0 5px, #f4ecd8 5px 10px, #f4ecd8 10px 15px, #24417a 15px 20px, #f4ecd8 20px 25px, #f4ecd8 25px 30px);
       background-origin: border-box; background-clip: content-box, border-box;
     }
     .style-e .letter-tag { font-family: 'Space Mono', monospace; font-size: 0.68rem; letter-spacing: 0.18em; text-transform: uppercase; color: #a4283a; margin-bottom: 1.4rem; display: block; position: relative; z-index: 1; }
@@ -944,6 +981,37 @@
     .ig-stage-shell .letter-card { flex: 1; min-height: 0 !important; overflow-y: auto; }
     .ig-stage-shell .workspace-boundary { outline-color: rgba(201,169,110,0.35); }
 
+    /* ─── #letter-stage-shell es el ÚNICO de los dos "stage" (el otro es
+       el lienzo compartido de dibujo, #canvas-stage-shell) que muestra una
+       carta pensada para leerse a 560px de ancho como en #letter-card-wrapper
+       (la vista final, al abrir con el código). Encerrarlo en la relación
+       8:15 "story" de Instagram la hacía ver angosta y recortada — como
+       "zoomeada" — comparado con cómo se ve realmente. Acá lo ensanchamos
+       a las mismas proporciones que la carta final, sin tocar el resto de
+       .ig-stage-shell (que sigue rigiendo el lienzo de dibujo). El alto
+       se mantiene atado a la pantalla (con scroll interno de la carta, ya
+       resuelto arriba) para no romper la posición de los controles
+       flotantes (rail, barras de formato, paneles), que siguen ubicados en
+       relación a este marco. ─── */
+    #letter-stage-shell {
+      width: min(100%, 560px);
+      max-width: 560px;
+      aspect-ratio: auto;
+      border-radius: 14px;
+    }
+    @media (max-width: 480px) {
+      #letter-stage-shell {
+        width: calc(100vw - 1.2rem);
+        max-width: 560px;
+        margin: 0.6rem auto 0.9rem;
+        margin-left: auto;
+        margin-right: auto;
+        border-radius: 14px;
+        height: calc(100dvh - 1.2rem);
+        max-height: calc(100dvh - 1.2rem);
+      }
+    }
+
     .ig-stage-dim {
       position: absolute; inset: 0; z-index: 40; pointer-events: none;
       background: radial-gradient(ellipse at center, rgba(0,0,0,0) 55%, rgba(0,0,0,0.55) 100%);
@@ -1139,16 +1207,17 @@
       cursor: pointer; flex-shrink: 0; padding: 0;
     }
 
-    /* En PC (mouse/trackpad, no touch) el menú de ESTILOS pasa a ser una
-       lista vertical normal con scroll, en vez del carrusel horizontal
-       pensado para deslizar con el dedo. El resto de los .ig-vscroll
-       (colores, disponibilidad, etc.) no se tocan. */
+    /* En PC (mouse/trackpad, no touch) el menú de ESTILOS y el de
+       DISPONIBILIDAD pasan a ser una lista vertical normal con scroll, en
+       vez del carrusel horizontal pensado para deslizar con el dedo (que
+       en pantallas anchas se veía "cortado" por el degradé de los bordes).
+       El resto de los .ig-vscroll (colores, etc.) no se tocan. */
     @media (hover: hover) and (pointer: fine) {
-      #adm-style-list {
+      #adm-style-list, #adm-date-type-list {
         flex-direction: column; overflow-x: hidden; overflow-y: auto;
         max-height: 260px; scroll-snap-type: none;
       }
-      #adm-style-list .ig-vscroll-item {
+      #adm-style-list .ig-vscroll-item, #adm-date-type-list .ig-vscroll-item {
         width: 100%; min-width: 0; flex-direction: row; justify-content: flex-start;
         text-align: left; white-space: normal;
       }
@@ -1553,6 +1622,65 @@
       text-align: center;
     }
     .update-toast.visible { opacity: 1; transform: translateX(-50%) translateY(0); }
+
+    /* ═══════════════ POP-UP DE FOTO ("/img") ═══════════════
+       Fondo semitransparente que tapa toda la pantalla (incluido el menú
+       principal, si es ahí donde se escribió el código) con la tarjeta de
+       la foto centrada, apareciendo con una animación de escala + fade.
+       Tocar el fondo (no la tarjeta) la cierra, ver el onclick en el HTML. */
+    .image-popup-overlay {
+      position: fixed; inset: 0; z-index: 9800;
+      background: rgba(5,3,8,0.5); backdrop-filter: blur(3px);
+      display: none; align-items: center; justify-content: center; padding: 1.4rem;
+      opacity: 0; transition: opacity 0.25s ease;
+    }
+    .image-popup-overlay.visible { display: flex; opacity: 1; }
+    .image-popup-card {
+      position: relative; max-width: min(92vw, 480px); max-height: 86vh;
+      background: var(--surface); border: 1px solid var(--border); border-radius: 18px;
+      overflow: hidden; box-shadow: 0 30px 80px rgba(0,0,0,0.65);
+      transform: scale(0.85) translateY(14px); transition: transform 0.3s cubic-bezier(.22,1,.36,1);
+    }
+    .image-popup-overlay.visible .image-popup-card { transform: scale(1) translateY(0); }
+    .image-popup-card img {
+      display: block; width: 100%; max-height: 72vh; object-fit: contain; background: #000;
+    }
+    .image-popup-caption {
+      padding: 0.9rem 1.2rem 1.1rem; font-family: 'Cormorant Garamond', serif; font-style: italic;
+      font-size: 1.08rem; line-height: 1.5; color: var(--text); text-align: center;
+    }
+    .image-popup-caption:empty { display: none; }
+    .image-popup-close {
+      position: absolute; top: 0.6rem; right: 0.6rem; z-index: 2;
+      width: 34px; height: 34px; border-radius: 50%;
+      background: rgba(0,0,0,0.55); border: 1px solid rgba(255,255,255,0.22); color: #fff;
+      display: flex; align-items: center; justify-content: center; cursor: pointer; font-size: 0.9rem;
+    }
+
+    /* ═══════════════ EDITOR DE FOTOS ("/img") ═══════════════ */
+    .image-editor-wrap {
+      width: min(100%, 480px); margin: 0 auto; padding: 1.4rem 1.2rem 2.4rem;
+      display: flex; flex-direction: column; gap: 1.1rem;
+    }
+    .image-editor-drop {
+      width: 100%; aspect-ratio: 4/5; border-radius: 18px; overflow: hidden; position: relative;
+      border: 2px dashed var(--border); background: var(--surface); cursor: pointer;
+      display: flex; align-items: center; justify-content: center; transition: border-color 0.2s;
+    }
+    .image-editor-drop:hover { border-color: var(--accent-soft); }
+    .image-editor-drop img { width: 100%; height: 100%; object-fit: cover; display: block; }
+    .image-editor-drop-inner {
+      display: flex; flex-direction: column; align-items: center; gap: 0.6rem;
+      color: var(--text-muted); font-family: 'Inter', sans-serif; font-size: 0.95rem;
+    }
+    .image-editor-drop-icon { font-size: 2.6rem; }
+    .image-editor-drop.has-image .image-editor-drop-inner { display: none; }
+    .image-editor-caption-input {
+      width: 100%; background: var(--surface); border: 1px solid var(--border); border-radius: 12px;
+      padding: 0.9rem 1rem; font-family: 'Cormorant Garamond', serif; font-style: italic; font-size: 1.05rem;
+      color: var(--text); outline: none;
+    }
+    .image-editor-caption-input::placeholder { color: var(--text-muted); opacity: 0.7; }
   </style>
 </head>
 <body>
@@ -1579,7 +1707,7 @@
         </button>
 
         <div class="home-card">
-          <div class="home-card-icon"><img src="icon-192.png" alt="Framecorreo" /></div>
+          <div class="home-card-icon"><img src="icon-192.png" alt="Framecorreo" onclick="handleCatIconTap()" style="cursor:pointer;" /></div>
           <div class="home-card-title">Framecorreo</div>
           <div class="home-card-sub">Ingresá un código</div>
 
@@ -1590,14 +1718,19 @@
             </button>
           </div>
 
+          <div class="code-loading" id="code-loading"><span class="code-loading-spinner"></span> Cargando…</div>
+
           <div class="error-msg" id="error-msg"></div>
           <div class="error-block" id="error-block">
             <div class="error-block-msg" id="error-block-msg">Ups, hubo un problema de conexión. ¿Probamos de nuevo?</div>
             <button class="retry-btn" onclick="retryUnlock()">↻ Reintentar</button>
           </div>
+
+          <div class="home-tip" id="home-tip"></div>
         </div>
 
       </div>
+
 
     </div>
 
@@ -1656,16 +1789,19 @@
             <button type="button" class="ig-rail-btn" title="Insertar imagen" onclick="document.getElementById('adm-sticker-file').click()">🖼️</button>
             <button type="button" class="ig-rail-btn" id="adm-text-btn" title="Texto" style="font-weight:bold;" onclick="handleTextToolClick('admin')">Aa</button>
             <button type="button" class="ig-rail-btn" title="Estilo de la carta" onclick="openIgPanel('panel-adm-style')">🎨</button>
-            <button type="button" class="ig-rail-btn save-btn" id="save-btn" onclick="saveLetter()" title="Guardar">💾</button>
           </div>
         </div>
 
-        <!-- Rail inferior derecho: salir del panel / código de la carta (fuera del paso, ya no estorban) -->
+        <!-- Rail inferior derecho: volver / galería / guardar. El botón de
+             código (#) desapareció: ahora "Guardar" es la única puerta de
+             entrada al panel de código + disponibilidad + confirmar guardado,
+             para no repetir la misma función en dos botones distintos. -->
         <div class="ig-rail-bottom-right">
           <button type="button" class="icon-row-btn ig-rail-btn" onclick="exitAdmin()" title="Salir del panel">←</button>
           <button type="button" class="icon-row-btn ig-rail-btn" onclick="openGalleryView()" title="Galería de cartas">🗂️</button>
-          <button type="button" class="ig-rail-btn" onclick="openIgPanel('panel-adm-code')" title="Código de la carta">#</button>
+          <button type="button" class="ig-rail-btn save-btn" id="save-btn" onclick="openIgPanel('panel-adm-code')" title="Guardar">💾</button>
         </div>
+
 
         <div class="delete-drop-zone" id="adm-delete-zone"><span>✕</span></div>
 
@@ -1699,7 +1835,6 @@
               <datalist id="codes-list"></datalist>
             </div>
 
-            <span class="ig-panel-section-label">Disponibilidad</span>
             <select id="adm-date-type" class="ig-native-hidden" onchange="toggleDateField(this.value)" title="Disponibilidad">
                 <option value="immediate">Inmediata</option>
                 <option value="scheduled">Programada</option>
@@ -1796,6 +1931,12 @@
       </div>
 
       <div class="gallery-section">
+        <div class="gallery-category-tabs" id="gallery-category-tabs">
+          <button type="button" class="gallery-category-btn active" data-category="cartas" onclick="setGalleryCategory('cartas')">💌 Cartas</button>
+          <button type="button" class="gallery-category-btn" data-category="urls" onclick="setGalleryCategory('urls')">🔗 URLs</button>
+          <button type="button" class="gallery-category-btn" data-category="imagenes" onclick="setGalleryCategory('imagenes')">🖼️ Imágenes</button>
+        </div>
+
         <div class="gallery-controls">
           <button type="button" class="hamburger-btn" id="gallery-menu-btn" onclick="toggleGalleryMenu()" title="Ordenar cartas">☰</button>
           <input type="text" id="gallery-search" class="gallery-search-input" placeholder="Buscar por código, título o etiqueta..." autocomplete="off" oninput="applyGalleryFilters()" />
@@ -1830,6 +1971,38 @@
       <span class="bulk-count" id="bulk-count-label">0 seleccionadas</span>
       <button type="button" class="bulk-delete-btn" onclick="bulkDeleteSelected()">🗑️ Eliminar</button>
       <button type="button" class="bulk-cancel-btn" onclick="exitSelectionMode()">Cancelar</button>
+    </div>
+
+    <!-- ─── Editor de fotos ("/img"): igual de simple que el editor de
+         cartas, pero sin campos de texto de carta —solo la foto y un pie
+         de foto opcional. Se guarda con un código propio, como las
+         cartas y los redirects, y aparece como categoría aparte en la
+         galería. ─── -->
+    <div id="image-editor-view" class="view-section">
+      <div class="image-editor-wrap">
+        <div class="gallery-view-header">
+          <button type="button" class="icon-row-btn" onclick="exitImageEditor()" title="Volver">←</button>
+          <span class="gallery-view-title">Foto</span>
+        </div>
+
+        <input type="file" id="img-editor-file" accept="image/*" style="display:none;" onchange="handleImageEditorFileChange(this)" />
+        <div class="image-editor-drop" id="image-editor-drop" onclick="document.getElementById('img-editor-file').click()">
+          <img id="image-editor-preview" alt="" style="display:none;" />
+          <div class="image-editor-drop-inner" id="image-editor-drop-inner">
+            <span class="image-editor-drop-icon">📷</span>
+            <span>Subir foto</span>
+          </div>
+        </div>
+
+        <input type="text" id="img-caption" class="image-editor-caption-input" placeholder="Pie de foto (opcional)" autocomplete="off" />
+
+        <div class="tb-group" style="width:100%;">
+          <input list="img-codes-list" id="img-code" class="adm-code-input" placeholder="Código" autocomplete="off" style="font-size:1.1rem; padding:1rem;" />
+          <datalist id="img-codes-list"></datalist>
+        </div>
+
+        <div class="ig-action-row" onclick="saveImageEntry()"><span class="ig-icn">💾</span> Guardar foto</div>
+      </div>
     </div>
 
     <div id="letter-view" class="view-section">
@@ -2187,6 +2360,8 @@
     }
     let allCodesCache = [];
     let allCartasData = {};
+    let allUrlsData = {};
+    let allImagesData = {};
 
     // ─── TIPTAP: estado del editor de cartas ───
     // cartaTiptapEditors: idx del sticker -> instancia de Tiptap viva (solo
@@ -2244,6 +2419,7 @@
       restoreCanvasStickers();
       initCanvasSendMenu();
       initToques();
+      initTipListener();
       initTouchFab();
     });
 
@@ -2535,10 +2711,13 @@
     // ─── LOADING STATE ───
     function setLoadingState(loading) {
       const btn = document.getElementById('unlock-btn');
-      if (!btn) return;
-      btn.disabled = loading;
-      btn.style.opacity = loading ? '0.4' : '1';
-      btn.style.pointerEvents = loading ? 'none' : 'auto';
+      if (btn) {
+        btn.disabled = loading;
+        btn.style.opacity = loading ? '0.4' : '1';
+        btn.style.pointerEvents = loading ? 'none' : 'auto';
+      }
+      const loadingEl = document.getElementById('code-loading');
+      if (loadingEl) loadingEl.classList.toggle('visible', loading);
     }
 
     // ─── ERROR BLOCK ───
@@ -2580,15 +2759,87 @@
       }
     }
 
+    // Atajo secreto: tocar el gatito de arriba del campo de código carga
+    // sola la contraseña de admin, pero SOLO si el perfil activo es el de
+    // Fran (ver myIdentity, más abajo). Para Pame el toque no hace nada
+    // visible, para no delatar que el atajo existe.
+    function handleCatIconTap() {
+      if (myIdentity !== 'fran') return;
+      const input = document.getElementById('code-input');
+      if (!input) return;
+      input.value = ADMIN_KEY;
+      input.focus();
+    }
+
     async function unlock() {
-      const input = document.getElementById('code-input').value.trim().toLowerCase();
+      const rawInput = document.getElementById('code-input').value.trim();
+      const input = rawInput.toLowerCase();
       document.getElementById('error-msg').textContent = '';
       hideErrorBlock();
 
       if (!input) return;
       lastUnlockInput = input;
 
-      if (input === ADMIN_KEY.toLowerCase()) {
+      // Comando secreto "/tip <texto>" (y "/tip del" para borrarlo): solo
+      // desde el perfil de Fran, en la pantalla principal. El tip se guarda
+      // en Firebase y se muestra debajo del recuadro de código para los dos
+      // perfiles (ver initTipListener). No es un código de carta, así que
+      // cortamos acá antes de tocar nada de eso.
+      if (myIdentity === 'fran' && /^\/tip(\s|$)/i.test(rawInput)) {
+        await handleTipCommand(rawInput);
+        document.getElementById('code-input').value = '';
+        return;
+      }
+
+      // Comando secreto "/url <código> <url>": solo Fran puede crearlos.
+      // Guarda un redirect en Firebase para ese código; de ahí en más,
+      // cuando cualquiera (Fran o Pame) escriba ese código, en vez de
+      // buscar una carta lo mandamos derecho al link guardado (ver más
+      // abajo, antes de llamar a fetchAndDisplayLetter).
+      const urlMatch = rawInput.match(/^\/url\s+(\S+)\s+(\S+)\s*$/i);
+      if (myIdentity === 'fran' && urlMatch) {
+        await handleAddRedirectCommand(urlMatch[1], urlMatch[2]);
+        document.getElementById('code-input').value = '';
+        return;
+      }
+
+      // Comando secreto "/c": atajo para entrar directo al editor de
+      // cartas, sin tener que tipear la contraseña de admin.
+      if (myIdentity === 'fran' && /^\/c$/i.test(rawInput)) {
+        currentAdminView = true;
+        switchView('admin-view');
+        resetEditorForm();
+        attachAutosaveListeners();
+        await loadGallery();
+        document.getElementById('code-input').value = '';
+        return;
+      }
+
+      // Comando secreto "/img": abre el editor de fotos (sin campos de
+      // texto de carta, solo foto + pie de foto opcional).
+      if (myIdentity === 'fran' && /^\/img$/i.test(rawInput)) {
+        openImageEditor();
+        document.getElementById('code-input').value = '';
+        return;
+      }
+
+      // Comando secreto "/g": atajo para entrar directo a la galería sin
+      // pasar primero por el editor, solo para Fran.
+      if (myIdentity === 'fran' && /^\/g$/i.test(rawInput)) {
+        currentAdminView = true;
+        resetEditorForm();
+        attachAutosaveListeners();
+        switchView('gallery-view');
+        await loadGallery();
+        document.getElementById('code-input').value = '';
+        return;
+      }
+
+      // El panel de admin solo se abre para el perfil de Fran: si alguien
+      // más (Pame) tipea la contraseña, no pasa nada especial y el código
+      // sigue de largo hacia la búsqueda normal de carta (que no va a
+      // encontrar nada, sin dar ninguna pista de que existía un admin).
+      if (input === ADMIN_KEY.toLowerCase() && myIdentity === 'fran') {
         currentAdminView = true;
         switchView('admin-view');
         resetEditorForm();
@@ -2599,8 +2850,107 @@
 
       currentAdminView = false;
       setLoadingState(true);
+
+      // Antes de buscar una carta: ¿es un código creado con "/url" o
+      // "/img"? Si es así, no es una carta: o mandamos derecho al link
+      // guardado, o mostramos la foto en un pop-up sobre esta misma
+      // pantalla. Las dos búsquedas van en paralelo para no duplicar el
+      // tiempo de espera de cada código que se escribe.
+      try {
+        const [redirRes, imgRes] = await Promise.allSettled([
+          fetch(`${FIREBASE_DB_URL}/redirects/${input}.json`).then(r => r.ok ? r.json() : null),
+          fetch(`${FIREBASE_DB_URL}/imagenes/${input}.json`).then(r => r.ok ? r.json() : null)
+        ]);
+
+        const redir = redirRes.status === 'fulfilled' ? redirRes.value : null;
+        if (redir && redir.url) {
+          window.location.href = redir.url;
+          return;
+        }
+
+        const img = imgRes.status === 'fulfilled' ? imgRes.value : null;
+        if (img && img.image) {
+          setLoadingState(false);
+          document.getElementById('code-input').value = '';
+          showImagePopup(img);
+          return;
+        }
+      } catch (e) {
+        // Si falla, seguimos de largo y probamos como carta normal.
+      }
+
       await fetchAndDisplayLetter(input);
       setLoadingState(false);
+    }
+
+    // ─── REDIRECTS ("/url <código> <url>") ───
+    async function handleAddRedirectCommand(rawCode, rawUrl) {
+      const code = rawCode.trim().toLowerCase();
+      let url = rawUrl.trim();
+      if (!/^https?:\/\//i.test(url)) url = 'https://' + url;
+
+      const msgEl = document.getElementById('error-msg');
+      setLoadingState(true);
+      try {
+        await fetch(`${FIREBASE_DB_URL}/redirects/${code}.json`, {
+          method: 'PUT',
+          body: JSON.stringify({ url, createdAt: Date.now() })
+        });
+        if (msgEl) {
+          msgEl.style.color = '#7adf7a';
+          msgEl.textContent = `Listo: "${code}" ahora redirige a ese link.`;
+          setTimeout(() => { msgEl.textContent = ''; msgEl.style.color = ''; }, 3500);
+        }
+      } catch (e) {
+        if (msgEl) {
+          msgEl.style.color = '';
+          msgEl.textContent = 'No se pudo guardar el redirect (revisá la conexión).';
+        }
+      }
+      setLoadingState(false);
+    }
+
+    // ─── TIP COMPARTIDO (pantalla principal) ───
+    // Se guarda como un único valor en Firebase (no una lista, como los
+    // toques): así el evento "put" que llega por EventSource, tanto al
+    // conectar como en cada cambio posterior, siempre trae el tip vigente
+    // completo y alcanza para pintar el recuadro sin pedir nada aparte.
+    function renderTip(text) {
+      const el = document.getElementById('home-tip');
+      if (!el) return;
+      el.textContent = text || '';
+    }
+
+    async function handleTipCommand(rawInput) {
+      const rest = rawInput.replace(/^\/tip/i, '').trim();
+      setLoadingState(true);
+      try {
+        if (rest.toLowerCase() === 'del') {
+          await fetch(`${FIREBASE_DB_URL}/tip.json`, { method: 'DELETE' });
+          renderTip('');
+        } else if (rest) {
+          await fetch(`${FIREBASE_DB_URL}/tip.json`, {
+            method: 'PUT',
+            body: JSON.stringify({ text: rest, from: myIdentity, ts: Date.now() })
+          });
+          renderTip(rest);
+        }
+      } catch (e) {
+        // Si falla la red, no rompemos el flujo: el próximo /tip lo va a reintentar.
+      }
+      setLoadingState(false);
+    }
+
+    function initTipListener() {
+      try {
+        const es = new EventSource(`${FIREBASE_DB_URL}/tip.json`);
+        es.addEventListener('put', (e) => {
+          try {
+            const payload = JSON.parse(e.data);
+            renderTip(payload.data && payload.data.text ? payload.data.text : '');
+          } catch (err) {}
+        });
+      } catch (e) {}
     }
 
     // ─── CAMPOS FIJOS DE LA CARTA (tag/título/cuerpo/firma) ───
@@ -2829,14 +3179,18 @@
 
     async function loadGallery() {
       const grid = document.getElementById('gallery-grid');
-      if (grid) grid.innerHTML = '<div class="gallery-empty">Buscando cartas...</div>';
+      if (grid) grid.innerHTML = '<div class="gallery-empty">Buscando...</div>';
 
       try {
-        const res = await fetch(`${FIREBASE_DB_URL}/cartas.json`);
-        if (!res.ok) return;
-        const cartas = await res.json();
+        const [cartasRes, urlsRes, imgsRes] = await Promise.all([
+          fetch(`${FIREBASE_DB_URL}/cartas.json`),
+          fetch(`${FIREBASE_DB_URL}/redirects.json`),
+          fetch(`${FIREBASE_DB_URL}/imagenes.json`)
+        ]);
 
-        allCartasData = cartas || {};
+        allCartasData = cartasRes.ok ? ((await cartasRes.json()) || {}) : {};
+        allUrlsData = urlsRes.ok ? ((await urlsRes.json()) || {}) : {};
+        allImagesData = imgsRes.ok ? ((await imgsRes.json()) || {}) : {};
         allCodesCache = Object.keys(allCartasData);
 
         const dl = document.getElementById('codes-list');
@@ -2849,15 +3203,40 @@
           });
         }
 
-        if (!allCodesCache.length) {
-          if (grid) grid.innerHTML = '<div class="gallery-empty">No hay cartas subidas.</div>';
-          return;
+        const imgDl = document.getElementById('img-codes-list');
+        if (imgDl) {
+          imgDl.innerHTML = '';
+          Object.keys(allImagesData).forEach(c => {
+            const opt = document.createElement('option');
+            opt.value = c;
+            imgDl.appendChild(opt);
+          });
         }
 
         renderGalleryGrids();
       } catch (err) {
         console.error(err);
       }
+    }
+
+    function matchesSimpleSearch(code, text, term) {
+      if (!term) return true;
+      return code.toLowerCase().includes(term) || (text || '').toLowerCase().includes(term);
+    }
+
+    // ─── CATEGORÍA DE GALERÍA (Cartas / URLs / Imágenes) ───
+    let currentGalleryCategory = 'cartas';
+
+    function setGalleryCategory(category) {
+      currentGalleryCategory = category;
+      document.querySelectorAll('.gallery-category-btn').forEach(b => {
+        b.classList.toggle('active', b.dataset.category === category);
+      });
+      // El filtro por disponibilidad (Inmediata/Programada/Borrador) solo
+      // tiene sentido para Cartas: para URLs e Imágenes no se muestra.
+      const filterTabs = document.getElementById('gallery-filter-tabs');
+      if (filterTabs) filterTabs.style.display = (category === 'cartas') ? 'flex' : 'none';
+      renderGalleryGrids();
     }
 
     // ─── FILTRO DE GALERÍA (Todas / Inmediatas / Programadas / Borradores) ───
@@ -2883,6 +3262,40 @@
       const sortField = sortFieldEl ? sortFieldEl.value : 'updatedAt';
       const sortDir = sortDirEl ? sortDirEl.value : 'desc';
 
+      grid.innerHTML = '';
+
+      if (currentGalleryCategory === 'urls') {
+        let entries = Object.keys(allUrlsData).map(code => [code, allUrlsData[code]]);
+        entries = entries.filter(([code, data]) => matchesSimpleSearch(code, data.url, term));
+        entries.sort((a, b) => {
+          const av = a[1][sortField] || a[1].createdAt || 0;
+          const bv = b[1][sortField] || b[1].createdAt || 0;
+          return sortDir === 'asc' ? av - bv : bv - av;
+        });
+        if (!entries.length) {
+          grid.innerHTML = term ? '<div class="gallery-empty">Sin resultados.</div>' : '<div class="gallery-empty">Todavía no creaste ningún link (escribí "/url código link" en la pantalla principal).</div>';
+          return;
+        }
+        entries.forEach(([code, data]) => grid.appendChild(buildUrlThumb(code, data)));
+        return;
+      }
+
+      if (currentGalleryCategory === 'imagenes') {
+        let entries = Object.keys(allImagesData).map(code => [code, allImagesData[code]]);
+        entries = entries.filter(([code, data]) => matchesSimpleSearch(code, data.caption, term));
+        entries.sort((a, b) => {
+          const av = a[1][sortField] || a[1].createdAt || 0;
+          const bv = b[1][sortField] || b[1].createdAt || 0;
+          return sortDir === 'asc' ? av - bv : bv - av;
+        });
+        if (!entries.length) {
+          grid.innerHTML = term ? '<div class="gallery-empty">Sin resultados.</div>' : '<div class="gallery-empty">Todavía no subiste ninguna foto (escribí "/img" en la pantalla principal).</div>';
+          return;
+        }
+        entries.forEach(([code, data]) => grid.appendChild(buildImageThumb(code, data)));
+        return;
+      }
+
       let entries = Object.keys(allCartasData).map(code => [code, allCartasData[code]]);
       entries = entries.filter(([code, carta]) => matchesGallerySearch(code, carta, term));
       if (currentGalleryFilter !== 'all') {
@@ -2894,8 +3307,6 @@
         return sortDir === 'asc' ? av - bv : bv - av;
       });
 
-      grid.innerHTML = '';
-
       if (!entries.length) {
         grid.innerHTML = term ? '<div class="gallery-empty">Sin resultados.</div>' : '<div class="gallery-empty">No hay cartas en esta categoría.</div>';
         return;
@@ -2904,6 +3315,109 @@
       entries.forEach(([code, carta]) => {
         grid.appendChild(buildGalleryThumb(code, carta));
       });
+    }
+
+    // ─── Miniaturas de la galería para las categorías URLs e Imágenes.
+    // Reutilizan las mismas clases visuales que buildGalleryThumb (cartas)
+    // para que las tres categorías se vean parejas. No entran en el modo
+    // de selección múltiple (eso quedó pensado solo para cartas). ───
+    function buildUrlThumb(code, data) {
+      const thumb = document.createElement('div');
+      thumb.className = 'gallery-card-thumb';
+      thumb.onclick = () => { if (data.url) window.open(data.url, '_blank'); };
+
+      const editedLabel = formatEditedLabel(data.updatedAt || data.createdAt);
+
+      thumb.innerHTML = `
+        <div class="thumb-header-row">
+          <span class="thumb-code">#${code}</span>
+          <span class="thumb-type-icon">🔗</span>
+        </div>
+        <div class="thumb-tag">Redirect</div>
+        <div class="thumb-title" style="font-size:0.85rem; word-break:break-all;">${data.url || ''}</div>
+        <div class="thumb-preview-wrap"><div class="thumb-preview-placeholder">🔗</div></div>
+        <div class="thumb-footer-row"><span class="thumb-edited">${editedLabel}</span></div>
+      `;
+
+      const editBtn = document.createElement('div');
+      editBtn.className = 'thumb-edit-btn';
+      editBtn.innerHTML = '✏️';
+      editBtn.onclick = (e) => {
+        e.stopPropagation();
+        const newUrl = prompt(`Editar link para "${code}":`, data.url || '');
+        if (newUrl === null) return;
+        const trimmed = newUrl.trim();
+        if (!trimmed) return;
+        handleAddRedirectCommand(code, trimmed).then(() => loadGallery());
+      };
+      thumb.appendChild(editBtn);
+
+      const deleteBtn = document.createElement('div');
+      deleteBtn.className = 'thumb-delete-btn';
+      deleteBtn.innerHTML = '🗑️';
+      deleteBtn.title = 'Eliminar link';
+      deleteBtn.onclick = async (e) => {
+        e.stopPropagation();
+        if (!confirm(`¿Eliminar el link #${code}? Esta acción no se puede deshacer.`)) return;
+        try {
+          await fetch(`${FIREBASE_DB_URL}/redirects/${code}.json`, { method: 'DELETE' });
+          await loadGallery();
+        } catch (err) {
+          alert('No se pudo eliminar. Probá de nuevo.');
+        }
+      };
+      thumb.appendChild(deleteBtn);
+
+      return thumb;
+    }
+
+    function buildImageThumb(code, data) {
+      const thumb = document.createElement('div');
+      thumb.className = 'gallery-card-thumb';
+      thumb.onclick = () => { showImagePopup(data); };
+
+      const editedLabel = formatEditedLabel(data.updatedAt || data.createdAt);
+      const previewInner = data.image
+        ? `<img src="${data.image}" class="gallery-thumb-preview" alt="" />`
+        : `<div class="thumb-preview-placeholder">🖼️</div>`;
+
+      thumb.innerHTML = `
+        <div class="thumb-header-row">
+          <span class="thumb-code">#${code}</span>
+          <span class="thumb-type-icon">🖼️</span>
+        </div>
+        <div class="thumb-tag">${data.caption ? 'Con pie de foto' : ''}</div>
+        <div class="thumb-title" style="font-size:0.85rem; font-style:italic;">${data.caption || ''}</div>
+        <div class="thumb-preview-wrap">${previewInner}</div>
+        <div class="thumb-footer-row"><span class="thumb-edited">${editedLabel}</span></div>
+      `;
+
+      const editBtn = document.createElement('div');
+      editBtn.className = 'thumb-edit-btn';
+      editBtn.innerHTML = '✏️';
+      editBtn.onclick = (e) => {
+        e.stopPropagation();
+        openImageEditor(code, data);
+      };
+      thumb.appendChild(editBtn);
+
+      const deleteBtn = document.createElement('div');
+      deleteBtn.className = 'thumb-delete-btn';
+      deleteBtn.innerHTML = '🗑️';
+      deleteBtn.title = 'Eliminar foto';
+      deleteBtn.onclick = async (e) => {
+        e.stopPropagation();
+        if (!confirm(`¿Eliminar la foto #${code}? Esta acción no se puede deshacer.`)) return;
+        try {
+          await fetch(`${FIREBASE_DB_URL}/imagenes/${code}.json`, { method: 'DELETE' });
+          await loadGallery();
+        } catch (err) {
+          alert('No se pudo eliminar. Probá de nuevo.');
+        }
+      };
+      thumb.appendChild(deleteBtn);
+
+      return thumb;
     }
 
     // ─── SELECCIÓN EN MASA (mantener pulsado en celular / long-press) ───
@@ -3280,14 +3794,21 @@
       if (viewId === 'gallery-view') galleryView.classList.add('active');
       else galleryView.classList.remove('active');
 
+      const imageEditorView = document.getElementById('image-editor-view');
+      if (imageEditorView) {
+        if (viewId === 'image-editor-view') imageEditorView.classList.add('active');
+        else imageEditorView.classList.remove('active');
+      }
+
       const letterView = document.getElementById('letter-view');
       if (viewId === 'letter-view') letterView.classList.add('active');
       else letterView.classList.remove('active');
 
-      // El FAB de "dar un toque" no tiene sentido dentro del editor ni la galería
+      // El FAB de "dar un toque" no tiene sentido dentro del editor, la
+      // galería ni el editor de fotos.
       const fab = document.getElementById('touch-fab');
       const menu = document.getElementById('touch-menu');
-      const hideFab = (viewId === 'admin-view' || viewId === 'gallery-view');
+      const hideFab = (viewId === 'admin-view' || viewId === 'gallery-view' || viewId === 'image-editor-view');
       if (fab) fab.style.display = hideFab ? 'none' : 'flex';
       if (menu && hideFab) menu.classList.remove('visible');
 
@@ -4354,6 +4875,100 @@
       el.textContent = version ? `Framecorreo se actualizó a la versión ${version} ✨` : 'Framecorreo se actualizó ✨';
       el.classList.add('visible');
       setTimeout(() => el.classList.remove('visible'), 4000);
+    }
+
+    // ─── POP-UP DE FOTO ("/img") ───
+    // Se muestra encima de cualquier pantalla (por eso vive fuera de los
+    // view-section, directo en el <body>) cuando se escribe el código de
+    // una foto guardada. Tocar el fondo la cierra (ver onclick en el HTML).
+    function showImagePopup(data) {
+      const overlay = document.getElementById('image-popup-overlay');
+      const imgEl = document.getElementById('image-popup-img');
+      const capEl = document.getElementById('image-popup-caption');
+      if (!overlay || !imgEl || !capEl) return;
+      imgEl.src = data.image;
+      imgEl.alt = data.caption || 'Foto';
+      capEl.textContent = data.caption || '';
+      overlay.classList.add('visible');
+    }
+
+    function closeImagePopup() {
+      const overlay = document.getElementById('image-popup-overlay');
+      if (overlay) overlay.classList.remove('visible');
+    }
+
+    // ─── EDITOR DE FOTOS ("/img") ───
+    // Guarda cada foto en /imagenes/<código>.json en Firebase, en base64
+    // (mismo enfoque que ya se usa para los stickers de imagen de las
+    // cartas). pendingImageDataUrl guarda la foto elegida (nueva o, si se
+    // está editando una existente, la que ya tenía) hasta que se guarda.
+    let pendingImageDataUrl = null;
+
+    function openImageEditor(code, data) {
+      resetImageEditorForm();
+      if (code && data) {
+        document.getElementById('img-code').value = code;
+        document.getElementById('img-caption').value = data.caption || '';
+        if (data.image) {
+          pendingImageDataUrl = data.image;
+          const preview = document.getElementById('image-editor-preview');
+          preview.src = data.image;
+          preview.style.display = 'block';
+          document.getElementById('image-editor-drop').classList.add('has-image');
+        }
+      }
+      switchView('image-editor-view');
+    }
+
+    function exitImageEditor() {
+      switchView('login-view');
+    }
+
+    function resetImageEditorForm() {
+      pendingImageDataUrl = null;
+      const codeEl = document.getElementById('img-code');
+      const capEl = document.getElementById('img-caption');
+      const preview = document.getElementById('image-editor-preview');
+      const drop = document.getElementById('image-editor-drop');
+      if (codeEl) codeEl.value = '';
+      if (capEl) capEl.value = '';
+      if (preview) { preview.src = ''; preview.style.display = 'none'; }
+      if (drop) drop.classList.remove('has-image');
+    }
+
+    function handleImageEditorFileChange(input) {
+      if (input.files && input.files[0]) {
+        const reader = new FileReader();
+        reader.onload = (e) => {
+          pendingImageDataUrl = e.target.result;
+          const preview = document.getElementById('image-editor-preview');
+          preview.src = pendingImageDataUrl;
+          preview.style.display = 'block';
+          document.getElementById('image-editor-drop').classList.add('has-image');
+        };
+        reader.readAsDataURL(input.files[0]);
+        input.value = '';
+      }
+    }
+
+    async function saveImageEntry() {
+      const codeInput = document.getElementById('img-code');
+      const code = codeInput.value.trim().toLowerCase();
+      if (!code) { codeInput.focus(); return; }
+      if (!pendingImageDataUrl) { alert('Subí una foto primero.'); return; }
+
+      const caption = document.getElementById('img-caption').value.trim();
+
+      try {
+        await fetch(`${FIREBASE_DB_URL}/imagenes/${code}.json`, {
+          method: 'PUT',
+          body: JSON.stringify({ image: pendingImageDataUrl, caption, createdAt: Date.now(), updatedAt: Date.now() })
+        });
+        resetImageEditorForm();
+        switchView('login-view');
+      } catch (e) {
+        alert('No se pudo guardar la foto. Probá de nuevo.');
+      }
     }
 
     // ════════════════════════════════════════════════════════════
@@ -6313,5 +6928,16 @@
   </script>
 
   <div id="update-toast" class="update-toast"></div>
+
+  <!-- ─── Pop-up de foto: se abre encima de cualquier pantalla al escribir
+       el código de una imagen guardada con "/img". Tocar afuera (el fondo,
+       no la tarjeta) la cierra. ─── -->
+  <div id="image-popup-overlay" class="image-popup-overlay" onclick="if (event.target === this) closeImagePopup()">
+    <div class="image-popup-card">
+      <button type="button" class="image-popup-close" onclick="closeImagePopup()" title="Cerrar">✕</button>
+      <img id="image-popup-img" alt="" />
+      <div class="image-popup-caption" id="image-popup-caption"></div>
+    </div>
+  </div>
 </body>
 </html>
