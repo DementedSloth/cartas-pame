@@ -3,7 +3,7 @@
 // 2) Deja el terreno listo para notificaciones push reales en el futuro
 //    (hoy los toques se muestran mientras la app está abierta; ver index.html).
 
-const CACHE_NAME = 'framecorreo-v8'; // subir esta versión en cada deploy: v3, v4, v5...
+const CACHE_NAME = 'framecorreo-v9'; // subir esta versión en cada deploy: v3, v4, v5, v6...
 const APP_SHELL = [
   './',
   './index.html',
@@ -13,18 +13,26 @@ const APP_SHELL = [
 ];
 
 self.addEventListener('install', (event) => {
-  // Ya NO hacemos self.skipWaiting() acá. El SW nuevo se instala y se
-  // queda esperando ("waiting") hasta que el usuario confirme la
-  // actualización desde el banner en index.html.
+  // El SW nuevo se instala y se queda esperando ("waiting") hasta que
+  // index.html le manda SKIP_WAITING. Eso ya no depende de que el usuario
+  // toque un botón: index.html lo hace solo, apenas detecta la instalación
+  // (ver registerServiceWorker/applyUpdateSilently), así la app se
+  // autoactualiza sin preguntar.
   event.waitUntil(
     caches.open(CACHE_NAME).then((cache) => cache.addAll(APP_SHELL).catch(() => {}))
   );
 });
 
-// Mensaje que manda el botón "Actualizar" del banner cuando el usuario
-// decide instalar la versión nueva.
+// Mensaje que manda index.html para instalar la versión nueva apenas se
+// detecta (auto-actualización, sin preguntarle nada al usuario). Le avisamos
+// de vuelta al cliente que mandó el mensaje qué versión (CACHE_NAME) se está
+// por activar, para que pueda mostrar un aviso de "se actualizó a..." después
+// de recargar la página.
 self.addEventListener('message', (event) => {
   if (event.data === 'SKIP_WAITING') {
+    if (event.source) {
+      try { event.source.postMessage({ type: 'FRAMECORREO_UPDATED', version: CACHE_NAME }); } catch (e) {}
+    }
     self.skipWaiting();
   }
 });
