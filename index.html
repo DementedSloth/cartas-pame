@@ -2948,15 +2948,18 @@
       currentAdminView = false;
       setLoadingState(true);
 
-      // Antes de buscar una carta: ¿es un código creado con "/url" o
-      // "/img"? Si es así, no es una carta: o mandamos derecho al link
-      // guardado, o mostramos la foto en un pop-up sobre esta misma
-      // pantalla. Las dos búsquedas van en paralelo para no duplicar el
-      // tiempo de espera de cada código que se escribe.
+      // Los tres candidatos posibles para un código (redirect, foto o
+      // carta) se piden EN PARALELO desde el arranque, no uno atrás del
+      // otro: antes se esperaba primero la respuesta de redirect+imagen y
+      // recién después se pedía la carta, duplicando el tiempo de espera
+      // para el caso más común (un código de carta normal, que no es
+      // redirect ni imagen). Así el tiempo total es el de la más lenta de
+      // las tres, no la suma.
       try {
-        const [redirRes, imgRes] = await Promise.allSettled([
+        const [redirRes, imgRes, cartaRes] = await Promise.allSettled([
           fetch(`${FIREBASE_DB_URL}/redirects/${input}.json`).then(r => r.ok ? r.json() : null),
-          fetch(`${FIREBASE_DB_URL}/imagenes/${input}.json`).then(r => r.ok ? r.json() : null)
+          fetch(`${FIREBASE_DB_URL}/imagenes/${input}.json`).then(r => r.ok ? r.json() : null),
+          fetch(`${FIREBASE_DB_URL}/cartas/${input}.json`).then(r => r.ok ? r.json() : null)
         ]);
 
         const redir = redirRes.status === 'fulfilled' ? redirRes.value : null;
@@ -2972,11 +2975,18 @@
           showImagePopup(img);
           return;
         }
-      } catch (e) {
-        // Si falla, seguimos de largo y probamos como carta normal.
-      }
 
-      await fetchAndDisplayLetter(input);
+        if (cartaRes.status === 'fulfilled') {
+          renderLetterView(input, cartaRes.value);
+        } else {
+          throw cartaRes.reason;
+        }
+      } catch (e) {
+        console.error("Error capturado en unlock:", e);
+        if (!currentAdminView) {
+          showErrorBlock('Ups, hubo un problema de conexión. ¿Probamos de nuevo?');
+        }
+      }
       setLoadingState(false);
     }
 
@@ -3132,82 +3142,100 @@
       try { localStorage.removeItem('cartas_draft'); } catch(e) {}
     }
 
+    // renderLetterView: la parte "pura" de mostrar una carta ya obtenida
+    // (sin volver a pedirla a Firebase). Separada de fetchAndDisplayLetter
+    // para que:
+    //  1) unlock() pueda pedir redirect + imagen + carta los tres en
+    //     paralelo (antes se pedían uno detrás del otro, duplicando el
+    //     tiempo de espera para el caso más común: un código de carta).
+    //  2) el preview desde la galería (que ya tiene la carta cargada en
+    //     memoria) no tenga que volver a pedirla.
+    function renderLetterView(code, carta) {
+      if (!carta) {
+        if (!currentAdminView) {
+          document.getElementById('error-msg').textContent = 'Código incorrecto';
+        } else {
+          alert('No se encontró la carta buscada.');
+        }
+        return;
+      }
+
+      if (!currentAdminView) {
+        if (carta.dateType === 'undefined') {
+          document.getElementById('error-msg').textContent = 'Código incorrecto';
+          return;
+        }
+        if (carta.dateType === 'scheduled' && carta.releaseDate) {
+          const today = new Date().toISOString().split('T')[0];
+          if (today < carta.releaseDate) {
+            document.getElementById('error-msg').textContent = 'Código incorrecto';
+            return;
+          }
+        }
+
+        // El contador de "visto" solo tiene sentido si la que abrió la
+        // carta es Pame: si abre Fran (para revisar/probar algo) no debe
+        // sumar, y si por algo no se sabe la identidad tampoco se cuenta.
+        // No se espera (sin await): es un efecto secundario de analítica,
+        // no debe demorar ni un milisegundo la lectura de la carta.
+        if (myIdentity === 'pame') {
+          const currentViews = carta.views || 0;
+          fetch(`${FIREBASE_DB_URL}/cartas/${code}/views.json`, {
+            method: 'PUT',
+            body: JSON.stringify(currentViews + 1)
+          }).catch(() => {});
+          sendTelegramMessage(TELEGRAM_CHAT_FRAN, `💌 Pame abrió la carta "${code}"`);
+        }
+      }
+
+      document.getElementById('letter-card-wrapper').className = carta.style || 'style-a';
+
+      document.getElementById('letter-tag').textContent = getCartaTag(carta);
+      document.getElementById('letter-title').textContent = getCartaTitleRaw(carta);
+
+      const bodyEl = document.getElementById('letter-body');
+      const signEl = document.getElementById('letter-sign');
+      bodyEl.innerHTML = '';
+      signEl.textContent = '';
+
+      const bodyHtml = getCartaBody(carta);
+      if (bodyHtml) {
+        if (bodyHtml.includes('<') && bodyHtml.includes('>')) {
+          bodyEl.innerHTML = bodyHtml;
+        } else {
+          bodyHtml.split(/\n+/).forEach(para => {
+            if (para.trim()) {
+              const p = document.createElement('p');
+              p.textContent = para.trim();
+              bodyEl.appendChild(p);
+            }
+          });
+        }
+      }
+      signEl.textContent = getCartaSign(carta);
+
+      const viewLayer = document.getElementById('view-stickers-layer');
+      renderStickers(viewLayer, getDecorativeStickers(carta), false);
+
+      switchView('letter-view');
+    }
+
+    // Wrapper que pide la carta y la renderiza: lo sigue usando el preview
+    // de la galería (fetchAndDisplayLetter(code), sin la carta a mano). El
+    // camino principal (código escrito por la persona) ya no pasa por acá:
+    // ver unlock(), que pide todo en paralelo y llama a renderLetterView
+    // directo con lo que ya trajo.
     async function fetchAndDisplayLetter(code) {
       try {
         const targetUrl = `${FIREBASE_DB_URL}/cartas/${code}.json`;
         const res = await fetch(targetUrl);
-        
+
         if (!res.ok) {
           throw new Error(`HTTP Error Status: ${res.status}`);
         }
-        
+
         const carta = await res.json();
-
-        if (!carta) {
-          if (!currentAdminView) {
-            document.getElementById('error-msg').textContent = 'Código incorrecto';
-          } else {
-            alert('No se encontró la carta buscada.');
-          }
-          return;
-        }
-
-        if (!currentAdminView) {
-          if (carta.dateType === 'undefined') {
-            document.getElementById('error-msg').textContent = 'Código incorrecto';
-            return;
-          }
-          if (carta.dateType === 'scheduled' && carta.releaseDate) {
-            const today = new Date().toISOString().split('T')[0]; 
-            if (today < carta.releaseDate) {
-              document.getElementById('error-msg').textContent = 'Código incorrecto';
-              return;
-            }
-          }
-
-          // El contador de "visto" solo tiene sentido si la que abrió la
-          // carta es Pame: si abre Fran (para revisar/probar algo) no debe
-          // sumar, y si por algo no se sabe la identidad tampoco se cuenta.
-          if (myIdentity === 'pame') {
-            const currentViews = carta.views || 0;
-            await fetch(`${FIREBASE_DB_URL}/cartas/${code}/views.json`, {
-              method: 'PUT',
-              body: JSON.stringify(currentViews + 1)
-            });
-            sendTelegramMessage(TELEGRAM_CHAT_FRAN, `💌 Pame abrió la carta "${code}"`);
-          }
-        }
-
-        document.getElementById('letter-card-wrapper').className = carta.style || 'style-a';
-
-        document.getElementById('letter-tag').textContent = getCartaTag(carta);
-        document.getElementById('letter-title').textContent = getCartaTitleRaw(carta);
-
-        const bodyEl = document.getElementById('letter-body');
-        const signEl = document.getElementById('letter-sign');
-        bodyEl.innerHTML = '';
-        signEl.textContent = '';
-
-        const bodyHtml = getCartaBody(carta);
-        if (bodyHtml) {
-          if (bodyHtml.includes('<') && bodyHtml.includes('>')) {
-            bodyEl.innerHTML = bodyHtml;
-          } else {
-            bodyHtml.split(/\n+/).forEach(para => {
-              if (para.trim()) {
-                const p = document.createElement('p');
-                p.textContent = para.trim();
-                bodyEl.appendChild(p);
-              }
-            });
-          }
-        }
-        signEl.textContent = getCartaSign(carta);
-
-        const viewLayer = document.getElementById('view-stickers-layer');
-        renderStickers(viewLayer, getDecorativeStickers(carta), false);
-
-        switchView('letter-view');
+        renderLetterView(code, carta);
       } catch (err) {
         console.error("Error capturado en fetchAndDisplayLetter:", err);
         setLoadingState(false);
@@ -3615,7 +3643,9 @@
           return;
         }
         currentAdminView = true;
-        fetchAndDisplayLetter(code);
+        // La carta ya está en memoria (loadGallery la trajo entera): no
+        // hace falta volver a pedirla a Firebase para mostrarla.
+        renderLetterView(code, carta);
       };
 
       const totalViews = carta.views || 0;
