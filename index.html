@@ -79,6 +79,19 @@
        vuelve a poder scrollear como cualquier otra si hiciera falta. */
     body:has(#login-view.active) { height: auto; overflow-x: hidden; overflow-y: auto; }
 
+    /* La galería (y el editor de fotos) pueden ser más altos que la
+       pantalla en mobile (grilla de tarjetas, o foto+stickers+campos).
+       Como <html> tiene overflow:hidden a nivel global, sin esta regla el
+       body no tenía dónde scrollear y todo lo que sobraba por abajo
+       quedaba inalcanzable (la galería "no scrolleaba" en el celular). */
+    body:has(#gallery-view.active),
+    body:has(#image-editor-view.active) {
+      height: 100dvh;
+      overflow-y: auto;
+      overflow-x: hidden;
+      -webkit-overflow-scrolling: touch;
+    }
+
     /* ─── Pantalla de inicio: tarjeta centrada con el código ─── */
     .home-hero {
       width: 100%; flex: 1; min-height: calc(100dvh - 2rem);
@@ -978,7 +991,14 @@
       border: none !important;
     }
     .ig-stage-shell #live-card-container { display: flex; align-items: stretch; }
+    /* padding-bottom extra: dentro del editor, la carta scrollea sola pero
+       la barra inferior fija (atrás/galería/guardar + indicador de
+       autoguardado) queda flotando encima de todo, así que sin este
+       espacio la firma (último campo) termina tapada e imposible de tocar
+       al llegar al final del scroll. Solo aplica en el editor (admin-view),
+       no en la vista final que lee el destinatario. */
     .ig-stage-shell .letter-card { flex: 1; min-height: 0 !important; overflow-y: auto; }
+    #admin-view .ig-stage-shell .letter-card { padding-bottom: 6.5rem !important; }
     .ig-stage-shell .workspace-boundary { outline-color: rgba(201,169,110,0.35); }
 
     /* ─── #letter-stage-shell es el ÚNICO de los dos "stage" (el otro es
@@ -1207,17 +1227,34 @@
       cursor: pointer; flex-shrink: 0; padding: 0;
     }
 
+    /* Fila de disponibilidad + guardar: los botones cuadrados de tipo de
+       carta (inmediata/programada/borrador) quedan pegados a la izquierda
+       del botón "Guardar carta", mismo estilo visual (fondo, borde, radio)
+       que .ig-action-row pero 1:1 (ancho = alto) en vez de una fila larga. */
+    .ig-date-save-row { display: flex; align-items: stretch; gap: 0.6rem; width: 100%; }
+    .ig-sq-row { display: flex; gap: 0.6rem; flex-shrink: 0; }
+    .ig-sq-btn {
+      display: flex; align-items: center; justify-content: center;
+      aspect-ratio: 1 / 1; height: auto; padding: 0.95rem; box-sizing: border-box;
+      background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1);
+      border-radius: 14px; cursor: pointer; color: var(--text); font-size: 1.3rem;
+      font-family: 'Inter', sans-serif; transition: background 0.15s, border-color 0.15s;
+      -webkit-tap-highlight-color: transparent;
+    }
+    .ig-sq-btn:active { background: rgba(255,255,255,0.12); }
+    .ig-sq-btn.active { background: rgba(124,63,110,0.35); border-color: var(--accent-soft); }
+
     /* En PC (mouse/trackpad, no touch) el menú de ESTILOS y el de
        DISPONIBILIDAD pasan a ser una lista vertical normal con scroll, en
        vez del carrusel horizontal pensado para deslizar con el dedo (que
        en pantallas anchas se veía "cortado" por el degradé de los bordes).
        El resto de los .ig-vscroll (colores, etc.) no se tocan. */
     @media (hover: hover) and (pointer: fine) {
-      #adm-style-list, #adm-date-type-list {
+      #adm-style-list {
         flex-direction: column; overflow-x: hidden; overflow-y: auto;
         max-height: 260px; scroll-snap-type: none;
       }
-      #adm-style-list .ig-vscroll-item, #adm-date-type-list .ig-vscroll-item {
+      #adm-style-list .ig-vscroll-item {
         width: 100%; min-width: 0; flex-direction: row; justify-content: flex-start;
         text-align: left; white-space: normal;
       }
@@ -1642,8 +1679,12 @@
       transform: scale(0.85) translateY(14px); transition: transform 0.3s cubic-bezier(.22,1,.36,1);
     }
     .image-popup-overlay.visible .image-popup-card { transform: scale(1) translateY(0); }
-    .image-popup-card img {
-      display: block; width: 100%; max-height: 72vh; object-fit: contain; background: #000;
+    .image-popup-media {
+      position: relative; width: 100%; aspect-ratio: 4/5; max-height: 72vh;
+      overflow: hidden; background: #000;
+    }
+    .image-popup-media img {
+      display: block; width: 100%; height: 100%; object-fit: cover;
     }
     .image-popup-caption {
       padding: 0.9rem 1.2rem 1.1rem; font-family: 'Cormorant Garamond', serif; font-style: italic;
@@ -1840,14 +1881,19 @@
                 <option value="scheduled">Programada</option>
                 <option value="undefined">Borrador</option>
             </select>
-            <div class="ig-vscroll" id="adm-date-type-list">
-              <div class="ig-vscroll-item active" data-datetype="immediate">Inmediata</div>
-              <div class="ig-vscroll-item" data-datetype="scheduled">Programada</div>
-              <div class="ig-vscroll-item" data-datetype="undefined">Borrador</div>
-            </div>
             <input id="adm-date" class="tb-input" type="date" style="display:none; font-size:1.05rem; padding:0.9rem;" />
 
-            <div class="ig-action-row" onclick="saveLetter()"><span class="ig-icn">💾</span> Guardar carta</div>
+            <!-- Disponibilidad + guardar en una sola fila: los 3 botones
+                 cuadrados (mismo estilo que "Guardar carta", pero 1:1) eligen
+                 el tipo de disponibilidad, a la izquierda del botón de guardar. -->
+            <div class="ig-date-save-row">
+              <div class="ig-sq-row" id="adm-date-type-list">
+                <button type="button" class="ig-sq-btn ig-vscroll-item active" data-datetype="immediate" title="Inmediata">📤</button>
+                <button type="button" class="ig-sq-btn ig-vscroll-item" data-datetype="scheduled" title="Programada">📅</button>
+                <button type="button" class="ig-sq-btn ig-vscroll-item" data-datetype="undefined" title="Borrador">📝</button>
+              </div>
+              <div class="ig-action-row" style="flex:1;" onclick="saveLetter()"><span class="ig-icn">💾</span> Guardar carta</div>
+            </div>
           </div>
         </div>
 
@@ -1986,12 +2032,25 @@
         </div>
 
         <input type="file" id="img-editor-file" accept="image/*" style="display:none;" onchange="handleImageEditorFileChange(this)" />
-        <div class="image-editor-drop" id="image-editor-drop" onclick="document.getElementById('img-editor-file').click()">
+        <input type="file" id="img-sticker-file" accept="image/*" style="display:none;" onchange="uploadImageStickerFile(this)" />
+        <div class="image-editor-drop" id="image-editor-drop" onclick="if (!event.target.closest('.stickers-layer') && !event.target.closest('.ig-rail')) document.getElementById('img-editor-file').click()">
           <img id="image-editor-preview" alt="" style="display:none;" />
           <div class="image-editor-drop-inner" id="image-editor-drop-inner">
             <span class="image-editor-drop-icon">📷</span>
             <span>Subir foto</span>
           </div>
+
+          <!-- Mismo sistema de stickers que el editor de cartas (arrastrar,
+               rotar, redimensionar, borrar), pero con su propia data
+               (imageStickers) para no mezclarse con la carta. -->
+          <div class="stickers-layer" id="image-stickers-layer"></div>
+
+          <div class="ig-rail" id="img-tools-rail" style="top:10px; right:10px;">
+            <button type="button" class="ig-rail-btn" title="Insertar imagen" onclick="event.stopPropagation(); document.getElementById('img-sticker-file').click()">🖼️</button>
+            <button type="button" class="ig-rail-btn" id="image-text-btn" title="Texto" style="font-weight:bold;" onclick="event.stopPropagation(); handleTextToolClick('image')">Aa</button>
+          </div>
+
+          <div class="delete-drop-zone" id="image-delete-zone"><span>✕</span></div>
         </div>
 
         <input type="text" id="img-caption" class="image-editor-caption-input" placeholder="Pie de foto (opcional)" autocomplete="off" />
@@ -2161,6 +2220,11 @@
     let autosaveTimer = null;
     let currentStickers = [];
     let selectedStickerIdx = null;
+    // ─── Stickers del editor de fotos ("/img"): mismo concepto que
+    // currentStickers/canvasStickers, pero separados para no mezclarse con
+    // los de la carta ni con los del lienzo compartido. ───
+    let imageStickers = [];
+    let imageSelectedStickerIdx = null;
 
     // ════════════════════════════════════════════════════════════
     // ─── HERRAMIENTA "MOVER PÁGINA" + colapsar herramientas + Aa dinámico ───
@@ -2313,17 +2377,18 @@
       const isCanvas = scope === 'canvas';
       if (isCanvas) deactivateCanvasDrawMode();
 
-      const idx = isCanvas ? canvasSelectedStickerIdx : selectedStickerIdx;
-      const arr = isCanvas ? canvasStickers : currentStickers;
+      const idx = scope === 'canvas' ? canvasSelectedStickerIdx : (scope === 'image' ? imageSelectedStickerIdx : selectedStickerIdx);
+      const arr = scope === 'canvas' ? canvasStickers : (scope === 'image' ? imageStickers : currentStickers);
       const isEditingExisting = idx !== null && idx !== undefined && arr[idx] && arr[idx].type === 'text';
       openTextTool(scope, isEditingExisting ? idx : null);
     }
 
     function updateTextToolButton(scope) {
       const isCanvas = scope === 'canvas';
-      const idx = isCanvas ? canvasSelectedStickerIdx : selectedStickerIdx;
-      const arr = isCanvas ? canvasStickers : currentStickers;
-      const btn = document.getElementById(isCanvas ? 'canvas-text-btn' : 'adm-text-btn');
+      const idx = scope === 'canvas' ? canvasSelectedStickerIdx : (scope === 'image' ? imageSelectedStickerIdx : selectedStickerIdx);
+      const arr = scope === 'canvas' ? canvasStickers : (scope === 'image' ? imageStickers : currentStickers);
+      const btnId = scope === 'canvas' ? 'canvas-text-btn' : (scope === 'image' ? 'image-text-btn' : 'adm-text-btn');
+      const btn = document.getElementById(btnId);
       if (!btn) return;
       const isEditingText = idx !== null && idx !== undefined && arr[idx] && arr[idx].type === 'text';
       btn.title = isEditingText ? 'Editar texto' : 'Agregar texto';
@@ -2708,6 +2773,17 @@
       }
     });
 
+    // ─── ENTER PARA GUARDAR EN EL EDITOR DE FOTOS ───
+    // El campo de código del editor de fotos no tenía forma de confirmar
+    // con Enter (a diferencia de otros campos que se manejan por botón);
+    // esto lo deja igual de accesible que tocar "Guardar foto".
+    document.getElementById('img-code').addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') {
+        e.preventDefault();
+        saveImageEntry();
+      }
+    });
+
     // ─── LOADING STATE ───
     function setLoadingState(loading) {
       const btn = document.getElementById('unlock-btn');
@@ -2743,6 +2819,16 @@
       const dateEl = document.getElementById('adm-date');
       if (dateEl) dateEl.style.display = (type === 'scheduled') ? 'inline-block' : 'none';
       if (type !== 'scheduled') dateEl.value = '';
+
+      // Mantiene resaltado el botón cuadrado que corresponde al tipo actual,
+      // incluso cuando el valor se setea a mano (edición, reset, autosave)
+      // y no por un click directo sobre el botón.
+      const list = document.getElementById('adm-date-type-list');
+      if (list) {
+        list.querySelectorAll('.ig-vscroll-item').forEach((item) => {
+          item.classList.toggle('active', item.dataset.datetype === type);
+        });
+      }
     }
 
     function updateLiveCardStyle(styleId) {
@@ -4889,6 +4975,9 @@
       imgEl.src = data.image;
       imgEl.alt = data.caption || 'Foto';
       capEl.textContent = data.caption || '';
+      // Stickers en modo solo-lectura: reutiliza la misma función genérica
+      // que ya usa la vista final de la carta (isEditable=false).
+      renderStickers(document.getElementById('image-popup-stickers-layer'), data.stickers || [], false);
       overlay.classList.add('visible');
     }
 
@@ -4916,6 +5005,9 @@
           preview.style.display = 'block';
           document.getElementById('image-editor-drop').classList.add('has-image');
         }
+        imageStickers = Array.isArray(data.stickers) ? data.stickers : [];
+        imageSelectedStickerIdx = null;
+        renderImageStickers();
       }
       switchView('image-editor-view');
     }
@@ -4926,6 +5018,8 @@
 
     function resetImageEditorForm() {
       pendingImageDataUrl = null;
+      imageStickers = [];
+      imageSelectedStickerIdx = null;
       const codeEl = document.getElementById('img-code');
       const capEl = document.getElementById('img-caption');
       const preview = document.getElementById('image-editor-preview');
@@ -4934,6 +5028,7 @@
       if (capEl) capEl.value = '';
       if (preview) { preview.src = ''; preview.style.display = 'none'; }
       if (drop) drop.classList.remove('has-image');
+      renderImageStickers();
     }
 
     function handleImageEditorFileChange(input) {
@@ -4962,7 +5057,7 @@
       try {
         await fetch(`${FIREBASE_DB_URL}/imagenes/${code}.json`, {
           method: 'PUT',
-          body: JSON.stringify({ image: pendingImageDataUrl, caption, createdAt: Date.now(), updatedAt: Date.now() })
+          body: JSON.stringify({ image: pendingImageDataUrl, caption, stickers: imageStickers, createdAt: Date.now(), updatedAt: Date.now() })
         });
         resetImageEditorForm();
         switchView('login-view');
@@ -4970,6 +5065,452 @@
         alert('No se pudo guardar la foto. Probá de nuevo.');
       }
     }
+
+    // ═══════════════════════════════════════════════════════════════
+    // ─── STICKERS DEL EDITOR DE FOTOS: mismo comportamiento (arrastrar,
+    // rotar, redimensionar, pellizcar, clonar, borrar) que los de la carta
+    // y el lienzo, pero con su propia data (imageStickers) y sin depender
+    // de Tiptap: el contenido de texto se edita solo con la herramienta
+    // "Aa" a pantalla completa (openTextTool/closeTextTool), tocar el
+    // cuadro ya colocado la vuelve a abrir para editar. ───
+    // ═══════════════════════════════════════════════════════════════
+
+    function addImageStickerToData(base64Src) {
+      imageStickers.push({ type: 'image', src: base64Src, left: 30, top: 25, width: 35, rotation: 0 });
+      imageSelectedStickerIdx = imageStickers.length - 1;
+      renderImageStickers();
+    }
+
+    function addImageTextSticker(posLeft, posTop) {
+      imageStickers.push({
+        type: 'text', content: '', placeholder: 'Escribí algo...',
+        left: (posLeft != null ? posLeft : 15), top: (posTop != null ? posTop : 38), width: 70, rotation: 0,
+        fontSize: 22, font: 'Lora', color: '#e8ddd0', align: 'center', bgMode: 'none'
+      });
+      const idx = imageStickers.length - 1;
+      imageSelectedStickerIdx = idx;
+      renderImageStickers();
+      return idx;
+    }
+
+    function uploadImageStickerFile(input) {
+      if (input.files && input.files[0]) {
+        const reader = new FileReader();
+        reader.onload = (e) => addImageStickerToData(e.target.result);
+        reader.readAsDataURL(input.files[0]);
+        input.value = '';
+      }
+    }
+
+    function renderImageStickers() {
+      const layerContainer = document.getElementById('image-stickers-layer');
+      if (!layerContainer) return;
+      layerContainer.innerHTML = '';
+
+      imageStickers.forEach((st, idx) => {
+        const wrapper = document.createElement('div');
+        wrapper.className = 'sticker-wrapper';
+        wrapper.dataset.idx = idx;
+        if (imageSelectedStickerIdx === idx) wrapper.classList.add('selected');
+        wrapper.style.left = st.left + '%';
+        wrapper.style.top = st.top + '%';
+        wrapper.style.width = st.width + '%';
+        wrapper.style.transform = `rotate(${st.rotation || 0}deg)`;
+        wrapper.style.opacity = (st.opacity === undefined || st.opacity === null) ? 1 : st.opacity;
+
+        if (st.type === 'text') {
+          const textDiv = document.createElement('div');
+          textDiv.className = 'sticker-text-content';
+          textDiv.id = `image-sticker-text-${idx}`;
+          applyCanvasTextStyle(textDiv, st);
+          textDiv.contentEditable = "false";
+          textDiv.innerHTML = st.content || (st.placeholder ? `<span style="opacity:0.55;">${st.placeholder}</span>` : '');
+          wrapper.appendChild(textDiv);
+        } else {
+          const img = document.createElement('img');
+          img.className = 'sticker-img';
+          img.src = st.src;
+          wrapper.appendChild(img);
+        }
+
+        const moveBtn = document.createElement('div');
+        moveBtn.className = 'sticker-control control-move';
+        moveBtn.innerHTML = '✥';
+        wrapper.appendChild(moveBtn);
+
+        const delBtn = document.createElement('div');
+        delBtn.className = 'sticker-control control-delete';
+        delBtn.innerHTML = '✕';
+        delBtn.onclick = (e) => {
+          e.stopPropagation();
+          imageStickers.splice(idx, 1);
+          if (imageSelectedStickerIdx === idx) imageSelectedStickerIdx = null;
+          else if (imageSelectedStickerIdx > idx) imageSelectedStickerIdx--;
+          renderImageStickers();
+        };
+        wrapper.appendChild(delBtn);
+
+        const cloneBtn = document.createElement('div');
+        cloneBtn.className = 'sticker-control control-clone';
+        cloneBtn.innerHTML = '＋';
+        cloneBtn.onclick = (e) => {
+          e.stopPropagation();
+          const cloned = JSON.parse(JSON.stringify(st));
+          cloned.left = Math.min(st.left + 5, 85);
+          cloned.top = Math.min(st.top + 5, 85);
+          imageStickers.push(cloned);
+          imageSelectedStickerIdx = imageStickers.length - 1;
+          renderImageStickers();
+        };
+        wrapper.appendChild(cloneBtn);
+
+        const rotBtn = document.createElement('div');
+        rotBtn.className = 'sticker-control control-rotate';
+        rotBtn.innerHTML = '↻';
+        wrapper.appendChild(rotBtn);
+
+        const resBtn = document.createElement('div');
+        resBtn.className = 'sticker-control control-resize';
+        resBtn.innerHTML = '⤡';
+        wrapper.appendChild(resBtn);
+
+        const sideLeftBtn = document.createElement('div');
+        sideLeftBtn.className = 'sticker-control control-resize-side control-resize-side-left';
+        sideLeftBtn.innerHTML = '⋮';
+        sideLeftBtn.title = 'Ajustar ancho del recuadro';
+        wrapper.appendChild(sideLeftBtn);
+
+        const sideRightBtn = document.createElement('div');
+        sideRightBtn.className = 'sticker-control control-resize-side control-resize-side-right';
+        sideRightBtn.innerHTML = '⋮';
+        sideRightBtn.title = 'Ajustar ancho del recuadro';
+        wrapper.appendChild(sideRightBtn);
+
+        setupImageStickerDragAndTransform(wrapper, st, layerContainer, rotBtn, resBtn, idx, sideLeftBtn, sideRightBtn);
+
+        layerContainer.appendChild(wrapper);
+      });
+    }
+
+    function setupImageStickerDragAndTransform(wrapper, stickerData, layerContainer, rotBtn, resBtn, idx, sideLeftBtn, sideRightBtn) {
+      wrapper.addEventListener('dragstart', (e) => e.preventDefault());
+
+      // 1. MOVER (DRAG)
+      wrapper.addEventListener('mousedown', startMove);
+      wrapper.addEventListener('touchstart', startMove, { passive: false });
+
+      function startMove(e) {
+        if (e.touches && e.touches.length > 1) return; // dos dedos: lo maneja el pellizco
+
+        const isMoveControl = e.target.closest('.control-move');
+        const isOtherControl = e.target.closest('.sticker-control') && !isMoveControl;
+        if (isOtherControl) return;
+
+        e.preventDefault();
+        e.stopPropagation();
+
+        const clientX = e.touches ? e.touches[0].clientX : e.clientX;
+        const clientY = e.touches ? e.touches[0].clientY : e.clientY;
+        const startX = clientX;
+        const startY = clientY;
+        const DRAG_THRESHOLD = 6;
+
+        let dragging = false;
+        let containerRect = null;
+        let initialLeftPx = 0;
+        let initialTopPx = 0;
+        const deleteZone = document.getElementById('image-delete-zone');
+
+        function beginDrag() {
+          dragging = true;
+          imageSelectedStickerIdx = idx;
+          document.querySelectorAll('#image-stickers-layer .sticker-wrapper').forEach(w => w.classList.remove('selected'));
+          wrapper.classList.add('selected');
+          wrapper.classList.add('active');
+
+          containerRect = layerContainer.getBoundingClientRect();
+          initialLeftPx = (stickerData.left / 100) * containerRect.width;
+          initialTopPx = (stickerData.top / 100) * containerRect.height;
+        }
+
+        function doMove(moveEvent) {
+          const mX = moveEvent.touches ? moveEvent.touches[0].clientX : moveEvent.clientX;
+          const mY = moveEvent.touches ? moveEvent.touches[0].clientY : moveEvent.clientY;
+
+          if (!dragging) {
+            if (Math.hypot(mX - startX, mY - startY) < DRAG_THRESHOLD) return;
+            beginDrag();
+          }
+
+          const deltaX = mX - startX;
+          const deltaY = mY - startY;
+
+          stickerData.left = ((initialLeftPx + deltaX) / containerRect.width) * 100;
+          stickerData.top = ((initialTopPx + deltaY) / containerRect.height) * 100;
+
+          wrapper.style.left = stickerData.left + '%';
+          wrapper.style.top = stickerData.top + '%';
+
+          if (deleteZone) {
+            deleteZone.classList.add('visible');
+            const zoneRect = deleteZone.getBoundingClientRect();
+            const nearDelete = Math.hypot(mX - (zoneRect.left + zoneRect.width / 2), mY - (zoneRect.top + zoneRect.height / 2)) < 55;
+            deleteZone.classList.toggle('armed', nearDelete);
+            wrapper.style.opacity = nearDelete ? '0.35' : ((stickerData.opacity === undefined || stickerData.opacity === null) ? 1 : stickerData.opacity);
+          }
+        }
+
+        function stopMove(upEvent) {
+          window.removeEventListener('mousemove', doMove);
+          window.removeEventListener('mouseup', stopMove);
+          window.removeEventListener('touchmove', doMove);
+          window.removeEventListener('touchend', stopMove);
+
+          if (dragging) {
+            wrapper.classList.remove('active');
+            if (deleteZone && deleteZone.classList.contains('armed')) {
+              deleteZone.classList.remove('visible', 'armed');
+              imageStickers.splice(idx, 1);
+              if (imageSelectedStickerIdx === idx) imageSelectedStickerIdx = null;
+              else if (imageSelectedStickerIdx > idx) imageSelectedStickerIdx--;
+              renderImageStickers();
+              return;
+            }
+            if (deleteZone) deleteZone.classList.remove('visible', 'armed');
+            return;
+          }
+
+          // No hubo arrastre: fue un toque/clic simple. Seleccionamos el
+          // cuadro y, si es de texto, abrimos la herramienta "Aa" para
+          // editarlo (los stickers de la foto no se editan en el lugar).
+          imageSelectedStickerIdx = idx;
+          document.querySelectorAll('#image-stickers-layer .sticker-wrapper').forEach(w => w.classList.remove('selected'));
+          wrapper.classList.add('selected');
+
+          if (stickerData.type === 'text') {
+            openTextTool('image', idx);
+          }
+        }
+
+        window.addEventListener('mousemove', doMove);
+        window.addEventListener('mouseup', stopMove);
+        window.addEventListener('touchmove', doMove, { passive: false });
+        window.addEventListener('touchend', stopMove);
+      }
+
+      // 1b. PELLIZCAR CON DOS DEDOS: agranda/achica y rota a la vez
+      wrapper.addEventListener('touchstart', startPinch, { passive: false });
+
+      function startPinch(e) {
+        if (!e.touches || e.touches.length !== 2) return;
+        e.preventDefault();
+        e.stopPropagation();
+
+        imageSelectedStickerIdx = idx;
+        document.querySelectorAll('#image-stickers-layer .sticker-wrapper').forEach(w => w.classList.remove('selected'));
+        wrapper.classList.add('selected');
+
+        const t0 = e.touches[0], t1 = e.touches[1];
+        const startDist = Math.hypot(t1.clientX - t0.clientX, t1.clientY - t0.clientY);
+        const startAngle = Math.atan2(t1.clientY - t0.clientY, t1.clientX - t0.clientX) * 180 / Math.PI;
+        const initialWidthPercent = stickerData.width;
+        const initialFontSize = stickerData.fontSize || 22;
+        const initialRotation = stickerData.rotation || 0;
+
+        function doPinch(moveEvt) {
+          if (!moveEvt.touches || moveEvt.touches.length < 2) return;
+          moveEvt.preventDefault();
+          const a = moveEvt.touches[0], b = moveEvt.touches[1];
+          const dist = Math.hypot(b.clientX - a.clientX, b.clientY - a.clientY);
+          const angle = Math.atan2(b.clientY - a.clientY, b.clientX - a.clientX) * 180 / Math.PI;
+
+          let newWidthPercent = initialWidthPercent * (dist / startDist);
+          const maxWidthPercent = stickerData.type === 'text' ? 2000 : 100;
+          if (newWidthPercent < 5) newWidthPercent = 5;
+          if (newWidthPercent > maxWidthPercent) newWidthPercent = maxWidthPercent;
+          stickerData.width = newWidthPercent;
+          wrapper.style.width = stickerData.width + '%';
+
+          if (stickerData.type === 'text') {
+            let newFontSize = initialFontSize * (newWidthPercent / initialWidthPercent);
+            if (newFontSize < 6) newFontSize = 6;
+            stickerData.fontSize = newFontSize;
+            const textEl = wrapper.querySelector('.sticker-text-content');
+            if (textEl) textEl.style.fontSize = newFontSize + 'px';
+          }
+
+          stickerData.rotation = initialRotation + (angle - startAngle);
+          wrapper.style.transform = `rotate(${stickerData.rotation}deg)`;
+        }
+
+        function stopPinch() {
+          window.removeEventListener('touchmove', doPinch);
+          window.removeEventListener('touchend', stopPinch);
+          window.removeEventListener('touchcancel', stopPinch);
+        }
+
+        window.addEventListener('touchmove', doPinch, { passive: false });
+        window.addEventListener('touchend', stopPinch);
+        window.addEventListener('touchcancel', stopPinch);
+      }
+
+      // 2. REDIMENSIONAR (esquina)
+      resBtn.addEventListener('mousedown', startResize);
+      resBtn.addEventListener('touchstart', startResize, { passive: false });
+
+      function startResize(e) {
+        e.stopPropagation();
+        e.preventDefault();
+
+        const wrapperRect = wrapper.getBoundingClientRect();
+        const centerX = wrapperRect.left + wrapperRect.width / 2;
+        const centerY = wrapperRect.top + wrapperRect.height / 2;
+
+        const startClientX = e.touches ? e.touches[0].clientX : e.clientX;
+        const startClientY = e.touches ? e.touches[0].clientY : e.clientY;
+        const startRadius = Math.hypot(startClientX - centerX, startClientY - centerY);
+        const initialWidthPercent = stickerData.width;
+        const initialFontSize = stickerData.fontSize || 16;
+
+        function doResize(moveEvent) {
+          const mX = moveEvent.touches ? moveEvent.touches[0].clientX : moveEvent.clientX;
+          const mY = moveEvent.touches ? moveEvent.touches[0].clientY : moveEvent.clientY;
+
+          const currentRadius = Math.hypot(mX - centerX, mY - centerY);
+          const ratio = currentRadius / startRadius;
+
+          let newWidthPercent = initialWidthPercent * ratio;
+          const maxWidthPercent = stickerData.type === 'text' ? 2000 : 100;
+          if (newWidthPercent < 5) newWidthPercent = 5;
+          if (newWidthPercent > maxWidthPercent) newWidthPercent = maxWidthPercent;
+
+          stickerData.width = newWidthPercent;
+          wrapper.style.width = stickerData.width + '%';
+
+          if (stickerData.type === 'text') {
+            let newFontSize = initialFontSize * (newWidthPercent / initialWidthPercent);
+            if (newFontSize < 6) newFontSize = 6;
+            stickerData.fontSize = newFontSize;
+            const textEl = wrapper.querySelector('.sticker-text-content');
+            if (textEl) textEl.style.fontSize = newFontSize + 'px';
+          }
+        }
+
+        function stopResize() {
+          window.removeEventListener('mousemove', doResize);
+          window.removeEventListener('mouseup', stopResize);
+          window.removeEventListener('touchmove', doResize);
+          window.removeEventListener('touchend', stopResize);
+        }
+
+        window.addEventListener('mousemove', doResize);
+        window.addEventListener('mouseup', stopResize);
+        window.addEventListener('touchmove', doResize, { passive: false });
+        window.addEventListener('touchend', stopResize);
+      }
+
+      // 2b. REDIMENSIONAR ANCHO DESDE LOS LADOS
+      if (sideLeftBtn) {
+        sideLeftBtn.addEventListener('mousedown', (e) => startResizeSide(e, 'left'));
+        sideLeftBtn.addEventListener('touchstart', (e) => startResizeSide(e, 'left'), { passive: false });
+      }
+      if (sideRightBtn) {
+        sideRightBtn.addEventListener('mousedown', (e) => startResizeSide(e, 'right'));
+        sideRightBtn.addEventListener('touchstart', (e) => startResizeSide(e, 'right'), { passive: false });
+      }
+
+      function startResizeSide(e, side) {
+        e.stopPropagation();
+        e.preventDefault();
+
+        const containerRect = layerContainer.getBoundingClientRect();
+        const startClientX = e.touches ? e.touches[0].clientX : e.clientX;
+        const initialWidthPercent = stickerData.width;
+        const initialLeftPercent = stickerData.left;
+
+        function doResizeSide(moveEvent) {
+          const mX = moveEvent.touches ? moveEvent.touches[0].clientX : moveEvent.clientX;
+          const deltaPercent = ((mX - startClientX) / containerRect.width) * 100;
+
+          let newWidth, newLeft;
+          if (side === 'right') {
+            newWidth = initialWidthPercent + deltaPercent;
+            newLeft = initialLeftPercent;
+          } else {
+            newWidth = initialWidthPercent - deltaPercent;
+            newLeft = initialLeftPercent + deltaPercent;
+          }
+
+          if (newWidth < 12) newWidth = 12;
+          if (newWidth > 400) newWidth = 400;
+
+          stickerData.width = newWidth;
+          stickerData.left = newLeft;
+          wrapper.style.width = newWidth + '%';
+          wrapper.style.left = newLeft + '%';
+        }
+
+        function stopResizeSide() {
+          window.removeEventListener('mousemove', doResizeSide);
+          window.removeEventListener('mouseup', stopResizeSide);
+          window.removeEventListener('touchmove', doResizeSide);
+          window.removeEventListener('touchend', stopResizeSide);
+        }
+
+        window.addEventListener('mousemove', doResizeSide);
+        window.addEventListener('mouseup', stopResizeSide);
+        window.addEventListener('touchmove', doResizeSide, { passive: false });
+        window.addEventListener('touchend', stopResizeSide);
+      }
+
+      // 3. ROTAR
+      rotBtn.addEventListener('mousedown', startRotate);
+      rotBtn.addEventListener('touchstart', startRotate, { passive: false });
+
+      function startRotate(e) {
+        e.stopPropagation();
+        e.preventDefault();
+
+        const wrapperRect = wrapper.getBoundingClientRect();
+        const centerX = wrapperRect.left + wrapperRect.width / 2;
+        const centerY = wrapperRect.top + wrapperRect.height / 2;
+
+        function doRotate(moveEvent) {
+          const mX = moveEvent.touches ? moveEvent.touches[0].clientX : moveEvent.clientX;
+          const mY = moveEvent.touches ? moveEvent.touches[0].clientY : moveEvent.clientY;
+
+          const angleRad = Math.atan2(mY - centerY, mX - centerX);
+          let angleDeg = (angleRad * 180) / Math.PI;
+          angleDeg = (angleDeg + 90) % 360;
+
+          stickerData.rotation = angleDeg;
+          wrapper.style.transform = `rotate(${stickerData.rotation}deg)`;
+        }
+
+        function stopRotate() {
+          window.removeEventListener('mousemove', doRotate);
+          window.removeEventListener('mouseup', stopRotate);
+          window.removeEventListener('touchmove', doRotate);
+          window.removeEventListener('touchend', stopRotate);
+        }
+
+        window.addEventListener('mousemove', doRotate);
+        window.addEventListener('mouseup', stopRotate);
+        window.addEventListener('touchmove', doRotate, { passive: false });
+        window.addEventListener('touchend', stopRotate);
+      }
+    }
+
+    // Clic afuera de un sticker (pero dentro del editor de fotos) para
+    // limpiar la selección, igual que en la carta y el lienzo.
+    document.addEventListener('click', (e) => {
+      const imgView = document.getElementById('image-editor-view');
+      if (!imgView || !imgView.classList.contains('active')) return;
+      if (!e.target.closest('.sticker-wrapper') && !e.target.closest('.ig-rail') && !e.target.closest('.text-tool-overlay')) {
+        imageSelectedStickerIdx = null;
+        document.querySelectorAll('#image-stickers-layer .sticker-wrapper').forEach(w => w.classList.remove('selected'));
+      }
+    });
 
     // ════════════════════════════════════════════════════════════
     // ─── PANELES ESTILO "STORIES": abrir/cerrar, oscurecer el fondo ───
@@ -5860,18 +6401,21 @@
     // interfaz para las dos, solo cambia dónde se guarda el sticker.
     function openTextTool(scope, idx, posLeft, posTop) {
       const isCanvas = scope === 'canvas';
+      const isImage = scope === 'image';
       if (isCanvas) deactivateCanvasDrawMode();
 
-      const stickers = isCanvas ? canvasStickers : currentStickers;
+      const stickers = isCanvas ? canvasStickers : (isImage ? imageStickers : currentStickers);
       let isNew = false;
       if (idx === null || idx === undefined) {
-        idx = isCanvas ? addCanvasTextSticker(posLeft, posTop) : addAdminTextSticker(posLeft, posTop);
+        idx = isCanvas ? addCanvasTextSticker(posLeft, posTop) : (isImage ? addImageTextSticker(posLeft, posTop) : addAdminTextSticker(posLeft, posTop));
         isNew = true;
       }
       const st = stickers[idx];
       if (!st) return;
 
-      if (isCanvas) canvasSelectedStickerIdx = idx; else selectedStickerIdx = idx;
+      if (isCanvas) canvasSelectedStickerIdx = idx;
+      else if (isImage) imageSelectedStickerIdx = idx;
+      else selectedStickerIdx = idx;
 
       ttState = {
         scope, idx, isNew,
@@ -5883,10 +6427,11 @@
       };
 
       // La herramienta es un único overlay compartido: lo movemos al marco
-      // (lienzo o carta) que corresponda antes de abrirlo, así se posiciona
-      // y hace zoom con position:absolute respecto del marco correcto.
+      // (lienzo, carta o foto) que corresponda antes de abrirlo, así se
+      // posiciona y hace zoom con position:absolute respecto del marco correcto.
       const overlay = document.getElementById('canvas-text-tool');
-      const targetShell = document.getElementById(isCanvas ? 'canvas-stage-shell' : 'letter-stage-shell');
+      const targetShellId = isCanvas ? 'canvas-stage-shell' : (isImage ? 'image-editor-drop' : 'letter-stage-shell');
+      const targetShell = document.getElementById(targetShellId);
       if (overlay && targetShell && overlay.parentElement !== targetShell) targetShell.appendChild(overlay);
 
       const input = document.getElementById('tt-input');
@@ -5922,10 +6467,11 @@
 
       let scope = ttState ? ttState.scope : 'canvas';
       const isCanvas = scope === 'canvas';
+      const isImage = scope === 'image';
 
       if (ttState) {
         const idx = ttState.idx;
-        const stickers = isCanvas ? canvasStickers : currentStickers;
+        const stickers = isCanvas ? canvasStickers : (isImage ? imageStickers : currentStickers);
         const st = stickers[idx];
         const plain = input ? input.textContent.replace(/\u00a0/g, ' ') : '';
 
@@ -5943,6 +6489,9 @@
             if (isCanvas) {
               if (canvasSelectedStickerIdx === idx) canvasSelectedStickerIdx = null;
               else if (canvasSelectedStickerIdx > idx) canvasSelectedStickerIdx--;
+            } else if (isImage) {
+              if (imageSelectedStickerIdx === idx) imageSelectedStickerIdx = null;
+              else if (imageSelectedStickerIdx > idx) imageSelectedStickerIdx--;
             } else {
               if (selectedStickerIdx === idx) selectedStickerIdx = null;
               else if (selectedStickerIdx > idx) selectedStickerIdx--;
@@ -5961,6 +6510,8 @@
       if (isCanvas) {
         renderCanvasStickers();
         scheduleCanvasSave();
+      } else if (isImage) {
+        renderImageStickers();
       } else {
         renderStickers(document.getElementById('live-stickers-layer'), currentStickers, true);
         scheduleAutosave();
@@ -6935,7 +7486,10 @@
   <div id="image-popup-overlay" class="image-popup-overlay" onclick="if (event.target === this) closeImagePopup()">
     <div class="image-popup-card">
       <button type="button" class="image-popup-close" onclick="closeImagePopup()" title="Cerrar">✕</button>
-      <img id="image-popup-img" alt="" />
+      <div class="image-popup-media" id="image-popup-media">
+        <img id="image-popup-img" alt="" />
+        <div class="stickers-layer" id="image-popup-stickers-layer"></div>
+      </div>
       <div class="image-popup-caption" id="image-popup-caption"></div>
     </div>
   </div>
