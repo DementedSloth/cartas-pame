@@ -3150,10 +3150,20 @@
     //     tiempo de espera para el caso más común: un código de carta).
     //  2) el preview desde la galería (que ya tiene la carta cargada en
     //     memoria) no tenga que volver a pedirla.
+    // Si Pame escribe cualquier código que no lleve a ningún lado (carta
+    // inexistente, borrador, o programada para más adelante), le llega el
+    // mismo aviso a Fran que cuando sí abre una carta — así se entera de
+    // TODOS los códigos que ella prueba, no solo de los que funcionan.
+    function notifyPameWrongCode(code) {
+      if (myIdentity !== 'pame') return;
+      sendTelegramMessage(TELEGRAM_CHAT_FRAN, `❓ Pame escribió el código "${code}" y no encontró nada`);
+    }
+
     function renderLetterView(code, carta) {
       if (!carta) {
         if (!currentAdminView) {
           document.getElementById('error-msg').textContent = 'Código incorrecto';
+          notifyPameWrongCode(code);
         } else {
           alert('No se encontró la carta buscada.');
         }
@@ -3163,12 +3173,14 @@
       if (!currentAdminView) {
         if (carta.dateType === 'undefined') {
           document.getElementById('error-msg').textContent = 'Código incorrecto';
+          notifyPameWrongCode(code);
           return;
         }
         if (carta.dateType === 'scheduled' && carta.releaseDate) {
           const today = new Date().toISOString().split('T')[0];
           if (today < carta.releaseDate) {
             document.getElementById('error-msg').textContent = 'Código incorrecto';
+            notifyPameWrongCode(code);
             return;
           }
         }
