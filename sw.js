@@ -1,98 +1,7508 @@
-// Service Worker de Framecorreo
-// 1) Permite que el navegador ofrezca "Instalar app".
-// 2) Deja el terreno listo para notificaciones push reales en el futuro
-//    (hoy los toques se muestran mientras la app está abierta; ver index.html).
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Framecorreo</title>
 
-const CACHE_NAME = 'framecorreo-v11'; // subir esta versión en cada deploy: v3, v4, v5, v6, v7, v8...
-const APP_SHELL = [
-  './',
-  './index.html',
-  './manifest.json',
-  './icon-192.png',
-  './icon-512.png'
-];
+  <!-- ─── PWA: instalable como "Framecorreo" ─── -->
+  <link rel="manifest" href="manifest.json" />
+  <meta name="theme-color" content="#0d0b0f" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <meta name="apple-mobile-web-app-title" content="Framecorreo" />
+  <link rel="apple-touch-icon" href="apple-touch-icon.png" />
+  <link rel="icon" type="image/png" href="icon-192.png" />
 
-self.addEventListener('install', (event) => {
-  // El SW nuevo se instala y se queda esperando ("waiting") hasta que
-  // index.html le manda SKIP_WAITING. Eso ya no depende de que el usuario
-  // toque un botón: index.html lo hace solo, apenas detecta la instalación
-  // (ver registerServiceWorker/applyUpdateSilently), así la app se
-  // autoactualiza sin preguntar.
-  event.waitUntil(
-    caches.open(CACHE_NAME).then((cache) => cache.addAll(APP_SHELL).catch(() => {}))
-  );
-});
-
-// Mensaje que manda index.html para instalar la versión nueva apenas se
-// detecta (auto-actualización, sin preguntarle nada al usuario). Le avisamos
-// de vuelta al cliente que mandó el mensaje qué versión (CACHE_NAME) se está
-// por activar, para que pueda mostrar un aviso de "se actualizó a..." después
-// de recargar la página.
-self.addEventListener('message', (event) => {
-  if (event.data === 'SKIP_WAITING') {
-    if (event.source) {
-      try { event.source.postMessage({ type: 'FRAMECORREO_UPDATED', version: CACHE_NAME }); } catch (e) {}
+  <link href="https://fonts.googleapis.com/css2?family=Lora:ital,wght@0,400;0,500;1,400&family=Inter:wght@300;400;500&family=Playfair+Display:ital,wght@0,400;1,400&family=Space+Mono:ital@0;1&family=Cinzel:wght@400;600&family=Cormorant+Garamond:ital,wght@0,400;0,600;1,400&family=Dancing+Script:wght@400;600&family=Josefin+Sans:wght@300;400&family=Montserrat:wght@300;400;500&family=Outfit:wght@300;400;500&family=Raleway:wght@300;400;500&display=swap" rel="stylesheet" />
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+  
+  <style>
+    :root {
+      --bg: #0d0b0f;
+      --surface: #13101a;
+      --border: #2a1f35;
+      --accent: #7c3f6e;
+      --accent-soft: #a0587e;
+      --gold: #c9a96e;
+      --text: #ffffff;
+      --text-muted: #8a7a6e;
+      --wa-blue: #34b7f1;
     }
-    self.skipWaiting();
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    html { height: 100%; overflow: hidden; }
+    html { height: 100%; }
+    body {
+      background-color: var(--bg);
+      color: var(--text);
+      font-family: 'Inter', sans-serif;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: flex-start;
+      padding: 0.8rem 1rem;
+      position: relative;
+      overflow-x: hidden;
+    }
+    /* La pantalla principal (lienzo compartido) es fija, sin scroll: se
+       bloquea el body solo mientras esa vista está activa, para no afectar
+       a las otras vistas (editor de carta, carta recibida) que sí pueden
+       necesitar desplazarse si el contenido es más alto que la pantalla. */
+    body:has(#login-view.active) {
+      height: 100dvh;
+      overflow: hidden;
+      padding-top: 0;
+      padding-bottom: 0;
+    }
+    body:has(#login-view.active) .container { margin-top: 0; }
+
+    /* El editor de cartas (#admin-view) puede ser más alto que la pantalla
+       (el marco de la carta + la galería debajo). Como <html> tiene
+       overflow:hidden (ver arriba), el scroll de toda la página queda
+       desactivado a nivel global; por eso hacía falta convertir al body,
+       mientras esta vista está activa, en su propio contenedor con scroll
+       propio — si no, todo lo que sobra debajo del marco (la galería)
+       quedaba recortado y era imposible llegar a ella. */
+    body:has(#admin-view.active) {
+      height: 100dvh;
+      overflow-y: auto;
+      overflow-x: hidden;
+      -webkit-overflow-scrolling: touch;
+    }
+
+    /* La pantalla principal ya no lleva el lienzo compartido: ahora es
+       simplemente una tarjeta centrada con el código, así que la vista
+       vuelve a poder scrollear como cualquier otra si hiciera falta. */
+    body:has(#login-view.active) { height: auto; overflow-x: hidden; overflow-y: auto; }
+
+    /* La galería (y el editor de fotos) pueden ser más altos que la
+       pantalla en mobile (grilla de tarjetas, o foto+stickers+campos).
+       Como <html> tiene overflow:hidden a nivel global, sin esta regla el
+       body no tenía dónde scrollear y todo lo que sobraba por abajo
+       quedaba inalcanzable (la galería "no scrolleaba" en el celular). */
+    body:has(#gallery-view.active),
+    body:has(#image-editor-view.active) {
+      height: 100dvh;
+      overflow-y: auto;
+      overflow-x: hidden;
+      -webkit-overflow-scrolling: touch;
+    }
+
+    /* ─── Pantalla de inicio: tarjeta centrada con el código ─── */
+    .home-hero {
+      width: 100%; flex: 1; min-height: calc(100dvh - 2rem);
+      display: flex; flex-direction: column; align-items: center; justify-content: center;
+      position: relative; padding: 1.5rem 0;
+    }
+    .home-card {
+      width: 100%; max-width: 400px; margin: 0 auto;
+      background: linear-gradient(160deg, var(--surface), #17121e);
+      border: 1px solid var(--border); border-radius: 16px;
+      padding: 2.6rem 1.8rem; text-align: center;
+      box-shadow: 0 30px 70px -20px rgba(0,0,0,0.85), 0 0 0 1px rgba(255,255,255,0.04);
+    }
+    .home-card-icon { font-size: 1.8rem; margin-bottom: 0.7rem; opacity: 0.85; }
+    .home-card-icon img { width: 64px; height: 64px; display: block; margin: 0 auto; border-radius: 18px; }
+    .home-card-title { font-family: 'Lora', serif; font-size: 1.9rem; font-style: italic; color: var(--text); margin-bottom: 0.5rem; }
+    .home-card-sub { font-size: 0.85rem; color: var(--text-muted); margin-bottom: 1.6rem; letter-spacing: 0.02em; }
+    .home-card .code-entry-wrap { max-width: none; margin: 0; }
+    .home-card .error-msg:not(:empty) { margin-top: 1rem; }
+    .home-card .error-block { text-align: left; }
+    .profile-avatar-btn.home-profile-btn { position: absolute; top: 0.6rem; right: 0.3rem; width: 54px; height: 54px; }
+    @media (max-width: 480px) {
+      .home-hero { min-height: calc(100dvh - 1.6rem); padding: 1rem 0; }
+      .home-card { padding: 2.2rem 1.5rem; }
+    }
+
+    /* ─── FONDOS FX ─── */
+    .bat { position: fixed; opacity: 0.07; pointer-events: none; fill: var(--accent-soft); transition: opacity 0.3s; }
+    .bat-tl { top: 3%; left: 2%; width: 90px; transform: rotate(-20deg); }
+    .bat-tr { top: 5%; right: 4%; width: 60px; transform: rotate(15deg) scaleX(-1); }
+    .bat-bl { bottom: 6%; left: 5%; width: 50px; transform: rotate(10deg); }
+    .bat-br { bottom: 4%; right: 3%; width: 75px; transform: rotate(-10deg) scaleX(-1); }
+
+    .moon {
+      position: fixed; top: -40px; right: 80px; width: 120px; height: 120px;
+      border-radius: 50%; background: radial-gradient(circle at 40% 40%, #f5e6c8, #c9a96e88);
+      box-shadow: 0 0 60px 20px #c9a96e22; opacity: 0.13; pointer-events: none;
+    }
+
+    /* ─── ESTRUCTURA CONTENEDORES ─── */
+    .container {
+      max-width: 900px; /* Ampliado para dejar fluir la toolbar */
+      width: 100%;
+      position: relative;
+      z-index: 1;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      margin-top: 0.4rem;
+    }
+
+    .view-section { width: 100%; display: none; flex-direction: column; align-items: center; }
+    .view-section.active { display: flex; }
+    #login-view { padding-bottom: 0; position: relative; }
+
+    /* Ya no hay lienzo ocupando la pantalla: la vista de inicio es solo la
+       tarjeta centrada con el código, así que en pantallas chicas alcanza
+       con sacar el padding/margen extra de arriba, sin bloquear el scroll. */
+    @media (max-width: 480px) {
+      body { padding-top: 0; padding-bottom: 0; }
+      .container { margin-top: 0; }
+      #login-view .install-btn.visible { margin: 0.4rem auto 0; }
+    }
+
+    /* Forzar el ancho central a 560px excepto para la toolbar */
+    .form-wrapper, .header, #live-card-container, #letter-card-wrapper { 
+      width: 100%; max-width: 560px; margin: 0 auto; 
+    }
+
+    .header { text-align: center; margin-bottom: 2.8rem; }
+    .header-title { font-family: 'Lora', serif; font-size: 2.5rem; font-weight: 400; color: var(--text); letter-spacing: 0.01em; }
+    .header-title em { font-style: italic; color: var(--accent-soft); }
+
+    /* ─── LOGIN & CONTROLES ESTÁNDAR ─── */
+    #login-view .form-wrapper {
+      background: linear-gradient(160deg, var(--surface), #17121e);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 2.6rem 2.2rem;
+      box-shadow: 0 20px 50px -15px rgba(0,0,0,0.7), 0 0 0 1px rgba(201,169,110,0.04) inset;
+      position: relative;
+    }
+    #login-view .form-wrapper::before {
+      content: '';
+      position: absolute; top: 0; left: 12%; right: 12%; height: 1px;
+      background: linear-gradient(90deg, transparent, var(--gold), transparent);
+      opacity: 0.35;
+    }
+    .form-wrapper { background: var(--surface); border: 1px solid var(--border); border-radius: 4px; padding: 2rem; }
+    .form-label { display: block; font-size: 0.8rem; letter-spacing: 0.25em; text-transform: uppercase; color: var(--text-muted); margin-bottom: 0.85rem; text-align: center; }
+    .form-input { width: 100%; background: var(--bg); border: 1px solid var(--border); border-radius: 6px; padding: 0.95rem 1.1rem; color: var(--text); font-family: 'Inter', sans-serif; font-size: 1.1rem; letter-spacing: 0.04em; text-align: center; outline: none; transition: border-color 0.2s, box-shadow 0.2s; }
+    .form-input:focus { border-color: var(--accent-soft); box-shadow: 0 0 0 3px rgba(160,88,126,0.15); }
+    .form-input::placeholder { color: var(--text-muted); opacity: 0.4; font-style: italic; }
+
+    /* ─── CAMPO DE CÓDIGO: mismo lenguaje visual "IG blur" que los paneles
+       del lienzo (fondo oscuro translúcido + blur), en vez de la caja sólida
+       de antes. ─── */
+    .code-entry-wrap {
+      width: 100%; max-width: 420px; margin: 0.4rem auto 0;
+      display: flex; align-items: center; gap: 0;
+      background: rgba(20,16,26,0.55); backdrop-filter: blur(6px);
+      border: 1px solid rgba(255,255,255,0.14); border-radius: 999px;
+      padding: 0.3rem 0.3rem 0.3rem 1.05rem;
+      box-shadow: 0 4px 16px rgba(0,0,0,0.4);
+      transition: border-color 0.2s, box-shadow 0.2s;
+    }
+    .code-entry-wrap:focus-within { border-color: var(--accent-soft); box-shadow: 0 0 0 3px rgba(160,88,126,0.15); }
+    .code-entry-input {
+      flex: 1; min-width: 0; background: transparent; border: none; outline: none;
+      color: var(--text); font-family: 'Inter', sans-serif; font-size: 0.98rem;
+      letter-spacing: 0.03em; padding: 0.65rem 0.3rem;
+    }
+    .code-entry-input::placeholder { color: var(--text-muted); opacity: 0.55; font-style: italic; }
+    .code-entry-submit {
+      flex-shrink: 0; width: 40px; height: 40px; border-radius: 50%;
+      background: var(--accent); border: none; color: var(--text);
+      display: flex; align-items: center; justify-content: center; cursor: pointer;
+      transition: background 0.2s, transform 0.15s;
+    }
+    .code-entry-submit:hover { background: var(--accent-soft); transform: scale(1.05); }
+    .code-entry-submit:disabled { opacity: 0.4; cursor: not-allowed; transform: none; }
+
+    /* ─── Indicador de "Cargando…" al abrir una carta por código ─── */
+    .code-loading {
+      display: none; align-items: center; justify-content: center; gap: 0.5rem;
+      margin-top: 0.9rem; font-size: 0.83rem; color: var(--text-muted); letter-spacing: 0.02em;
+    }
+    .code-loading.visible { display: flex; }
+    .code-loading-spinner {
+      width: 14px; height: 14px; border-radius: 50%; flex-shrink: 0;
+      border: 2px solid rgba(255,255,255,0.18); border-top-color: var(--accent-soft);
+      animation: code-loading-spin 0.7s linear infinite;
+    }
+    @keyframes code-loading-spin { to { transform: rotate(360deg); } }
+
+    /* ─── Tip compartido: lo escribe Fran desde la pantalla principal con
+       "/tip <texto>" (y se borra con "/tip del"); se guarda en Firebase y
+       lo ven los dos perfiles debajo del recuadro de código. ─── */
+    .home-tip {
+      display: none; margin-top: 1.1rem; padding: 0.75rem 1rem;
+      background: rgba(201,169,110,0.08); border: 1px solid rgba(201,169,110,0.22);
+      border-radius: 10px; font-size: 0.82rem; line-height: 1.5; color: var(--accent-soft);
+      font-style: italic; text-align: left;
+    }
+    .home-tip:not(:empty) { display: block; }
+
+    /* ─── BARRA DE NAVEGACIÓN INFERIOR (código + perfil) ───
+       Ya no es una barra sólida de punta a punta: el contenedor solo
+       ordena los elementos en fila; cada botón/campo lleva su propio
+       fondo flotante con blur (mismo lenguaje "IG" que los paneles del
+       lienzo), en vez del ícono de la app de la vieja fila superior. */
+    :root { --bottom-nav-h: 78px; }
+    .bottom-nav-bar {
+      position: fixed; left: 0; right: 0; bottom: 0; z-index: 300;
+      display: flex; align-items: center; gap: 0.6rem;
+      padding: 0.65rem 0.8rem calc(0.65rem + env(safe-area-inset-bottom));
+      background: transparent;
+      transition: transform 0.15s ease;
+    }
+    .bottom-nav-bar .code-entry-wrap { margin: 0; flex: 1; min-width: 0; }
+
+    /* ─── PC: la barra de código + perfil deja de estar anclada abajo de
+       toda la pantalla. El campo de código se reemplaza por un botón
+       circular (mismo tamaño y forma que el avatar de perfil, para quedar
+       simétricos respecto del margen del marco/lienzo): arriba el código,
+       justo debajo el perfil. El campo de texto solo aparece al tocar el
+       botón de código, como un popover al costado. ─── */
+    .code-toggle-btn {
+      display: none; /* solo se usa en PC */
+      flex-shrink: 0; width: 46px; height: 46px; border-radius: 50%;
+      background: rgba(20,16,26,0.55); backdrop-filter: blur(6px);
+      border: 1px solid rgba(255,255,255,0.14); color: var(--text);
+      cursor: pointer; padding: 0; align-items: center; justify-content: center;
+      box-shadow: 0 4px 16px rgba(0,0,0,0.4);
+      transition: border-color 0.2s, transform 0.15s, background 0.2s;
+    }
+    .code-toggle-btn:hover { border-color: rgba(255,255,255,0.28); transform: scale(1.05); }
+    .code-toggle-btn.active { background: var(--accent); border-color: var(--gold); }
+
+    @media (min-width: 481px) {
+      .bottom-nav-bar {
+        position: absolute; left: 0; top: 0; bottom: auto; right: auto;
+        flex-direction: column; align-items: flex-start;
+        width: auto; padding: 0; gap: 0.55rem;
+        z-index: 250;
+      }
+      .code-toggle-btn { display: flex; }
+      .bottom-nav-bar .code-entry-wrap {
+        flex: none; width: 200px; margin: 0;
+        position: absolute; left: calc(100% + 0.55rem); top: 0;
+        opacity: 0; pointer-events: none; transform: translateX(-8px) scale(0.94);
+        transform-origin: left center;
+        transition: opacity 0.2s ease, transform 0.22s cubic-bezier(.34,1.56,.64,1);
+      }
+      .bottom-nav-bar .code-entry-wrap.open {
+        opacity: 1; pointer-events: auto; transform: translateX(0) scale(1);
+      }
+    }
+
+    .profile-avatar-btn {
+      flex-shrink: 0; width: 46px; height: 46px; border-radius: 50%;
+      background: rgba(20,16,26,0.55); backdrop-filter: blur(6px);
+      border: 1px solid rgba(255,255,255,0.14);
+      cursor: pointer; overflow: hidden; padding: 0;
+      display: flex; align-items: center; justify-content: center;
+      box-shadow: 0 4px 16px rgba(0,0,0,0.4);
+      transition: border-color 0.2s, transform 0.15s;
+      position: relative;
+
+    }
+    .profile-avatar-btn:hover { border-color: rgba(255,255,255,0.28); transform: scale(1.05); }
+    .profile-avatar-btn img { width: 100%; height: 100%; object-fit: cover; display: block; }
+    .profile-avatar-btn .avatar-fallback {
+      font-family: 'Lora', serif; font-size: 1.1rem; color: var(--accent-soft);
+    }
+    .profile-avatar-btn .avatar-name-tag {
+      position: absolute; bottom: -1.15rem; left: 50%; transform: translateX(-50%);
+      font-size: 0.6rem; letter-spacing: 0.08em; text-transform: uppercase;
+      color: var(--text-muted); white-space: nowrap;
+    }
+
+    /* ─── MODAL DE PERFIL: cambiar nombre / foto ─── */
+    .profile-modal-overlay {
+      position: fixed; inset: 0; background: rgba(5,4,7,0.82); z-index: 1000;
+      display: none; align-items: center; justify-content: center; padding: 1.2rem;
+    }
+    .profile-modal-overlay.visible { display: flex; }
+    .profile-modal-box {
+      background: linear-gradient(160deg, var(--surface), #17121e); border: 1px solid var(--border);
+      border-radius: 10px; padding: 1.8rem 1.6rem; text-align: center; max-width: 320px; width: 100%;
+      box-shadow: 0 20px 50px -15px rgba(0,0,0,0.8);
+    }
+    .profile-modal-box p { font-size: 0.95rem; color: var(--text); margin-bottom: 1rem; font-family: 'Lora', serif; }
+    .profile-modal-preview {
+      width: 84px; height: 84px; border-radius: 50%; margin: 0 auto 1rem;
+      border: 2px solid var(--border); overflow: hidden; display: flex;
+      align-items: center; justify-content: center; background: var(--bg); cursor: pointer;
+      transition: border-color 0.2s;
+    }
+    .profile-modal-preview:hover { border-color: var(--accent-soft); }
+    .profile-modal-preview img { width: 100%; height: 100%; object-fit: cover; }
+    .profile-modal-preview .avatar-fallback { font-family: 'Lora', serif; font-size: 2rem; color: var(--accent-soft); }
+    .profile-modal-hint { font-size: 0.7rem; color: var(--text-muted); opacity: 0.6; margin-bottom: 1.3rem; }
+    .profile-modal-btns { display: flex; gap: 0.7rem; justify-content: center; margin-bottom: 0.8rem; }
+    .profile-modal-btn {
+      flex: 1; padding: 0.7rem 0.5rem; background: transparent; border: 1px solid var(--accent);
+      border-radius: 6px; color: var(--accent-soft); cursor: pointer; font-family: 'Inter', sans-serif;
+      font-size: 0.82rem; letter-spacing: 0.06em; transition: background 0.15s, color 0.15s;
+    }
+    .profile-modal-btn:hover { background: var(--accent); color: var(--text); }
+    .profile-modal-btn.active { background: var(--accent); color: var(--text); }
+    .profile-modal-close {
+      background: transparent; border: none; color: var(--text-muted); font-size: 0.75rem;
+      letter-spacing: 0.15em; text-transform: uppercase; cursor: pointer; padding: 0.4rem;
+    }
+    .profile-modal-close:hover { color: var(--text); }
+
+    .form-btn { width: 100%; margin-top: 1.5rem; padding: 1rem; background: transparent; border: 1px solid var(--accent); border-radius: 6px; color: var(--accent-soft); font-family: 'Inter', sans-serif; font-size: 0.85rem; font-weight: 500; letter-spacing: 0.25em; text-transform: uppercase; cursor: pointer; transition: background 0.2s, color 0.2s, box-shadow 0.2s; }
+    .form-btn:hover { background: var(--accent); color: var(--text); box-shadow: 0 8px 24px -8px rgba(124,63,110,0.6); }
+    .form-btn:disabled { opacity: 0.5; cursor: not-allowed; background: transparent; }
+
+    .error-msg { margin-top: 0; font-style: italic; font-size: 0.95rem; color: #df7a7a; text-align: center; min-height: 0; }
+    .error-msg:not(:empty) { margin-top: 0.9rem; min-height: 1.2rem; }
+    .success-msg { margin-top: 0.9rem; font-style: italic; font-size: 0.9rem; color: #7adf7a; text-align: center; }
+
+    .back-btn { display: inline-block; margin-top: 1.8rem; background: transparent; border: none; color: var(--text-muted); font-family: 'Inter', sans-serif; font-size: 0.78rem; letter-spacing: 0.2em; text-transform: uppercase; cursor: pointer; transition: color 0.2s; }
+    .back-btn:hover { color: var(--text); }
+
+    .error-block { margin-top: 0.9rem; background: #1a0a0a; border: 1px solid #4a1a1a; border-radius: 6px; padding: 1rem 1.1rem; display: none; }
+    .error-block.visible { display: block; }
+    .error-block-msg { font-style: italic; font-size: 0.95rem; color: #df7a7a; margin-bottom: 0.7rem; }
+    .retry-btn { background: transparent; border: 1px solid #6b2a2a; border-radius: 4px; color: #df7a7a; font-family: 'Inter', sans-serif; font-size: 0.78rem; letter-spacing: 0.2em; text-transform: uppercase; padding: 0.5rem 1rem; cursor: pointer; transition: background 0.2s; }
+    .retry-btn:hover { background: #3a1010; }
+
+    /* ─── FILA DE CÓDIGO + GUARDAR ─── */
+    .code-save-row {
+      display: flex; align-items: center; justify-content: center; gap: 0.6rem;
+      margin: 0 auto 1rem auto; width: 100%; max-width: 900px;
+    }
+    .adm-code-input {
+      width: 100%; min-width: 0;
+      background: transparent; border: none; border-bottom: 1px solid var(--border);
+      border-radius: 0; padding: 0.6rem 0.3rem; color: var(--text); font-family: 'Lora', serif;
+      font-size: 1rem; letter-spacing: 0.03em; outline: none; cursor: text;
+      text-align: center; transition: border-color 0.2s;
+    }
+    .adm-code-input::placeholder { color: var(--text-muted); opacity: 0.5; font-style: italic; }
+    .adm-code-input:focus { border-color: var(--accent-soft); }
+    .icon-row-btn {
+      flex-shrink: 0; width: 44px; height: 44px; border-radius: 10px;
+      background: var(--surface); border: 1px solid var(--border); color: var(--text);
+      font-size: 1.05rem; cursor: pointer; display: flex; align-items: center; justify-content: center;
+      transition: background 0.2s, border-color 0.2s;
+    }
+    .icon-row-btn:hover { background: var(--accent); border-color: var(--accent-soft); }
+    .save-btn {
+      font-size: 1.15rem; border-color: #3b82f6; color: #60a5fa;
+    }
+    .save-btn:hover { background: #3b82f6; color: #fff; }
+
+    /* ─── BARRA TIPO GOOGLE DOCS ─── */
+    .docs-toolbar {
+      position: sticky;
+      top: 8px;
+      z-index: 100;
+      background: #100d14;
+      border: 1px solid #2d2438;
+      border-radius: 8px;
+      padding: 0.6rem 1rem;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-wrap: nowrap; /* Fuerza una sola línea */
+      gap: 0.8rem;
+      box-shadow: 0 8px 32px rgba(0,0,0,0.6);
+      margin: 0 auto 1.6rem auto;
+      width: max-content; /* Ocupa lo que tenga que ocupar */
+      max-width: 95vw; /* Margen de seguridad en móviles chicos */
+      overflow-x: auto;
+      -webkit-overflow-scrolling: touch;
+      scrollbar-width: thin;
+    }
+    .docs-toolbar::-webkit-scrollbar { height: 4px; }
+    .docs-toolbar::-webkit-scrollbar-thumb { background: #3d2e4f; border-radius: 4px; }
+
+    .tb-group { display: flex; align-items: center; gap: 0.4rem; flex-shrink: 0; }
+    .tb-sep { width: 1px; height: 24px; background: #2d2438; margin: 0 0.2rem; flex-shrink: 0; }
+
+    /* Controles de la barra */
+    .tb-select, .tb-input-num, .tb-color, .tb-input {
+      background: #09070c; border: 1px solid #2d2438; border-radius: 4px;
+      color: var(--text); font-size: 0.8rem; padding: 0.35rem; outline: none;
+      font-family: 'Inter', sans-serif; cursor: pointer;
+      max-width: 108px; flex-shrink: 0;
+    }
+    .tb-input { cursor: text; }
+    .tb-input-num { width: 45px; text-align: center; cursor: text; max-width: 45px; }
+    
+    .tb-color {
+      width: 26px; height: 26px; padding: 0; border: 1px solid #4a3c5a;
+      border-radius: 4px; cursor: pointer; background: transparent;
+    }
+    .tb-color::-webkit-color-swatch-wrapper { padding: 0; }
+    .tb-color::-webkit-color-swatch { border: none; border-radius: 3px; }
+
+    .tb-btn {
+      background: transparent; border: 1px solid transparent; border-radius: 4px;
+      color: var(--text-muted); width: 28px; height: 28px; display: flex;
+      align-items: center; justify-content: center; font-size: 0.9rem; cursor: pointer; transition: all 0.2s;
+    }
+    .tb-btn:hover { background: #2a1f35; color: var(--text); }
+    .tb-color-swatch {
+      width: 15px; height: 15px; border-radius: 50%;
+      border: 1px solid rgba(255,255,255,0.4); pointer-events: none;
+      background: #e8ddd0;
+    }
+
+    /* Ocultar flechita por defecto en webkit para el input combo si queres un look más limpio,
+       pero el datalist ya la provee de forma nativa */
+    input::-webkit-calendar-picker-indicator { opacity: 0.6; cursor: pointer; }
+
+    @media (max-width: 480px) {
+      .docs-toolbar { gap: 0.5rem; padding: 0.5rem 0.7rem; }
+      .tb-sep { margin: 0 0.05rem; }
+      .tb-select { max-width: 92px; font-size: 0.74rem; }
+      .opacity-slider { width: 70px; }
+      body { padding: 0.5rem 0.6rem; }
+    }
+
+    /* ─── EDITOR (Live Card) ─── */
+    .card-editor-div {
+      width: 100%; background: transparent; border: none; outline: none;
+      color: inherit; font-family: inherit; font-size: inherit; line-height: inherit; min-height: 180px;
+    }
+    .card-editor-div[contenteditable]:empty:before {
+      content: attr(placeholder); color: inherit; opacity: 0.25; font-style: italic; pointer-events: none; display: block;
+    }
+
+    .card-editor-input {
+      width: 100%; background: transparent; border: none; outline: none;
+      color: inherit; font-family: inherit; font-size: inherit; font-weight: inherit;
+      font-style: inherit; letter-spacing: inherit; text-transform: inherit; text-align: inherit;
+      resize: none; padding: 0; margin: 0;
+    }
+    .card-editor-input::placeholder { color: inherit; opacity: 0.25; font-style: italic; }
+
+    /* Placeholder real para los cuadros de texto (título / cuerpo): no hay que borrar nada para escribir */
+    .sticker-text-content[contenteditable]:empty:before {
+      content: attr(placeholder); color: inherit; opacity: 0.4; font-style: italic; pointer-events: none; display: block;
+    }
+
+    /* ─── TIPTAP: cuadros de texto de la carta ───
+       Tiptap monta su propio div .ProseMirror adentro de .sticker-text-content;
+       lo hacemos ver y comportarse exactamente igual que el contentEditable de
+       siempre (mismo tipo/tamaño de letra heredado, mismo placeholder). */
+    .sticker-text-content .tiptap-carta-content {
+      width: 100%; outline: none; background: transparent; border: none;
+      color: inherit; font-family: inherit; font-size: inherit; font-style: inherit;
+      font-weight: inherit; line-height: inherit; letter-spacing: inherit;
+      text-transform: inherit; text-align: inherit;
+    }
+    .sticker-text-content .tiptap-carta-content p { margin: 0; }
+    .sticker-text-content .tiptap-carta-content p.is-editor-empty:first-child::before {
+      content: attr(data-placeholder); float: left; height: 0; pointer-events: none;
+      color: inherit; opacity: 0.4; font-style: italic;
+    }
+
+    /* ─── GALERÍAS ─── */
+    #gallery-view { padding: 1.4rem 1.2rem 2rem; }
+    .gallery-view-header {
+      width: 100%; max-width: 900px; margin: 0 auto 1.2rem; display: flex; align-items: center; gap: 0.8rem;
+    }
+    .gallery-view-header .icon-row-btn { position: static; }
+    .gallery-view-title { font-family: 'Lora', serif; font-style: italic; font-size: 1.3rem; color: var(--text); }
+    .gallery-section { width: 100%; max-width: 900px; margin-left: auto; margin-right: auto; }
+
+    .gallery-controls { display: flex; align-items: center; gap: 0.7rem; margin-bottom: 0.9rem; }
+    .hamburger-btn {
+      flex-shrink: 0; width: 42px; height: 42px; border-radius: 6px;
+      background: var(--surface); border: 1px solid var(--border); color: var(--text);
+      font-size: 1.15rem; cursor: pointer; display: flex; align-items: center; justify-content: center;
+      transition: background 0.2s, border-color 0.2s;
+    }
+    .hamburger-btn:hover, .hamburger-btn.active { background: var(--accent); border-color: var(--accent-soft); }
+    .gallery-search-input {
+      flex: 1; min-width: 0; background: var(--surface); border: 1px solid var(--border); border-radius: 6px;
+      padding: 0.7rem 1rem; color: var(--text); font-family: 'Inter', sans-serif; font-size: 0.92rem; outline: none;
+      transition: border-color 0.2s;
+    }
+    .gallery-search-input:focus { border-color: var(--accent-soft); }
+    .gallery-search-input::placeholder { color: var(--text-muted); opacity: 0.6; }
+
+    .gallery-menu-panel {
+      display: none; align-items: center; gap: 0.7rem; flex-wrap: wrap;
+      background: var(--surface); border: 1px solid var(--border); border-radius: 6px;
+      padding: 0.8rem 1rem; margin-bottom: 1.3rem;
+    }
+    .gallery-menu-panel.open { display: flex; }
+    .gallery-menu-panel .opacity-label { font-size: 0.8rem; }
+    .gallery-menu-panel .tb-select { font-size: 0.85rem; padding: 0.45rem 0.5rem; }
+
+    .gallery-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 1rem; margin-top: 0.6rem; margin-bottom: 1.8rem; }
+
+    .gallery-card-thumb { background: #14111a; border: 1px solid #2c2238; border-radius: 8px; padding: 0.85rem; cursor: pointer; transition: transform 0.2s, border-color 0.2s; position: relative; display: flex; flex-direction: column; }
+    .gallery-card-thumb:hover { transform: translateY(-2px); border-color: var(--accent); }
+
+    .thumb-header-row { display: flex; align-items: center; justify-content: space-between; padding-right: 3.6rem; }
+    .thumb-code { font-family: 'Space Mono', monospace; font-size: 0.92rem; color: var(--accent-soft); display: block; }
+    .thumb-type-icon { font-size: 0.92rem; display: inline-flex; align-items: center; justify-content: center; line-height: 1; min-width: 1.4em; text-align: center; }
+    .thumb-tag { font-size: 0.68rem; letter-spacing: 0.15em; text-transform: uppercase; color: var(--text-muted); opacity: 0.75; margin-top: 0.45rem; min-height: 1em; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .thumb-title { font-size: 1rem; font-weight: 500; color: var(--text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; margin-top: 0.2rem; margin-bottom: 0.7rem; }
+
+    .thumb-preview-wrap { position: relative; width: 100%; aspect-ratio: 4 / 5; border-radius: 4px; overflow: hidden; background: #1a1522; flex-shrink: 0; }
+    .gallery-thumb-preview { width: 100%; height: 100%; object-fit: cover; display: block; }
+    .thumb-preview-placeholder { width: 100%; height: 100%; display: flex; align-items: center; justify-content: center; font-size: 1.8rem; opacity: 0.3; }
+
+    .thumb-footer-row { display: flex; align-items: center; justify-content: flex-start; gap: 0.5rem; margin-top: 0.65rem; }
+    .thumb-edited { font-size: 0.68rem; color: var(--text-muted); opacity: 0.6; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; text-align: left; }
+
+    .thumb-views-status { position: absolute; bottom: 0.5rem; left: 0.5rem; font-size: 0.8rem; display: flex; align-items: center; gap: 0.3rem; font-weight: 500; cursor: pointer; padding: 3px 6px; border-radius: 4px; background: rgba(13,10,18,0.75); transition: background 0.2s; z-index: 2; }
+    .thumb-views-status:hover { background: rgba(13,10,18,0.95); }
+    .status-unseen { color: var(--text-muted); opacity: 0.75; }
+    .status-seen { color: var(--wa-blue); }
+
+    /* Editar/Borrar: ocultos por defecto, visibles al hacer hover (mouse) o siempre en pantallas táctiles (sin hover),
+       salvo que la grilla esté en modo selección, donde se ocultan a favor de los checkboxes */
+    .thumb-edit-btn, .thumb-delete-btn { position: absolute; top: 0.6rem; width: 28px; height: 28px; background: #251c30; border: 1px solid #3d2e4f; border-radius: 4px; display: flex; align-items: center; justify-content: center; font-size: 0.8rem; cursor: pointer; transition: background 0.2s, border-color 0.2s, opacity 0.15s; z-index: 2; opacity: 0; pointer-events: none; }
+    .thumb-edit-btn { right: 0.6rem; }
+    .thumb-delete-btn { right: 3.15rem; }
+    .thumb-edit-btn:hover { background: var(--accent); border-color: var(--accent-soft); }
+    .thumb-delete-btn:hover { background: #6b2a2a; border-color: #df7a7a; }
+    .gallery-card-thumb:hover .thumb-edit-btn,
+    .gallery-card-thumb:hover .thumb-delete-btn { opacity: 1; pointer-events: auto; }
+    @media (hover: none) {
+      .thumb-edit-btn, .thumb-delete-btn { opacity: 1; pointer-events: auto; }
+    }
+    .gallery-grid.selection-mode .thumb-edit-btn,
+    .gallery-grid.selection-mode .thumb-delete-btn { opacity: 0 !important; pointer-events: none !important; }
+
+    /* Selección en masa (long-press / mantener pulsado) */
+    .thumb-select-check {
+      position: absolute; top: 0.6rem; left: 0.6rem; width: 24px; height: 24px; border-radius: 50%;
+      border: 2px solid rgba(255,255,255,0.5); background: rgba(13,10,18,0.65);
+      display: none; align-items: center; justify-content: center; font-size: 0.8rem; color: #fff;
+      z-index: 3; cursor: pointer;
+    }
+    .gallery-grid.selection-mode .thumb-select-check { display: flex; }
+    .gallery-card-thumb:hover .thumb-select-check { display: flex; }
+    .gallery-card-thumb.selected-for-bulk { outline: 2px solid var(--accent-soft); outline-offset: 2px; }
+    .gallery-card-thumb.selected-for-bulk .thumb-select-check { background: var(--accent); border-color: #fff; }
+
+    .gallery-empty { color: var(--text-muted); font-size: 0.92rem; font-style: italic; text-align: center; padding: 1rem; grid-column: 1 / -1; opacity: 0.6; }
+
+    /* ─── FILTROS DE GALERÍA ─── */
+    .gallery-filter-tabs { display: flex; gap: 0.5rem; flex-wrap: wrap; margin-bottom: 1.1rem; }
+    .gallery-filter-btn {
+      background: var(--surface); border: 1px solid var(--border); color: var(--text-muted);
+      font-family: 'Inter', sans-serif; font-size: 0.75rem; letter-spacing: 0.08em; text-transform: uppercase;
+      padding: 0.5rem 0.95rem; border-radius: 20px; cursor: pointer; transition: all 0.2s;
+    }
+    .gallery-filter-btn:hover { border-color: var(--accent-soft); color: var(--text); }
+    .gallery-filter-btn.active { background: var(--accent); border-color: var(--accent-soft); color: var(--text); }
+
+    /* Categorías de la galería: Cartas / URLs / Imágenes. Mismo lenguaje
+       visual que .gallery-filter-btn pero un poco más grandes, porque son
+       la elección principal (arriba de todo); el filtro por disponibilidad
+       de abajo solo tiene sentido para la categoría Cartas. */
+    .gallery-category-tabs { display: flex; gap: 0.5rem; margin-bottom: 1rem; }
+    .gallery-category-btn {
+      flex: 1; background: var(--surface); border: 1px solid var(--border); color: var(--text-muted);
+      font-family: 'Inter', sans-serif; font-size: 0.8rem; letter-spacing: 0.02em;
+      padding: 0.65rem 0.6rem; border-radius: 12px; cursor: pointer; transition: all 0.2s;
+    }
+    .gallery-category-btn:hover { border-color: var(--accent-soft); color: var(--text); }
+    .gallery-category-btn.active { background: var(--accent); border-color: var(--accent-soft); color: var(--text); }
+
+    /* ─── BARRA DE ACCIONES EN MASA ─── */
+    .bulk-actions-bar {
+      position: fixed; left: 50%; bottom: 20px; transform: translateX(-50%); z-index: 210;
+      display: none; align-items: center; gap: 0.9rem;
+      background: #1a1220; border: 1px solid #3d2e4f; border-radius: 10px; padding: 0.6rem 1.1rem;
+      box-shadow: 0 8px 30px rgba(0,0,0,0.6);
+    }
+    .bulk-actions-bar.visible { display: flex; }
+    .bulk-count { font-size: 0.8rem; color: var(--text-muted); white-space: nowrap; }
+    .bulk-delete-btn { background: transparent; border: 1px solid #6b2a2a; color: #df7a7a; border-radius: 6px; padding: 0.45rem 0.9rem; font-size: 0.78rem; letter-spacing: 0.05em; text-transform: uppercase; cursor: pointer; transition: background 0.2s; }
+    .bulk-delete-btn:hover { background: #3a1010; }
+    .bulk-cancel-btn { background: transparent; border: 1px solid var(--border); color: var(--text-muted); border-radius: 6px; padding: 0.45rem 0.9rem; font-size: 0.78rem; letter-spacing: 0.05em; text-transform: uppercase; cursor: pointer; transition: color 0.2s, border-color 0.2s; }
+    .bulk-cancel-btn:hover { color: var(--text); border-color: var(--text-muted); }
+
+    /* ─── ESTILOS DE CARTA ─── */
+    #live-card-container { transition: all 0.4s ease; width: 100%; }
+    .letter-card { position: relative; transition: all 0.3s ease; min-height: 700px; overflow: hidden; }
+    /* Visor (destinatario): la carta se muestra como texto real (tag/título/
+       cuerpo/firma), igual que en el editor. Si la carta es larga, no la
+       recortamos: dejamos que .letter-card crezca a su alto real y que sea
+       la vista (#letter-view) la que scrollee, para poder verla entera de
+       punta a punta. */
+    #letter-view { width: 100%; max-height: 100dvh; overflow-y: auto; -webkit-overflow-scrolling: touch; padding-bottom: 1rem; }
+    /* Límite visible del área de trabajo, solo en el editor (no en la carta final que ve Pame) */
+    /* El alto de este marco lo fija JS (refreshWorkspaceBoundary) para que
+       siga cubriendo toda la carta aunque sea más alta que la pantalla
+       visible (antes se cortaba en cartas largas porque .letter-card, con
+       overflow-y:auto, sólo mide el alto del viewport recortado). */
+    .workspace-boundary { position: absolute; left: 0; top: 0; width: 100%; height: 100%; pointer-events: none; z-index: 6; outline: 2px dashed rgba(160, 88, 126, 0.6); outline-offset: -2px; }
+
+    .style-a .letter-card { padding: 1rem 2.2rem; background: transparent; border: none; }
+    .style-a .letter-tag { font-size: 0.75rem; letter-spacing: 0.3em; text-transform: uppercase; color: var(--text-muted); margin-bottom: 2rem; display: block; }
+    .style-a .letter-title { font-family: 'Lora', serif; font-size: 2rem; font-weight: 400; font-style: italic; color: var(--text); margin-bottom: 2.5rem; line-height: 1.2; border-bottom: 1px solid var(--border); padding-bottom: 1.5rem; }
+    .style-a .letter-body { font-family: 'Lora', serif; font-size: 1.05rem; line-height: 1.7; color: #d4c9bc; min-height: 180px; }
+    .style-a .letter-sign { margin-top: 2.5rem; font-family: 'Lora', serif; font-style: italic; font-size: 1rem; color: var(--accent-soft); text-align: right; }
+
+    .style-b .letter-card { background: #1a1208; border: none; border-radius: 2px; padding: 2.5rem 2.2rem; position: relative; box-shadow: inset 0 0 40px #00000055, 0 4px 24px #00000088; }
+    .style-b .letter-card::before { content: ''; position: absolute; inset: 0; background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='300' height='300'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='300' height='300' filter='url(%23n)' opacity='0.04'/%3E%3C/svg%3E"); opacity: 0.3; pointer-events: none; border-radius: 2px; z-index: 0; }
+    .style-b .letter-tag { font-family: 'Playfair Display', serif; font-size: 0.78rem; letter-spacing: 0.2em; text-transform: uppercase; color: #8a7040; margin-bottom: 1rem; display: block; position: relative; z-index: 1; }
+    .style-b .letter-title { font-family: 'Playfair Display', serif; font-size: 1.6rem; font-style: italic; color: #e8d8a0; margin-bottom: 1.8rem; line-height: 1.3; position: relative; z-index: 1; }
+    .style-b .letter-body { font-family: 'Lora', serif; font-size: 1rem; line-height: 1.65; color: #c8b888; min-height: 180px; position: relative; z-index: 1; }
+    .style-b .letter-sign { margin-top: 2rem; font-family: 'Playfair Display', serif; font-style: italic; font-size: 1.1rem; color: #8a7040; text-align: right; position: relative; z-index: 1; }
+
+    .style-c .letter-card { background: #080c08; border: 1px solid #1a3a1a; border-radius: 3px; padding: 2.2rem; position: relative; }
+    .style-c .letter-card::before { content: '> editar_carta_'; position: absolute; top: 0.8rem; left: 1rem; font-family: 'Space Mono', monospace; font-size: 0.72rem; color: #2a6a2a; letter-spacing: 0.1em; z-index: 0; }
+    .style-c .letter-tag { font-family: 'Space Mono', monospace; font-size: 0.72rem; color: #3a8a3a; margin-bottom: 1.5rem; margin-top: 1rem; display: block; letter-spacing: 0.05em; position: relative; z-index: 1; }
+    .style-c .letter-title { font-family: 'Space Mono', monospace; font-size: 1.1rem; font-style: italic; color: #7adf7a; margin-bottom: 2rem; line-height: 1.4; position: relative; z-index: 1; }
+    .style-c .letter-body { font-family: 'Space Mono', monospace; font-size: 0.85rem; line-height: 1.6; color: #a0c8a0; min-height: 180px; position: relative; z-index: 1; }
+    .style-c .letter-sign { margin-top: 2rem; font-family: 'Space Mono', monospace; font-size: 0.85rem; color: #3a8a3a; text-align: right; position: relative; z-index: 1; }
+
+    .style-d .letter-card { background: #100818; border: 1px solid #3a1f4a; outline: 3px solid #1e0f2a; outline-offset: 4px; border-radius: 2px; padding: 2.5rem 2rem; position: relative; }
+    .style-d .letter-card::before { content: '✦'; position: absolute; top: -0.9rem; left: 50%; transform: translateX(-50%); background: var(--bg); padding: 0 0.5rem; color: var(--gold); font-size: 1rem; opacity: 0.5; z-index: 0; }
+    .style-d .letter-tag { font-size: 0.72rem; letter-spacing: 0.35em; text-transform: uppercase; color: var(--gold); opacity: 0.5; margin-bottom: 1.2rem; display: block; text-align: center; position: relative; z-index: 1; }
+    .style-d .letter-title { font-family: 'Playfair Display', serif; font-size: 1.55rem; font-style: italic; color: var(--text); margin-bottom: 1.8rem; line-height: 1.3; text-align: center; padding-bottom: 1.2rem; border-bottom: 1px solid #3a1f4a; position: relative; z-index: 1; }
+    .style-d .letter-body { font-family: 'Lora', serif; font-size: 1rem; line-height: 1.65; color: #ccc0d8; min-height: 180px; position: relative; z-index: 1; }
+    .style-d .letter-sign { margin-top: 2rem; font-family: 'Playfair Display', serif; font-style: italic; font-size: 1rem; color: var(--accent-soft); text-align: right; position: relative; z-index: 1; }
+
+    /* ─── Estilo E: correo aéreo / vintage. Papel crema con el clásico
+       marco a rayas rojas y azules de sobre "par avion", en sintonía con
+       el nombre de la app. El marco se dibuja como un border-image real
+       (dos capas de background con background-clip), no como un
+       pseudo-elemento position:absolute: así queda pegado al borde real
+       de la tarjeta y no se corta cuando el cuerpo tiene mucho texto y
+       .letter-card scrollea internamente (antes el pseudo-elemento
+       quedaba anclado a la altura visible inicial y no acompañaba el
+       scroll). ─── */
+    .style-e .letter-card {
+      background: #f4ecd8; border-radius: 5px; padding: 2.6rem 2.1rem; position: relative;
+      box-shadow: 0 20px 50px -18px rgba(0,0,0,0.55);
+      border: 4px solid transparent;
+      background-image: linear-gradient(#f4ecd8, #f4ecd8), repeating-linear-gradient(-45deg, #a4283a 0 5px, #f4ecd8 5px 10px, #f4ecd8 10px 15px, #24417a 15px 20px, #f4ecd8 20px 25px, #f4ecd8 25px 30px);
+      background-origin: border-box; background-clip: content-box, border-box;
+    }
+    .style-e .letter-tag { font-family: 'Space Mono', monospace; font-size: 0.68rem; letter-spacing: 0.18em; text-transform: uppercase; color: #a4283a; margin-bottom: 1.4rem; display: block; position: relative; z-index: 1; }
+    .style-e .letter-title { font-family: 'Cormorant Garamond', serif; font-weight: 600; font-size: 2.15rem; font-style: italic; color: #2b2118; margin-bottom: 1.8rem; line-height: 1.25; position: relative; z-index: 1; }
+    .style-e .letter-body { font-family: 'Cormorant Garamond', serif; font-size: 1.15rem; line-height: 1.6; color: #3a3226; min-height: 180px; position: relative; z-index: 1; }
+    .style-e .letter-sign { margin-top: 2rem; font-family: 'Dancing Script', cursive; font-weight: 600; font-size: 1.5rem; color: #24417a; text-align: right; position: relative; z-index: 1; }
+
+    /* ─── Estilo F: nota nocturna con brillo neón (rosa/cian sobre negro),
+       para un aire más "carta del futuro". ─── */
+    .style-f .letter-card { background: #06040a; border: 1px solid #2a0a3a; border-radius: 8px; padding: 2.5rem 2.1rem; position: relative; box-shadow: inset 0 0 70px rgba(255,0,180,0.07), 0 10px 40px rgba(0,0,0,0.6); }
+    .style-f .letter-card::before { content: '✧'; position: absolute; top: 0.7rem; right: 1.1rem; color: #ff2fb0; opacity: 0.6; font-size: 1rem; text-shadow: 0 0 10px #ff2fb0; z-index: 0; }
+    .style-f .letter-tag { font-family: 'Outfit', sans-serif; font-size: 0.7rem; letter-spacing: 0.35em; text-transform: uppercase; color: #5ef1ff; opacity: 0.9; margin-bottom: 1.3rem; display: block; text-shadow: 0 0 10px rgba(94,241,255,0.6); position: relative; z-index: 1; }
+    .style-f .letter-title { font-family: 'Outfit', sans-serif; font-weight: 500; font-size: 1.9rem; color: #ff5fd0; margin-bottom: 1.8rem; line-height: 1.25; text-shadow: 0 0 18px rgba(255,95,208,0.55); position: relative; z-index: 1; }
+    .style-f .letter-body { font-family: 'Josefin Sans', sans-serif; font-size: 1.02rem; line-height: 1.65; color: #d8d0e8; min-height: 180px; position: relative; z-index: 1; }
+    .style-f .letter-sign { margin-top: 2rem; font-family: 'Outfit', sans-serif; font-size: 0.95rem; letter-spacing: 0.05em; color: #5ef1ff; text-align: right; text-shadow: 0 0 10px rgba(94,241,255,0.5); position: relative; z-index: 1; }
+
+    /* ─── Estilo G: jardín / botánico. Papel tiza suave con acentos verde
+       salvia, más cálido y delicado que el resto. ─── */
+    .style-g .letter-card { background: #f3f1e7; border: 1px solid #d8dcc8; border-radius: 16px; padding: 2.7rem 2.1rem; position: relative; box-shadow: 0 20px 45px -18px rgba(60,70,40,0.35); }
+    .style-g .letter-card::before { content: '❀'; position: absolute; top: -0.85rem; left: 50%; transform: translateX(-50%); background: #f3f1e7; padding: 0 0.6rem; color: #8a9a5b; font-size: 1.15rem; z-index: 0; }
+    .style-g .letter-tag { font-family: 'Josefin Sans', sans-serif; font-size: 0.72rem; letter-spacing: 0.28em; text-transform: uppercase; color: #8a9a5b; margin-bottom: 1.3rem; display: block; text-align: center; position: relative; z-index: 1; }
+    .style-g .letter-title { font-family: 'Cormorant Garamond', serif; font-weight: 600; font-size: 2.05rem; font-style: italic; color: #4a5a34; margin-bottom: 1.7rem; line-height: 1.3; text-align: center; position: relative; z-index: 1; }
+    .style-g .letter-body { font-family: 'Cormorant Garamond', serif; font-size: 1.15rem; line-height: 1.6; color: #5a5648; min-height: 180px; position: relative; z-index: 1; }
+    .style-g .letter-sign { margin-top: 2rem; font-family: 'Dancing Script', cursive; font-weight: 600; font-size: 1.4rem; color: #8a9a5b; text-align: right; position: relative; z-index: 1; }
+
+    /* ─── Estilo H: constelación. Azul medianoche con estrellitas hechas
+       con radial-gradients (sin imágenes) y dorado tipo Cinzel. ─── */
+    .style-h .letter-card {
+      background:
+        radial-gradient(1px 1px at 20% 28%, rgba(255,255,255,0.85), transparent 60%),
+        radial-gradient(1px 1px at 72% 15%, rgba(255,255,255,0.65), transparent 60%),
+        radial-gradient(1.5px 1.5px at 42% 68%, rgba(255,255,255,0.75), transparent 60%),
+        radial-gradient(1px 1px at 86% 58%, rgba(255,255,255,0.55), transparent 60%),
+        radial-gradient(1.5px 1.5px at 58% 42%, rgba(255,255,255,0.65), transparent 60%),
+        radial-gradient(1px 1px at 12% 82%, rgba(255,255,255,0.55), transparent 60%),
+        radial-gradient(1px 1px at 92% 88%, rgba(255,255,255,0.65), transparent 60%),
+        radial-gradient(1px 1px at 33% 8%, rgba(255,255,255,0.5), transparent 60%),
+        linear-gradient(170deg, #0a0e2a, #050614);
+      border: 1px solid #1c2350; border-radius: 8px; padding: 2.6rem 2.1rem; position: relative;
+      box-shadow: 0 20px 50px -18px rgba(0,0,0,0.7);
+    }
+    .style-h .letter-tag { font-family: 'Cinzel', serif; font-size: 0.68rem; letter-spacing: 0.32em; text-transform: uppercase; color: #c9a96e; opacity: 0.8; margin-bottom: 1.4rem; display: block; text-align: center; position: relative; z-index: 1; }
+    .style-h .letter-title { font-family: 'Cormorant Garamond', serif; font-weight: 600; font-size: 2.05rem; font-style: italic; color: #f0e4c0; margin-bottom: 1.8rem; line-height: 1.3; text-align: center; position: relative; z-index: 1; }
+    .style-h .letter-body { font-family: 'Cormorant Garamond', serif; font-size: 1.15rem; line-height: 1.65; color: #c9c6de; min-height: 180px; position: relative; z-index: 1; }
+    .style-h .letter-sign { margin-top: 2rem; font-family: 'Cinzel', serif; font-size: 0.95rem; letter-spacing: 0.08em; color: #c9a96e; text-align: right; position: relative; z-index: 1; }
+
+    .letter-body p { margin-bottom: 0.75rem; }
+    .letter-body p:last-child { margin-bottom: 0; }
+
+    /* En celular, el padding lateral fijo de cada estilo (pensado para
+       pantallas grandes) le dejaba muy poco ancho real al texto y hacía
+       que entraran pocas palabras por línea. Acá lo achicamos solo en
+       mobile, sin tocar el padding vertical (que es parte del diseño de
+       cada estilo). Aplica tanto a la vista final como al editor, ya que
+       ambos comparten .letter-card. */
+    @media (max-width: 480px) {
+      .letter-card { padding-left: 1.1rem !important; padding-right: 1.1rem !important; }
+    }
+
+    /* ─── AUTOSAVE ─── */
+    .autosave-indicator { font-size: 0.78rem; color: var(--text-muted); opacity: 0; transition: opacity 0.4s; text-align: right; margin-top: 0.4rem; letter-spacing: 0.1em; width: 100%; max-width: 560px; margin-left: auto; margin-right: auto;}
+    .autosave-indicator.visible { opacity: 0.6; }
+
+    /* ─── CAPA DE STICKERS E IMÁGENES ─── */
+    .stickers-layer { position: absolute; inset: 0; pointer-events: none; overflow: visible; z-index: 5; }
+    .sticker-wrapper { position: absolute; transform-origin: center center; cursor: default; pointer-events: auto; user-select: none; touch-action: none; }
+    #letter-view .sticker-wrapper { cursor: default; }
+    .sticker-img { width: 100%; height: auto; display: block; pointer-events: none; }
+    
+    .sticker-text-content { width: 100%; height: 100%; outline: none; cursor: text; padding: 4px; }
+    /* Modos de fondo del texto (herramienta "Aa" del lienzo): el fondo se
+       aplica pegado a cada línea (no a todo el recuadro), como en Instagram. */
+    .sticker-bg-solid, .sticker-bg-invert {
+      box-decoration-break: clone; -webkit-box-decoration-break: clone;
+      padding: 0.1em 0.3em !important; border-radius: 6px;
+    }
+    #admin-view .sticker-wrapper.selected .sticker-text-content { border: 1px dashed rgba(255,255,255,0.2); }
+
+    .sticker-control { position: absolute; width: 22px; height: 22px; border-radius: 50%; display: none; align-items: center; justify-content: center; font-size: 11px; font-weight: bold; z-index: 10; cursor: pointer; box-shadow: 0 2px 6px rgba(0,0,0,0.5); }
+    #admin-view .sticker-wrapper.selected .sticker-control { display: flex; }
+    
+    .control-move { top: -10px; left: -10px; background: #64748b; color: #fff; border: 1.5px solid #fff; cursor: move; }
+    .control-delete { top: -10px; right: -10px; background: #f43f5e; color: #fff; border: 1.5px solid #fff; }
+    .control-clone { bottom: -10px; left: -10px; background: #3b82f6; color: #fff; border: 1.5px solid #fff; }
+    .control-copy { bottom: -10px; left: calc(50% - 11px); background: #a855f7; color: #fff; border: 1.5px solid #fff; }
+    .control-rotate { top: -28px; left: calc(50% - 11px); background: #c9a96e; color: #0d0b0f; border: 1.5px solid #fff; cursor: grab; }
+    .control-rotate::after { content: ''; position: absolute; top: 20px; left: 9px; width: 2px; height: 8px; background: #fff; }
+    .control-resize { bottom: -10px; right: -10px; background: #4ade80; color: #0d0b0f; border: 1.5px solid #fff; cursor: se-resize; }
+    #letter-view .sticker-control { display: none !important; }
+
+    /* ─── PANEL DE PROPIEDADES: CAPAS + OPACIDAD ───
+       Vive DENTRO del escenario tipo "story" (misma lógica de diseño que el
+       resto de los controles de instastorie): una píldora compacta, anclada
+       abajo, lejos de los rieles de arriba, para que nunca tape los botones
+       ni el lienzo. Solo aparece cuando hay un elemento seleccionado, igual
+       que cualquier otro panel contextual de la app. */
+    .sticker-props-bar {
+      position: absolute; left: 12px; right: 12px;
+      bottom: calc(3.5rem + env(safe-area-inset-bottom));
+      z-index: 65;
+      display: none; align-items: center; justify-content: center; gap: 0.6rem;
+      background: rgba(16,13,20,0.9); backdrop-filter: blur(6px);
+      border: 1px solid rgba(255,255,255,0.14); border-radius: 14px;
+      padding: 0.55rem 0.8rem; margin: 0;
+      box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+      overflow-x: auto; -webkit-overflow-scrolling: touch;
+    }
+    .sticker-props-bar.visible { display: flex; }
+    .props-bar-label { font-size: 0.68rem; letter-spacing: 0.08em; text-transform: uppercase; color: var(--text-muted); white-space: nowrap; flex-shrink: 0; }
+    .layer-btn {
+      width: 30px; height: 30px; border-radius: 8px; background: rgba(255,255,255,0.06); border: 1px solid rgba(255,255,255,0.14);
+      color: var(--text); font-size: 13px; display: flex; align-items: center; justify-content: center;
+      cursor: pointer; flex-shrink: 0;
+    }
+    .layer-btn:hover, .layer-btn:active { background: var(--accent); }
+    .opacity-label { font-size: 0.72rem; color: var(--text-muted); white-space: nowrap; flex-shrink: 0; }
+    .opacity-slider { width: 100%; min-width: 60px; height: 22px; cursor: pointer; flex: 1; accent-color: var(--accent-soft); }
+    .sticker-props-bar .props-opacity-group { flex: 1; min-width: 0; }
+
+    /* Barrita mínima de formato (Negrita/Cursiva/Subrayado) para el cuerpo
+       fijo de la carta (#adm-body). Reutiliza el mismo look que sticker-props-bar. */
+    .body-format-bar {
+      position: absolute; left: 12px; right: 12px;
+      bottom: calc(3.5rem + env(safe-area-inset-bottom));
+      z-index: 65;
+      display: none; align-items: center; justify-content: center; gap: 0.5rem;
+      background: rgba(16,13,20,0.9); backdrop-filter: blur(6px);
+      border: 1px solid rgba(255,255,255,0.14); border-radius: 14px;
+      padding: 0.4rem 0.6rem; margin: 0;
+      box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+    }
+    .body-format-bar.visible { display: flex; }
+
+    /* ═══════════════ PIZARRA COMPARTIDA (DIBUJO) ═══════════════ */
+    .draw-wrapper {
+      width: 100%; max-width: 560px; margin: 0.7rem auto 0;
+      background: linear-gradient(160deg, var(--surface), #17121e);
+      border: 1px solid var(--border); border-radius: 10px;
+      padding: 1.2rem 1.2rem 1.4rem;
+      box-shadow: 0 20px 50px -15px rgba(0,0,0,0.7), 0 0 0 1px rgba(201,169,110,0.04) inset;
+    }
+    .draw-header { display: flex; align-items: baseline; justify-content: space-between; margin-bottom: 0.8rem; gap: 0.6rem; }
+    .draw-title-input {
+      font-family: 'Lora', serif; font-style: italic; font-size: 1.05rem; color: var(--accent-soft);
+      background: transparent; border: none; border-bottom: 1px dashed transparent; outline: none;
+      padding: 0.1rem 0.15rem; min-width: 0; flex: 1; cursor: text;
+      transition: border-color 0.2s;
+    }
+    .draw-title-input:hover, .draw-title-input:focus { border-bottom-color: var(--accent-soft); }
+    .draw-title-input::placeholder { color: var(--accent-soft); opacity: 0.5; }
+    .draw-sub { font-size: 0.68rem; letter-spacing: 0.15em; text-transform: uppercase; color: var(--text-muted); opacity: 0.6; white-space: nowrap; flex-shrink: 0; }
+    .draw-canvas-box {
+      width: 100%; aspect-ratio: 4 / 4.2; border-radius: 8px; overflow: hidden;
+      background: #0a080d; border: 1px solid var(--border); touch-action: none; position: relative;
+    }
+    #draw-canvas { width: 100%; height: 100%; display: block; cursor: crosshair; }
+    .draw-toolbar { display: flex; flex-direction: column; gap: 0.7rem; margin-top: 0.9rem; }
+    .draw-top-tools-row { display: flex; align-items: center; gap: 0.6rem; flex-wrap: wrap; }
+    .draw-colors { display: flex; gap: 0.4rem; align-items: center; flex-wrap: wrap; }
+    .draw-swatch {
+      width: 22px; height: 22px; border-radius: 50%; border: 2px solid transparent; cursor: pointer;
+      flex-shrink: 0; transition: transform 0.15s, border-color 0.15s; padding: 0;
+    }
+    .draw-swatch:hover { transform: scale(1.12); }
+    .draw-swatch.active { border-color: var(--gold); transform: scale(1.15); }
+    .draw-swatch-custom {
+      width: 22px; height: 22px; border-radius: 50%; padding: 0; border: 2px solid var(--border);
+      background: conic-gradient(red, yellow, lime, cyan, blue, magenta, red); cursor: pointer; flex-shrink: 0;
+    }
+    /* Selector de tipo de pincel, a la derecha de la paleta de colores */
+    .draw-brush-select { margin-left: 0.3rem; flex-shrink: 0; max-width: 132px; }
+
+    /* Slider de grosor: debajo de la paleta, más grande y preciso */
+    .draw-size-wrap { display: flex; align-items: center; gap: 0.7rem; width: 100%; }
+    .draw-size {
+      flex: 1; width: 100%; height: 26px; accent-color: var(--accent-soft); cursor: pointer;
+    }
+    .draw-size-value {
+      flex-shrink: 0; min-width: 2.6rem; text-align: right; font-size: 0.8rem;
+      color: var(--text-muted); font-variant-numeric: tabular-nums;
+    }
+    .draw-tool-btn {
+      width: 30px; height: 30px; border-radius: 6px; background: #1c1624; border: 1px solid var(--border);
+      color: var(--text); font-size: 0.85rem; display: flex; align-items: center; justify-content: center;
+      cursor: pointer; flex-shrink: 0; transition: background 0.15s, border-color 0.15s;
+    }
+    .draw-tool-btn:hover { background: var(--accent); border-color: var(--accent); }
+    .draw-tool-btn.active { background: var(--accent); border-color: var(--gold); color: var(--text); }
+    .draw-sync-note { font-size: 0.68rem; color: var(--text-muted); opacity: 0.55; text-align: center; margin-top: 0.6rem; }
+    .draw-sync-note.saving { opacity: 0.9; color: var(--accent-soft); }
+
+    /* El lienzo usa el mismo sistema de stickers que las cartas: habilitamos
+       los controles (mover/borrar/rotar/redimensionar) dentro del login-view. */
+    #login-view .sticker-wrapper.selected .sticker-control { display: flex; }
+    #login-view .sticker-wrapper.selected .sticker-text-content { border: 1px dashed rgba(255,255,255,0.2); }
+
+    /* La barra de formato del lienzo no necesita quedar pegada arriba de todo */
+    #canvas-format-toolbar { position: static; margin: 0; }
+
+    /* Fila superior del lienzo: deshacer a la izquierda, eliminar a la
+       derecha, simétricos respecto de la barra de texto/imagen en el medio. */
+    .canvas-top-row {
+      display: flex; align-items: center; justify-content: center; gap: 0.5rem;
+      width: 100%; margin: 0 auto 0.9rem auto;
+    }
+    .canvas-top-row .canvas-format-toolbar { flex: 0 1 auto; min-width: 0; }
+    .canvas-undo-top-btn, .canvas-clear-top-btn { flex-shrink: 0; }
+
+    /* Manijas laterales de los cuadros de texto: permiten arrastrar el ancho
+       del recuadro sin afectar el tamaño de letra, para controlar cuántas
+       palabras entran por línea. */
+    .control-resize-side {
+      width: 14px; height: 30px; border-radius: 4px; top: calc(50% - 15px);
+      background: #4ade80; color: #0d0b0f; border: 1.5px solid #fff;
+      font-size: 9px; cursor: ew-resize;
+    }
+    .control-resize-side-left { left: -9px; }
+    .control-resize-side-right { right: -9px; }
+
+    /* ─── Acciones del lienzo: guardar imagen + enviar por Telegram ─── */
+    .canvas-actions-row { display: flex; align-items: stretch; gap: 0.7rem; margin-top: 1rem; }
+    .canvas-action-btn {
+      display: flex; align-items: center; justify-content: center; gap: 0.5rem;
+      background: var(--surface); border: 1px solid var(--border); border-radius: 8px;
+      padding: 0.75rem 0.9rem; color: var(--text); font-family: 'Inter', sans-serif;
+      font-size: 0.82rem; letter-spacing: 0.02em; cursor: pointer;
+      transition: background 0.2s, border-color 0.2s;
+    }
+    .canvas-action-btn:hover { background: var(--accent); border-color: var(--accent-soft); }
+    .canvas-action-btn:first-child { flex: 1; }
+    .canvas-send-wrap { position: relative; flex-shrink: 0; }
+    .canvas-send-btn {
+      width: 46px; height: 46px; padding: 0; border-radius: 50%;
+      background: linear-gradient(160deg, var(--accent), #5e2f52); border-color: var(--gold);
+    }
+    .canvas-send-menu {
+      position: absolute; bottom: calc(100% + 10px); right: 0; z-index: 60;
+      display: none; flex-direction: column; gap: 0.4rem; min-width: 190px;
+      background: linear-gradient(160deg, var(--surface), #17121e); border: 1px solid var(--border);
+      border-radius: 10px; padding: 0.65rem; box-shadow: 0 20px 50px -15px rgba(0,0,0,0.8);
+    }
+    .canvas-send-menu.visible { display: flex; }
+    .canvas-send-menu-label { font-size: 0.66rem; letter-spacing: 0.1em; text-transform: uppercase; color: var(--text-muted); padding: 0 0.2rem 0.1rem; }
+    .canvas-send-menu button {
+      background: transparent; border: 1px solid var(--border); border-radius: 6px; color: var(--text);
+      padding: 0.55rem 0.7rem; text-align: left; font-size: 0.85rem; cursor: pointer;
+      font-family: 'Inter', sans-serif; transition: background 0.15s, border-color 0.15s;
+    }
+    .canvas-send-menu button:hover { background: var(--accent); border-color: var(--accent-soft); }
+
+    @media (max-width: 480px) {
+      .canvas-actions-row { gap: 0.5rem; }
+      .canvas-action-btn { padding: 0.7rem 0.6rem; font-size: 0.76rem; }
+      /* El lienzo ahora vive a pantalla completa (ver .ig-stage-shell):
+         la "tarjeta" que lo envolvía (fondo, borde, padding) ya no debe
+         agregar margen ni recuadro alrededor. */
+      .draw-wrapper {
+        padding: 0; border: none; background: transparent; box-shadow: none;
+        max-width: none;
+      }
+    }
+
+    /* ═══════════════════════════════════════════════════════════════
+       ═══ EDITORES ESTILO "STORIES" DE INSTAGRAM (rediseño mobile) ═══
+       ═══════════════════════════════════════════════════════════════ */
+
+    /* La relación de aspecto (8:15) queda SIEMPRE fija: en vez de dejar que
+       el ancho ocupe el 100% y recortar la altura contra max-height (lo que
+       rompía la proporción y desalineaba los elementos entre quien edita y
+       quien recibe), calculamos el ancho como el menor entre "todo el ancho
+       disponible" y "la altura disponible convertida a ancho según la
+       proporción". Así el escenario siempre se ve idéntico, en cualquier
+       pantalla, y solo cambia de tamaño, nunca de forma. */
+    .ig-stage-shell {
+      position: relative;
+      width: min(100%, calc((100dvh - 1.2rem) * 8 / 15));
+      max-width: 460px;
+      aspect-ratio: 8 / 15;
+      max-height: calc(100dvh - 1.2rem);
+      margin: 0.6rem auto 0.9rem;
+      border-radius: 22px;
+      overflow: hidden;
+      background: #000;
+      box-shadow: 0 30px 70px -20px rgba(0,0,0,0.85), 0 0 0 1px rgba(255,255,255,0.05);
+    }
+    /* Debajo de este ancho, el lienzo pasa a ocupar TODO el ancho de la
+       pantalla, de punta a punta, sin ningún margen lateral (estilo historia
+       de Instagram a pantalla completa) — usando un "full-bleed" que ignora
+       el padding de los contenedores padres (body, .draw-wrapper, etc.), así
+       que no importa cuánto padding tengan: siempre llega al borde real. */
+    @media (max-width: 480px) {
+      .ig-stage-shell {
+        width: 100vw;
+        max-width: 100vw;
+        height: calc(100dvh - var(--bottom-nav-h));
+        max-height: calc(100dvh - var(--bottom-nav-h));
+        aspect-ratio: auto;
+        border-radius: 0;
+        margin: 0;
+        margin-left: calc(50% - 50vw);
+        margin-right: calc(50% - 50vw);
+      }
+      /* El editor de la carta (no el lienzo de dibujo compartido) sí puede
+         crecer por debajo de la barra inferior, ya que ahí no convive con
+         ella (se entra a él desde la galería, la barra de código no se ve). */
+      #letter-stage-shell {
+        height: 100dvh; max-height: 100dvh;
+      }
+    }
+    /* Pasada esa pantalla chica, vuelve a comportarse como una tarjeta
+       centrada con márgenes (el diseño de siempre para tablet/desktop). */
+    @media (min-width: 481px) {
+      .ig-stage-shell { margin-left: auto; margin-right: auto; }
+    }
+
+    .ig-stage-shell .draw-canvas-box,
+    .ig-stage-shell #live-card-container,
+    .ig-stage-shell .letter-card {
+      width: 100% !important; height: 100% !important; max-width: none !important;
+      aspect-ratio: auto !important; border-radius: 0 !important; margin: 0 !important;
+      border: none !important;
+    }
+    .ig-stage-shell #live-card-container { display: flex; align-items: stretch; }
+    /* padding-bottom extra: dentro del editor, la carta scrollea sola pero
+       la barra inferior fija (atrás/galería/guardar + indicador de
+       autoguardado) queda flotando encima de todo, así que sin este
+       espacio la firma (último campo) termina tapada e imposible de tocar
+       al llegar al final del scroll. Solo aplica en el editor (admin-view),
+       no en la vista final que lee el destinatario. */
+    .ig-stage-shell .letter-card { flex: 1; min-height: 0 !important; overflow-y: auto; }
+    #admin-view .ig-stage-shell .letter-card { padding-bottom: 6.5rem !important; }
+    .ig-stage-shell .workspace-boundary { outline-color: rgba(201,169,110,0.35); }
+
+    /* ─── #letter-stage-shell es el ÚNICO de los dos "stage" (el otro es
+       el lienzo compartido de dibujo, #canvas-stage-shell) que muestra una
+       carta pensada para leerse a 560px de ancho como en #letter-card-wrapper
+       (la vista final, al abrir con el código). Encerrarlo en la relación
+       8:15 "story" de Instagram la hacía ver angosta y recortada — como
+       "zoomeada" — comparado con cómo se ve realmente. Acá lo ensanchamos
+       a las mismas proporciones que la carta final, sin tocar el resto de
+       .ig-stage-shell (que sigue rigiendo el lienzo de dibujo). El alto
+       se mantiene atado a la pantalla (con scroll interno de la carta, ya
+       resuelto arriba) para no romper la posición de los controles
+       flotantes (rail, barras de formato, paneles), que siguen ubicados en
+       relación a este marco. ─── */
+    #letter-stage-shell {
+      width: min(100%, 560px);
+      max-width: 560px;
+      aspect-ratio: auto;
+      border-radius: 14px;
+    }
+    @media (max-width: 480px) {
+      #letter-stage-shell {
+        width: calc(100vw - 1.2rem);
+        max-width: 560px;
+        margin: 0.6rem auto 0.9rem;
+        margin-left: auto;
+        margin-right: auto;
+        border-radius: 14px;
+        height: calc(100dvh - 1.2rem);
+        max-height: calc(100dvh - 1.2rem);
+      }
+    }
+
+    .ig-stage-dim {
+      position: absolute; inset: 0; z-index: 40; pointer-events: none;
+      background: radial-gradient(ellipse at center, rgba(0,0,0,0) 55%, rgba(0,0,0,0.55) 100%);
+      opacity: 0; transition: opacity 0.25s ease;
+    }
+    .ig-stage-shell.editing .ig-stage-dim { opacity: 1; }
+
+    .ig-rail {
+      position: absolute; top: 14px; right: 12px; z-index: 60;
+      display: flex; flex-direction: column; gap: 10px; align-items: center;
+    }
+    .ig-rail-btn {
+      width: 46px; height: 46px; border-radius: 50%;
+      background: rgba(20,16,26,0.55); backdrop-filter: blur(6px);
+      border: 1px solid rgba(255,255,255,0.14); color: var(--text);
+      font-size: 1.15rem; display: flex; align-items: center; justify-content: center;
+      cursor: pointer; box-shadow: 0 4px 16px rgba(0,0,0,0.4);
+      transition: background 0.15s, transform 0.1s, border-color 0.15s;
+      -webkit-tap-highlight-color: transparent;
+    }
+    .ig-rail-btn:active { transform: scale(0.9); }
+    .ig-rail-btn.active { background: var(--accent); border-color: var(--gold); }
+    .ig-rail-btn input[type="file"] { display: none; }
+
+    .ig-rail-left {
+      position: absolute; top: 14px; left: 12px; z-index: 60;
+      display: flex; flex-direction: column; gap: 10px; align-items: center;
+    }
+
+    /* Herramientas colapsadas detrás del botón de lápiz: ocultas hasta que
+       se abren, para trabajar con la pantalla más limpia. */
+    .ig-rail-collapsible {
+      display: none; flex-direction: column; gap: 10px; align-items: center;
+      margin-top: 10px;
+    }
+    .ig-rail.tools-open .ig-rail-collapsible { display: flex; }
+    .ig-rail-toggle.active { background: var(--accent); border-color: var(--gold); }
+
+    /* Rail inferior derecho: atrás / código, lejos del área de trabajo */
+    .ig-rail-bottom-right {
+      position: absolute; bottom: 14px; right: 12px; z-index: 65;
+      display: flex; flex-direction: row; gap: 10px; align-items: center;
+    }
+
+    /* Herramienta "mover página": mientras está activa, ningún elemento del
+       lienzo se mueve y se puede hacer zoom/pan libremente sobre la página. */
+    .ig-rail-btn#adm-move-tool-btn.active,
+    .ig-rail-btn#canvas-move-tool-btn.active { background: var(--accent); border-color: var(--gold); }
+
+    /* Con la herramienta "mover" activa, ningún elemento del lienzo recibe
+       los toques: todo el gesto (pellizcar/arrastrar) mueve la página. */
+    .ig-stage-shell.move-tool-active .stickers-layer,
+    .ig-stage-shell.move-tool-active #draw-canvas { pointer-events: none; }
+    .ig-stage-shell.move-tool-active { cursor: grab; }
+    .ig-stage-shell.move-tool-active:active { cursor: grabbing; }
+
+    /* Zona de "soltar para borrar", estilo Instagram: aparece abajo mientras
+       se arrastra un elemento y se puede arrastrar hasta ahí para eliminarlo. */
+    .delete-drop-zone {
+      position: absolute; left: 50%; bottom: 16px; transform: translateX(-50%) scale(0.8);
+      width: 58px; height: 58px; border-radius: 50%; z-index: 250;
+      background: rgba(20,16,26,0.7); backdrop-filter: blur(6px);
+      border: 1px solid rgba(255,255,255,0.18); color: var(--text);
+      display: none; align-items: center; justify-content: center; font-size: 1.3rem;
+      opacity: 0; transition: opacity 0.15s, transform 0.15s, background 0.15s, border-color 0.15s;
+      pointer-events: none;
+    }
+    .delete-drop-zone.visible { display: flex; opacity: 1; transform: translateX(-50%) scale(1); }
+    .delete-drop-zone.armed { background: #b23b3b; border-color: #ff6b6b; transform: translateX(-50%) scale(1.15); }
+
+    .ig-bottom-bar {
+      position: absolute; left: 0; right: 0; bottom: 0; z-index: 60;
+      display: flex; align-items: center; gap: 0.6rem;
+      padding: 0.9rem 0.9rem calc(0.9rem + env(safe-area-inset-bottom));
+      background: linear-gradient(0deg, rgba(0,0,0,0.75), transparent);
+    }
+
+    /* Paneles tipo "hoja inferior" (bottom sheet), como en Instagram: se
+       anclan abajo y dejan el lienzo visible y tocable arriba. Tocar el
+       lienzo (fuera del panel y de los stickers) cierra el panel y vuelve
+       a la vista normal del lienzo. */
+    .ig-panel {
+      position: absolute; left: 0; right: 0; bottom: 0; top: auto; z-index: 90;
+      max-height: 58%;
+      background: linear-gradient(180deg, rgba(10,8,14,0.65), rgba(8,6,11,0.97) 22%);
+      backdrop-filter: blur(10px);
+      border-top: 1px solid rgba(255,255,255,0.1);
+      border-radius: 20px 20px 0 0;
+      box-shadow: 0 -10px 40px rgba(0,0,0,0.5);
+      display: none; flex-direction: column;
+      animation: ig-panel-in 0.22s ease;
+      padding-bottom: env(safe-area-inset-bottom);
+    }
+    .ig-panel.open { display: flex; }
+    @keyframes ig-panel-in { from { opacity: 0; transform: translateY(100%); } to { opacity: 1; transform: translateY(0); } }
+
+    .ig-panel-header {
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 0.75rem 1rem 0.5rem; flex-shrink: 0;
+      position: relative;
+    }
+    .ig-panel-header::before {
+      content: ''; position: absolute; top: 0.4rem; left: 50%; transform: translateX(-50%);
+      width: 34px; height: 4px; border-radius: 3px; background: rgba(255,255,255,0.18);
+    }
+    .ig-panel-title {
+      font-family: 'Lora', serif; font-size: 0.98rem; color: var(--text);
+      letter-spacing: 0.02em; margin-top: 0.35rem;
+    }
+    .ig-panel-close {
+      width: 34px; height: 34px; border-radius: 50%; flex-shrink: 0;
+      background: rgba(255,255,255,0.08); border: 1px solid rgba(255,255,255,0.14);
+      color: var(--text); font-size: 1rem; display: flex; align-items: center; justify-content: center;
+      cursor: pointer; margin-top: 0.2rem;
+    }
+    .ig-panel-body {
+      flex: 1; min-height: 0; overflow-y: auto; padding: 0.2rem 1rem 1rem;
+      display: flex; flex-direction: column; gap: 0.9rem;
+      -webkit-overflow-scrolling: touch;
+    }
+    .ig-panel-section-label {
+      font-size: 0.68rem; letter-spacing: 0.18em; text-transform: uppercase;
+      color: var(--text-muted); margin-bottom: 0.45rem;
+    }
+
+    .ig-action-row {
+      display: flex; align-items: center; gap: 0.9rem; width: 100%;
+      background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1);
+      border-radius: 14px; padding: 0.95rem 1.1rem; cursor: pointer;
+      color: var(--text); font-family: 'Inter', sans-serif; font-size: 1rem;
+      transition: background 0.15s;
+    }
+    .ig-action-row:active { background: rgba(255,255,255,0.12); }
+    .ig-action-row .ig-icn { font-size: 1.3rem; width: 1.6rem; text-align: center; flex-shrink: 0; }
+
+    .ig-toggle-row { display: flex; gap: 0.6rem; }
+    .ig-toggle-btn {
+      flex: 1; padding: 0.95rem 0.5rem; border-radius: 14px; text-align: center;
+      background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.12);
+      color: var(--text); font-size: 1.15rem; cursor: pointer;
+    }
+    .ig-toggle-btn.active { background: var(--accent); border-color: var(--gold); }
+
+    /* Herramientas en fila con scroll horizontal, como el selector de stories
+       de Instagram: se desliza con el dedo hacia los costados en vez de
+       ocupar toda la pantalla en una lista vertical. */
+    .ig-vscroll {
+      max-height: none; overflow-x: auto; overflow-y: hidden;
+      scroll-snap-type: x proximity;
+      display: flex; flex-direction: row; gap: 0.55rem;
+      -webkit-overflow-scrolling: touch; padding: 0.5rem 0.3rem;
+      border-radius: 14px; background: rgba(255,255,255,0.03);
+    }
+    .ig-vscroll::-webkit-scrollbar { height: 0; }
+    .ig-vscroll-item {
+      scroll-snap-align: start; flex-shrink: 0;
+      display: flex; flex-direction: column; align-items: center; gap: 0.4rem;
+      padding: 0.55rem 0.7rem; border-radius: 12px; cursor: pointer;
+      color: var(--text); font-size: 0.78rem; border: 1px solid transparent;
+      background: rgba(255,255,255,0.04); transition: background 0.15s, border-color 0.15s;
+      -webkit-tap-highlight-color: transparent; white-space: nowrap; min-width: 62px; text-align: center;
+    }
+    .ig-vscroll-item:active { background: rgba(255,255,255,0.1); }
+    .ig-vscroll-item.active {
+      background: rgba(124,63,110,0.35); border-color: var(--accent-soft);
+    }
+    /* Los swatches de color reutilizan la clase .draw-swatch (para no romper
+       el JS existente): en la fila horizontal, cada uno es un círculo de
+       color arriba y el nombre chiquito abajo. */
+    .ig-vscroll-item.draw-swatch { width: auto; height: auto; border-radius: 12px; }
+    .ig-vscroll-item.draw-swatch.active { background: rgba(124,63,110,0.35); border-color: var(--accent-soft); transform: none; }
+    .ig-vscroll-item .ig-swatch {
+      width: 30px; height: 30px; border-radius: 50%; flex-shrink: 0;
+      border: 2px solid rgba(255,255,255,0.25);
+    }
+    .ig-vscroll-item.active .ig-swatch { border-color: var(--gold); }
+    /* Botón para abrir el selector de color personalizado (ya no es un
+       <input type="color"> nativo, sino nuestro propio picker con rueda de
+       color, ver .cc-picker más abajo). Vive como un ítem más al final de
+       la fila horizontal de swatches. */
+    .ig-vscroll-custom-color {
+      display: flex; flex-direction: column; align-items: center; gap: 0.4rem;
+      padding: 0.55rem 0.7rem; flex-shrink: 0; scroll-snap-align: start;
+      border-radius: 12px; background: rgba(255,255,255,0.05);
+      border: 1px solid rgba(255,255,255,0.12); color: var(--text); font-size: 0.72rem;
+      cursor: pointer; white-space: nowrap; min-width: 62px; text-align: center;
+      transition: background 0.15s, border-color 0.15s;
+    }
+    .ig-vscroll-custom-color:active { background: rgba(255,255,255,0.1); }
+    .ig-vscroll-custom-color .cc-swatch-btn {
+      width: 30px; height: 30px; border-radius: 50%; border: 2px solid rgba(255,255,255,0.25);
+      background: conic-gradient(red, yellow, lime, cyan, blue, magenta, red);
+      cursor: pointer; flex-shrink: 0; padding: 0;
+    }
+
+    /* Fila de disponibilidad + guardar: los botones cuadrados de tipo de
+       carta (inmediata/programada/borrador) quedan pegados a la izquierda
+       del botón "Guardar carta", mismo estilo visual (fondo, borde, radio)
+       que .ig-action-row pero 1:1 (ancho = alto) en vez de una fila larga. */
+    .ig-date-save-row { display: flex; align-items: stretch; gap: 0.6rem; width: 100%; }
+    .ig-sq-row { display: flex; gap: 0.6rem; flex-shrink: 0; }
+    .ig-sq-btn {
+      display: flex; align-items: center; justify-content: center;
+      aspect-ratio: 1 / 1; height: auto; padding: 0.95rem; box-sizing: border-box;
+      background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1);
+      border-radius: 14px; cursor: pointer; color: var(--text); font-size: 1.3rem;
+      font-family: 'Inter', sans-serif; transition: background 0.15s, border-color 0.15s;
+      -webkit-tap-highlight-color: transparent;
+    }
+    .ig-sq-btn:active { background: rgba(255,255,255,0.12); }
+    .ig-sq-btn.active { background: rgba(124,63,110,0.35); border-color: var(--accent-soft); }
+
+    /* En PC (mouse/trackpad, no touch) el menú de ESTILOS y el de
+       DISPONIBILIDAD pasan a ser una lista vertical normal con scroll, en
+       vez del carrusel horizontal pensado para deslizar con el dedo (que
+       en pantallas anchas se veía "cortado" por el degradé de los bordes).
+       El resto de los .ig-vscroll (colores, etc.) no se tocan. */
+    @media (hover: hover) and (pointer: fine) {
+      #adm-style-list {
+        flex-direction: column; overflow-x: hidden; overflow-y: auto;
+        max-height: 260px; scroll-snap-type: none;
+      }
+      #adm-style-list .ig-vscroll-item {
+        width: 100%; min-width: 0; flex-direction: row; justify-content: flex-start;
+        text-align: left; white-space: normal;
+      }
+    }
+
+    .ig-slider-block { display: flex; flex-direction: column; gap: 0.6rem; }
+    .ig-slider-block input[type="range"] { width: 100%; height: 34px; accent-color: var(--accent-soft); cursor: pointer; }
+    .ig-slider-value { text-align: right; font-size: 0.95rem; color: var(--text-muted); }
+
+    .ig-chip-row { display: flex; gap: 0.6rem; flex-wrap: wrap; }
+    .ig-chip {
+      padding: 0.75rem 1rem; border-radius: 999px; background: rgba(255,255,255,0.05);
+      border: 1px solid rgba(255,255,255,0.12); color: var(--text); font-size: 0.95rem; cursor: pointer;
+    }
+    .ig-chip.active { background: var(--accent); border-color: var(--gold); }
+
+    .ig-native-hidden { position: absolute !important; width: 1px !important; height: 1px !important;
+      overflow: hidden !important; opacity: 0 !important; pointer-events: none !important; margin: -1px !important; }
+
+    /* ═══════════════ HERRAMIENTA DE TEXTO A PANTALLA COMPLETA (lienzo, estilo IG Stories) ═══════════════ */
+    .text-tool-overlay {
+      position: absolute; inset: 0; z-index: 150; display: none; flex-direction: column;
+    }
+    .text-tool-overlay.open { display: flex; }
+    .text-tool-dim {
+      position: absolute; inset: 0; z-index: 0; background: rgba(0,0,0,0.7); pointer-events: none;
+    }
+    .text-tool-top {
+      position: relative; z-index: 3; display: flex; align-items: center; gap: 0.7rem;
+      padding: calc(0.8rem + env(safe-area-inset-top)) 0.9rem 0.5rem;
+    }
+    .tt-icon-btn {
+      width: 38px; height: 38px; border-radius: 50%; border: none; background: transparent;
+      color: var(--text); display: flex; align-items: center; justify-content: center;
+      cursor: pointer; filter: drop-shadow(0 2px 5px rgba(0,0,0,0.7));
+      -webkit-tap-highlight-color: transparent;
+    }
+    .tt-color-wheel {
+      width: 28px; height: 28px; border-radius: 50%;
+      background: conic-gradient(red, yellow, lime, cyan, blue, magenta, red);
+      border: 2px solid rgba(255,255,255,0.6);
+    }
+    .tt-bg-btn .tt-bg-icon {
+      display: flex; align-items: center; justify-content: center;
+      width: 28px; height: 28px; border-radius: 6px;
+      font-family: 'Lora', serif; font-weight: 700; font-size: 1rem; color: var(--text);
+      background: rgba(255,255,255,0.12); border: 1px solid rgba(255,255,255,0.3);
+    }
+    .tt-bg-btn.active .tt-bg-icon { background: var(--accent); border-color: var(--gold); }
+    .tt-bg-btn .tt-bg-icon.tt-bg-icon-invert { background: rgba(255,255,255,0.85); color: #0d0b0f; }
+    .text-tool-top .tt-done-btn {
+      margin-left: auto; background: var(--accent); color: var(--text); border: none;
+      border-radius: 999px; padding: 0.55rem 1.15rem; font-size: 0.85rem; font-family: 'Inter', sans-serif;
+      cursor: pointer;
+    }
+
+    .text-tool-slider-wrap {
+      position: absolute; left: 6px; top: 60px; bottom: 108px; z-index: 4;
+      width: 76px; display: flex; align-items: center; justify-content: center;
+    }
+    .text-tool-slider-track { position: relative; height: 100%; width: 100%; display: flex; align-items: center; justify-content: center; }
+    .text-tool-slider-track input[type="range"] {
+      -webkit-appearance: none; appearance: none; position: absolute; top: 50%; left: 50%;
+      width: clamp(180px, 58vh, 420px); height: 54px; background: transparent; cursor: pointer;
+      transform: translate(-50%, -50%) rotate(-90deg);
+    }
+    .text-tool-slider-track input[type="range"]::-webkit-slider-runnable-track {
+      height: 9px; border-radius: 5px; background: rgba(255,255,255,0.25);
+    }
+    .text-tool-slider-track input[type="range"]::-webkit-slider-thumb {
+      -webkit-appearance: none; width: 36px; height: 36px; border-radius: 50%; margin-top: -14px;
+      background: var(--text); border: 3px solid var(--accent-soft); box-shadow: 0 2px 8px rgba(0,0,0,0.55);
+    }
+    .text-tool-slider-track input[type="range"]::-moz-range-track {
+      height: 9px; border-radius: 5px; background: rgba(255,255,255,0.25);
+    }
+    .text-tool-slider-track input[type="range"]::-moz-range-thumb {
+      width: 36px; height: 36px; border-radius: 50%; border: 3px solid var(--accent-soft);
+      background: var(--text); box-shadow: 0 2px 8px rgba(0,0,0,0.55);
+    }
+    .text-tool-size-preview {
+      position: absolute; left: 84px; transform: translateY(-50%); opacity: 0; pointer-events: none;
+      transition: opacity 0.12s ease; width: 78px; height: 78px; border-radius: 50%;
+      background: rgba(20,16,26,0.85); backdrop-filter: blur(6px);
+      border: 1px solid rgba(255,255,255,0.25); color: var(--text);
+      display: flex; align-items: center; justify-content: center; font-family: 'Inter', sans-serif; font-size: 1.3rem;
+    }
+    .text-tool-size-preview.visible { opacity: 1; }
+
+    .text-tool-input-wrap {
+      position: relative; z-index: 2; flex: 1; display: flex; align-items: center; justify-content: center;
+      padding: 0 3.2rem 0 4.6rem; min-height: 0;
+    }
+    .text-tool-input {
+      max-width: 100%; max-height: 100%; overflow-y: auto; width: 100%;
+      outline: none; word-break: break-word; white-space: pre-wrap;
+      font-family: 'Lora', serif; font-size: 22px; color: #e8ddd0; line-height: 1.35; text-align: center;
+      caret-color: currentColor; -webkit-overflow-scrolling: touch;
+    }
+    .text-tool-bottom {
+      position: relative; z-index: 3; display: flex; flex-direction: column; gap: 0.6rem;
+      padding: 0.6rem 0.8rem calc(0.7rem + env(safe-area-inset-bottom));
+      background: linear-gradient(0deg, rgba(0,0,0,0.55), transparent);
+      transition: transform 0.05s linear;
+    }
+    .tt-font-carousel, .tt-color-carousel {
+      display: flex; flex-direction: row; gap: 0.6rem; overflow-x: auto; -webkit-overflow-scrolling: touch;
+      padding: 0.15rem 0.1rem;
+    }
+    .tt-font-carousel::-webkit-scrollbar, .tt-color-carousel::-webkit-scrollbar { height: 0; }
+    .tt-font-btn {
+      flex-shrink: 0; width: 44px; height: 44px; border-radius: 50%;
+      background: rgba(255,255,255,0.08); border: 1px solid rgba(255,255,255,0.18);
+      color: #fff; font-size: 0.92rem; display: flex; align-items: center; justify-content: center;
+      cursor: pointer; -webkit-tap-highlight-color: transparent;
+    }
+    .tt-font-btn.active { background: var(--accent); border-color: var(--gold); }
+    .tt-color-circle {
+      flex-shrink: 0; width: 30px; height: 30px; border-radius: 50%;
+      border: 2px solid rgba(255,255,255,0.35); cursor: pointer; padding: 0;
+    }
+    .tt-color-circle.active { border-color: var(--gold); box-shadow: 0 0 0 2px rgba(201,169,110,0.4); }
+    .tt-eyedropper {
+      flex-shrink: 0; width: 30px; height: 30px; border-radius: 50%;
+      background: rgba(255,255,255,0.1); border: 1px solid rgba(255,255,255,0.25);
+      display: flex; align-items: center; justify-content: center; font-size: 0.9rem; cursor: pointer;
+    }
+
+    /* ═══════════════ MODO DIBUJO: interfaz dedicada a pantalla completa
+       (mismo lenguaje visual que la herramienta de texto de arriba) ═══════════════ */
+    #canvas-stage-shell.draw-mode-active .ig-rail,
+    #canvas-stage-shell.draw-mode-active .ig-rail-left,
+    #canvas-stage-shell.draw-mode-active .ig-bottom-bar { display: none !important; }
+
+    .draw-mode-ui {
+      position: absolute; inset: 0; z-index: 140; display: none; flex-direction: column; pointer-events: none;
+    }
+    .draw-mode-ui.open { display: flex; }
+    .draw-mode-top {
+      position: relative; z-index: 3; display: flex; align-items: center; justify-content: space-between;
+      gap: 0.6rem; padding: calc(0.8rem + env(safe-area-inset-top)) 0.9rem 0.5rem; pointer-events: auto;
+    }
+    .dm-icon-btn {
+      width: 38px; height: 38px; border-radius: 50%; border: none; background: rgba(255,255,255,0.08);
+      color: var(--text); display: flex; align-items: center; justify-content: center; cursor: pointer;
+      font-size: 1.1rem; filter: drop-shadow(0 2px 5px rgba(0,0,0,0.7)); -webkit-tap-highlight-color: transparent;
+      flex-shrink: 0;
+    }
+    .dm-icon-btn:disabled { opacity: 0.3; cursor: not-allowed; }
+    .dm-brush-select {
+      display: flex; flex-direction: row; gap: 0.35rem; background: rgba(20,16,26,0.55);
+      backdrop-filter: blur(6px); padding: 0.3rem; border-radius: 999px; border: 1px solid rgba(255,255,255,0.12);
+    }
+    .dm-brush-btn {
+      width: 34px; height: 34px; border-radius: 50%; border: 1px solid transparent; background: rgba(255,255,255,0.06);
+      font-size: 0.95rem; display: flex; align-items: center; justify-content: center; cursor: pointer;
+      color: var(--text); -webkit-tap-highlight-color: transparent;
+    }
+    .dm-brush-btn.active { border-color: #fff; background: rgba(255,255,255,0.2); box-shadow: 0 0 0 1px rgba(255,255,255,0.45); }
+    .dm-done-btn {
+      background: var(--accent); color: var(--text); border: none; border-radius: 999px;
+      padding: 0.55rem 1.15rem; font-size: 0.85rem; font-family: 'Inter', sans-serif; cursor: pointer; flex-shrink: 0;
+    }
+
+    .dm-size-wrap {
+      position: absolute; left: 6px; top: 60px; bottom: 108px; z-index: 4;
+      width: 76px; display: flex; align-items: center; justify-content: center; pointer-events: auto;
+    }
+    .dm-size-track { position: relative; height: 100%; width: 100%; display: flex; align-items: center; justify-content: center; }
+    .dm-size-track input[type="range"] {
+      -webkit-appearance: none; appearance: none; position: absolute; top: 50%; left: 50%;
+      width: clamp(180px, 58vh, 420px); height: 54px; background: transparent; cursor: pointer;
+      transform: translate(-50%, -50%) rotate(-90deg);
+    }
+    .dm-size-track input[type="range"]::-webkit-slider-runnable-track { height: 9px; border-radius: 5px; background: rgba(255,255,255,0.25); }
+    .dm-size-track input[type="range"]::-webkit-slider-thumb {
+      -webkit-appearance: none; width: 36px; height: 36px; border-radius: 50%; margin-top: -14px;
+      background: var(--text); border: 3px solid var(--accent-soft); box-shadow: 0 2px 8px rgba(0,0,0,0.55);
+    }
+    .dm-size-track input[type="range"]::-moz-range-track { height: 9px; border-radius: 5px; background: rgba(255,255,255,0.25); }
+    .dm-size-track input[type="range"]::-moz-range-thumb {
+      width: 36px; height: 36px; border-radius: 50%; border: 3px solid var(--accent-soft);
+      background: var(--text); box-shadow: 0 2px 8px rgba(0,0,0,0.55);
+    }
+    .dm-size-preview {
+      position: absolute; left: 90px; top: 50%; transform: translateY(-50%); opacity: 0; pointer-events: none;
+      transition: opacity 0.12s ease; display: flex; flex-direction: column; align-items: center; gap: 0.35rem; z-index: 5;
+    }
+    .dm-size-preview.visible { opacity: 1; }
+    .dm-size-preview-dot {
+      display: block; border-radius: 50%; box-shadow: 0 2px 10px rgba(0,0,0,0.5);
+    }
+    .dm-size-preview-val {
+      font-family: 'Inter', sans-serif; font-size: 0.8rem; color: var(--text);
+      background: rgba(20,16,26,0.85); backdrop-filter: blur(6px); border: 1px solid rgba(255,255,255,0.25);
+      border-radius: 999px; padding: 0.15rem 0.6rem; white-space: nowrap;
+    }
+
+    .dm-palette {
+      position: relative; z-index: 3; display: flex; flex-direction: row; align-items: center; gap: 0.6rem;
+      overflow-x: auto; -webkit-overflow-scrolling: touch; margin-top: auto; pointer-events: auto;
+      padding: 0.6rem 0.8rem calc(0.8rem + env(safe-area-inset-bottom));
+      background: linear-gradient(0deg, rgba(0,0,0,0.55), transparent);
+    }
+    .dm-palette::-webkit-scrollbar { height: 0; }
+    .dm-eyedropper {
+      flex-shrink: 0; width: 30px; height: 30px; border-radius: 50%;
+      background: rgba(255,255,255,0.1); border: 1px solid rgba(255,255,255,0.25);
+      display: flex; align-items: center; justify-content: center; font-size: 0.9rem; cursor: pointer;
+    }
+    .dm-color-circle {
+      flex-shrink: 0; width: 30px; height: 30px; border-radius: 50%;
+      border: 2px solid rgba(255,255,255,0.35); cursor: pointer; padding: 0;
+    }
+    .dm-color-circle.active { border-color: var(--gold); box-shadow: 0 0 0 2px rgba(201,169,110,0.4); }
+
+    /* ═══════════════ SELECTOR DE COLOR PERSONALIZADO (reemplaza al <input type="color"> nativo) ═══════════════ */
+    .cc-picker-overlay {
+      position: fixed; inset: 0; z-index: 2000; display: none;
+      align-items: flex-end; justify-content: center;
+      background: rgba(4,3,6,0.6); backdrop-filter: blur(2px);
+    }
+    .cc-picker-overlay.visible { display: flex; animation: cc-fade-in 0.15s ease; }
+    @keyframes cc-fade-in { from { opacity: 0; } to { opacity: 1; } }
+    .cc-picker-box {
+      width: 100%; max-width: 420px;
+      background: linear-gradient(160deg, var(--surface), #17121e);
+      border: 1px solid var(--border); border-radius: 20px 20px 0 0;
+      padding: 1.3rem 1.3rem calc(1.1rem + env(safe-area-inset-bottom));
+      box-shadow: 0 -12px 40px rgba(0,0,0,0.6);
+      animation: ig-panel-in 0.2s ease;
+    }
+    .cc-picker-label { font-size: 0.72rem; letter-spacing: 0.2em; text-transform: uppercase; color: var(--text-muted); text-align: center; margin-bottom: 0.9rem; }
+    .cc-picker-sv {
+      width: 100%; aspect-ratio: 16 / 9; border-radius: 14px; position: relative;
+      background-image: linear-gradient(to top, #000, rgba(0,0,0,0)), linear-gradient(to right, #fff, rgba(255,255,255,0));
+      background-color: hsl(0,100%,50%);
+      touch-action: none; cursor: crosshair; overflow: hidden; margin-bottom: 1.1rem;
+      border: 1px solid rgba(255,255,255,0.08);
+    }
+    .cc-picker-sv-cursor {
+      position: absolute; width: 22px; height: 22px; border-radius: 50%;
+      border: 2px solid #fff; box-shadow: 0 0 0 1px rgba(0,0,0,0.45), 0 2px 8px rgba(0,0,0,0.6);
+      transform: translate(-50%,-50%); pointer-events: none; top: 0; left: 100%;
+    }
+    .cc-picker-hue {
+      width: 100%; height: 30px; -webkit-appearance: none; appearance: none;
+      border-radius: 15px; margin-bottom: 1.2rem; cursor: pointer; display: block;
+      background: linear-gradient(to right, red, #ff0, lime, cyan, blue, magenta, red);
+    }
+    .cc-picker-hue::-webkit-slider-thumb {
+      -webkit-appearance: none; width: 28px; height: 28px; border-radius: 50%;
+      background: #fff; border: 2px solid rgba(0,0,0,0.35); box-shadow: 0 2px 6px rgba(0,0,0,0.45); cursor: pointer;
+    }
+    .cc-picker-hue::-moz-range-thumb {
+      width: 28px; height: 28px; border-radius: 50%; background: #fff;
+      border: 2px solid rgba(0,0,0,0.35); box-shadow: 0 2px 6px rgba(0,0,0,0.45); cursor: pointer;
+    }
+    .cc-picker-footer { display: flex; align-items: center; gap: 0.85rem; }
+    .cc-picker-preview { width: 38px; height: 38px; border-radius: 50%; border: 2px solid rgba(255,255,255,0.25); flex-shrink: 0; }
+    .cc-picker-hex { flex: 1; font-family: 'Space Mono', monospace; font-size: 0.88rem; color: var(--text-muted); letter-spacing: 0.06em; }
+    .cc-picker-done {
+      background: var(--accent); border: 1px solid var(--gold); color: var(--text); border-radius: 10px;
+      padding: 0.65rem 1.2rem; font-size: 0.85rem; cursor: pointer; font-family: 'Inter', sans-serif;
+      transition: background 0.15s;
+    }
+    .cc-picker-done:hover { background: var(--accent-soft); }
+
+    /* ═══════════════ BOTÓN "DAR UN TOQUE" ═══════════════ */
+    .touch-fab {
+      position: fixed; right: 1.1rem; bottom: calc(var(--bottom-nav-h) + 1.1rem + env(safe-area-inset-bottom)); z-index: 500;
+      width: 46px; height: 46px; border-radius: 50%;
+      background: rgba(20,16,26,0.55); backdrop-filter: blur(6px);
+      border: 1px solid rgba(255,255,255,0.14); color: var(--text); font-size: 1.25rem;
+      display: flex; align-items: center; justify-content: center; cursor: pointer;
+      box-shadow: 0 4px 16px rgba(0,0,0,0.4);
+      transition: background 0.15s, transform 0.15s, border-color 0.15s;
+      -webkit-tap-highlight-color: transparent;
+    }
+    .touch-fab:hover { transform: scale(1.06); border-color: rgba(255,255,255,0.28); }
+    .touch-fab:active { transform: scale(0.92); }
+    .touch-fab.active { background: var(--accent); border-color: var(--gold); }
+    .touch-fab.pulse { animation: touchPulse 1.4s ease-out 2; }
+    @keyframes touchPulse {
+      0% { box-shadow: 0 0 0 0 rgba(160,88,126,0.7); }
+      70% { box-shadow: 0 0 0 18px rgba(160,88,126,0); }
+      100% { box-shadow: 0 0 0 0 rgba(160,88,126,0); }
+    }
+
+    /* En mobile el toque se mantiene del lado derecho, igual que el avatar
+       de perfil, en vez de pasar al lado izquierdo. */
+    @media (max-width: 480px) {
+      .touch-fab {
+        bottom: calc(0.65rem + env(safe-area-inset-bottom));
+      }
+    }
+
+    /* Menú desplegable del toque: mismo lenguaje visual "hoja flotante" que
+       los paneles del lienzo (fondo oscuro con blur + animación de entrada),
+       en vez del display:none/flex sin transición de antes. */
+    .touch-menu {
+      position: fixed; right: 1.1rem; bottom: calc(var(--bottom-nav-h) + 3.9rem); z-index: 500;
+      --kb-shift: 0px;
+      display: flex; flex-direction: column; gap: 0.4rem; min-width: 190px;
+      background: linear-gradient(180deg, rgba(10,8,14,0.7), rgba(8,6,11,0.97) 22%);
+      backdrop-filter: blur(10px);
+      border: 1px solid rgba(255,255,255,0.1); border-radius: 14px; padding: 0.65rem;
+      box-shadow: 0 20px 50px -15px rgba(0,0,0,0.8);
+      opacity: 0; pointer-events: none; transform: translateY(calc(10px + var(--kb-shift))) scale(0.94);
+      transform-origin: bottom right;
+      transition: opacity 0.2s ease, transform 0.22s cubic-bezier(.34,1.56,.64,1);
+    }
+    .touch-menu.visible { opacity: 1; pointer-events: auto; transform: translateY(var(--kb-shift)) scale(1); }
+    @media (max-width: 480px) {
+      .touch-menu { left: 0.8rem; right: auto; bottom: calc(3.1rem + env(safe-area-inset-bottom)); transform-origin: bottom left; }
+    }
+    .touch-opt {
+      background: transparent; border: 1px solid rgba(255,255,255,0.1); border-radius: 8px;
+      color: var(--text); padding: 0.6rem 0.8rem; text-align: left; font-size: 0.88rem;
+      cursor: pointer; transition: background 0.15s, border-color 0.15s; font-family: 'Inter', sans-serif;
+    }
+    .touch-opt:hover { background: var(--accent); border-color: var(--accent-soft); }
+
+    /* ═══════════════ TOAST DE TOQUE RECIBIDO ═══════════════ */
+    .toque-toast {
+      position: fixed; top: 1rem; left: 50%; transform: translateX(-50%) translateY(-140%);
+      z-index: 900; background: linear-gradient(160deg, var(--surface), #17121e);
+      border: 1px solid var(--gold); border-radius: 10px; padding: 0.9rem 1.3rem;
+      box-shadow: 0 20px 50px -15px rgba(0,0,0,0.8); display: flex; align-items: center; gap: 0.7rem;
+      transition: transform 0.4s cubic-bezier(.34,1.56,.64,1); max-width: 90vw;
+    }
+    .toque-toast.visible { transform: translateX(-50%) translateY(0); }
+    .toque-toast-emoji { font-size: 1.5rem; }
+    .toque-toast-text { font-size: 0.9rem; color: var(--text); }
+    .toque-toast-from { display: block; font-size: 0.68rem; letter-spacing: 0.1em; text-transform: uppercase; color: var(--accent-soft); margin-top: 0.1rem; }
+
+    /* ═══════════════ MODAL IDENTIDAD (¿quién sos?) ═══════════════ */
+    .identity-overlay {
+      position: fixed; inset: 0; background: rgba(5,4,7,0.82); z-index: 1000;
+      display: none; align-items: center; justify-content: center; padding: 1.2rem;
+    }
+    .identity-overlay.visible { display: flex; }
+    .identity-box {
+      background: linear-gradient(160deg, var(--surface), #17121e); border: 1px solid var(--border);
+      border-radius: 10px; padding: 1.8rem 1.6rem; text-align: center; max-width: 320px;
+      box-shadow: 0 20px 50px -15px rgba(0,0,0,0.8);
+    }
+    .identity-box p { font-size: 0.95rem; color: var(--text); margin-bottom: 1.2rem; font-family: 'Lora', serif; }
+    .identity-btns { display: flex; gap: 0.7rem; justify-content: center; }
+    .identity-btn {
+      flex: 1; padding: 0.75rem 0.5rem; background: transparent; border: 1px solid var(--accent);
+      border-radius: 6px; color: var(--accent-soft); cursor: pointer; font-family: 'Inter', sans-serif;
+      font-size: 0.85rem; letter-spacing: 0.08em; transition: background 0.15s, color 0.15s;
+    }
+    .identity-btn:hover { background: var(--accent); color: var(--text); }
+
+    /* ─── Selector de usuario inicial con fotos de perfil ─── */
+    .identity-avatar-btn {
+      flex: 1; display: flex; flex-direction: column; align-items: center; gap: 0.6rem;
+      background: transparent; border: none; cursor: pointer; padding: 0.5rem 0.4rem;
+      border-radius: 12px; transition: background 0.15s;
+    }
+    .identity-avatar-btn:hover { background: rgba(160,88,126,0.12); }
+    .identity-avatar-circle {
+      width: 78px; height: 78px; border-radius: 50%; border: 2px solid var(--border);
+      overflow: hidden; display: flex; align-items: center; justify-content: center;
+      background: var(--bg); transition: border-color 0.2s;
+    }
+    .identity-avatar-btn:hover .identity-avatar-circle { border-color: var(--accent-soft); }
+    .identity-avatar-circle img { width: 100%; height: 100%; object-fit: cover; display: block; }
+    .identity-avatar-circle .avatar-fallback { font-family: 'Lora', serif; font-size: 1.8rem; color: var(--accent-soft); }
+    .identity-avatar-name {
+      font-family: 'Inter', sans-serif; font-size: 0.85rem; letter-spacing: 0.05em; color: var(--text);
+    }
+
+    /* ═══════════════ INSTALAR APP ═══════════════ */
+    .install-btn {
+      display: none; align-items: center; gap: 0.45rem; margin: 0 auto 1.1rem; width: max-content;
+      background: transparent; border: 1px solid var(--border); border-radius: 20px;
+      padding: 0.5rem 1rem; color: var(--text-muted); font-size: 0.76rem; letter-spacing: 0.06em;
+      cursor: pointer; transition: border-color 0.2s, color 0.2s;
+    }
+    .install-btn.visible { display: flex; }
+    .install-btn:hover { border-color: var(--gold); color: var(--gold); }
+
+    /* ═══════════════ AVISO DE ACTUALIZACIÓN (auto, sin preguntar) ═══════════════
+       Framecorreo ahora se autoactualiza sola apenas hay una versión nueva
+       (sin banner ni botón "Actualizar" para confirmar): esto es solo un
+       avisito temporal que confirma a qué versión se actualizó, y se
+       autodescarta solo. */
+    .update-toast {
+      position: fixed; left: 50%; bottom: calc(1.2rem + env(safe-area-inset-bottom));
+      transform: translateX(-50%) translateY(12px);
+      max-width: calc(100% - 2.4rem);
+      display: flex; align-items: center; gap: 0.6rem;
+      background: linear-gradient(160deg, var(--surface), #17121e);
+      border: 1px solid var(--border); border-radius: 999px;
+      padding: 0.7rem 1.2rem; box-shadow: 0 12px 34px rgba(0,0,0,0.55);
+      z-index: 9999; opacity: 0; pointer-events: none;
+      font-family: 'Inter', sans-serif; font-size: 0.82rem; color: var(--text);
+      transition: opacity 0.25s ease, transform 0.25s ease;
+      text-align: center;
+    }
+    .update-toast.visible { opacity: 1; transform: translateX(-50%) translateY(0); }
+
+    /* ═══════════════ POP-UP DE FOTO ("/img") ═══════════════
+       Fondo semitransparente que tapa toda la pantalla (incluido el menú
+       principal, si es ahí donde se escribió el código) con la tarjeta de
+       la foto centrada, apareciendo con una animación de escala + fade.
+       Tocar el fondo (no la tarjeta) la cierra, ver el onclick en el HTML. */
+    .image-popup-overlay {
+      position: fixed; inset: 0; z-index: 9800;
+      background: rgba(5,3,8,0.5); backdrop-filter: blur(3px);
+      display: none; align-items: center; justify-content: center; padding: 1.4rem;
+      opacity: 0; transition: opacity 0.25s ease;
+    }
+    .image-popup-overlay.visible { display: flex; opacity: 1; }
+    .image-popup-card {
+      position: relative; max-width: min(92vw, 480px); max-height: 86vh;
+      background: var(--surface); border: 1px solid var(--border); border-radius: 18px;
+      overflow: hidden; box-shadow: 0 30px 80px rgba(0,0,0,0.65);
+      transform: scale(0.85) translateY(14px); transition: transform 0.3s cubic-bezier(.22,1,.36,1);
+    }
+    .image-popup-overlay.visible .image-popup-card { transform: scale(1) translateY(0); }
+    .image-popup-media {
+      position: relative; width: 100%; aspect-ratio: 4/5; max-height: 72vh;
+      overflow: hidden; background: #000;
+    }
+    .image-popup-media img {
+      display: block; width: 100%; height: 100%; object-fit: cover;
+    }
+    .image-popup-caption {
+      padding: 0.9rem 1.2rem 1.1rem; font-family: 'Cormorant Garamond', serif; font-style: italic;
+      font-size: 1.08rem; line-height: 1.5; color: var(--text); text-align: center;
+    }
+    .image-popup-caption:empty { display: none; }
+    .image-popup-close {
+      position: absolute; top: 0.6rem; right: 0.6rem; z-index: 2;
+      width: 34px; height: 34px; border-radius: 50%;
+      background: rgba(0,0,0,0.55); border: 1px solid rgba(255,255,255,0.22); color: #fff;
+      display: flex; align-items: center; justify-content: center; cursor: pointer; font-size: 0.9rem;
+    }
+
+    /* ═══════════════ EDITOR DE FOTOS ("/img") ═══════════════ */
+    .image-editor-wrap {
+      width: min(100%, 480px); margin: 0 auto; padding: 1.4rem 1.2rem 2.4rem;
+      display: flex; flex-direction: column; gap: 1.1rem;
+    }
+    .image-editor-drop {
+      width: 100%; aspect-ratio: 4/5; border-radius: 18px; overflow: hidden; position: relative;
+      border: 2px dashed var(--border); background: var(--surface); cursor: pointer;
+      display: flex; align-items: center; justify-content: center; transition: border-color 0.2s;
+    }
+    .image-editor-drop:hover { border-color: var(--accent-soft); }
+    .image-editor-drop img { width: 100%; height: 100%; object-fit: cover; display: block; }
+    .image-editor-drop-inner {
+      display: flex; flex-direction: column; align-items: center; gap: 0.6rem;
+      color: var(--text-muted); font-family: 'Inter', sans-serif; font-size: 0.95rem;
+    }
+    .image-editor-drop-icon { font-size: 2.6rem; }
+    .image-editor-drop.has-image .image-editor-drop-inner { display: none; }
+    .image-editor-caption-input {
+      width: 100%; background: var(--surface); border: 1px solid var(--border); border-radius: 12px;
+      padding: 0.9rem 1rem; font-family: 'Cormorant Garamond', serif; font-style: italic; font-size: 1.05rem;
+      color: var(--text); outline: none;
+    }
+    .image-editor-caption-input::placeholder { color: var(--text-muted); opacity: 0.7; }
+  </style>
+</head>
+<body>
+
+  <svg id="fx-bat-1" class="bat bat-tl" viewBox="0 0 100 50" xmlns="http://www.w3.org/2000/svg"><path d="M50 25 C30 10 5 5 0 20 C10 20 20 25 25 30 C15 28 8 35 10 42 C18 35 28 32 35 35 C38 40 42 45 50 45 C58 45 62 40 65 35 C72 32 82 35 90 42 C92 35 85 28 75 30 C80 25 90 20 100 20 C95 5 70 10 50 25Z"/></svg>
+  <svg id="fx-bat-2" class="bat bat-tr" viewBox="0 0 100 50" xmlns="http://www.w3.org/2000/svg"><path d="M50 25 C30 10 5 5 0 20 C10 20 20 25 25 30 C15 28 8 35 10 42 C18 35 28 32 35 35 C38 40 42 45 50 45 C58 45 62 40 65 35 C72 32 82 35 90 42 C92 35 85 28 75 30 C80 25 90 20 100 20 C95 5 70 10 50 25Z"/></svg>
+  <svg id="fx-bat-3" class="bat bat-bl" viewBox="0 0 100 50" xmlns="http://www.w3.org/2000/svg"><path d="M50 25 C30 10 5 5 0 20 C10 20 20 25 25 30 C15 28 8 35 10 42 C18 35 28 32 35 35 C38 40 42 45 50 45 C58 45 62 40 65 35 C72 32 82 35 90 42 C92 35 85 28 75 30 C80 25 90 20 100 20 C95 5 70 10 50 25Z"/></svg>
+  <svg id="fx-bat-4" class="bat bat-br" viewBox="0 0 100 50" xmlns="http://www.w3.org/2000/svg"><path d="M50 25 C30 10 5 5 0 20 C10 20 20 25 25 30 C15 28 8 35 10 42 C18 35 28 32 35 35 C38 40 42 45 50 45 C58 45 62 40 65 35 C72 32 82 35 90 42 C92 35 85 28 75 30 C80 25 90 20 100 20 C95 5 70 10 50 25Z"/></svg>
+  <div class="moon"></div>
+
+  <div class="container">
+
+    <div id="login-view" class="view-section active">
+
+      <button class="install-btn" id="install-btn" onclick="installApp()">📲 Instalar Framecorreo</button>
+
+      <!-- ─── Pantalla de inicio: ya sin el lienzo compartido, solo una
+           tarjeta centrada con el campo para abrir una carta por código. ─── -->
+      <div class="home-hero">
+
+        <button type="button" class="profile-avatar-btn home-profile-btn" id="profile-avatar-btn" onclick="openProfileModal()" title="Cambiar de perfil">
+          <span class="avatar-fallback" id="avatar-fallback">?</span>
+          <img id="avatar-img" style="display:none;" alt="Perfil" />
+        </button>
+
+        <div class="home-card">
+          <div class="home-card-icon"><img src="icon-192.png" alt="Framecorreo" onclick="handleCatIconTap()" style="cursor:pointer;" /></div>
+          <div class="home-card-title">Framecorreo</div>
+          <div class="home-card-sub">Ingresá un código</div>
+
+          <div class="code-entry-wrap" id="code-entry-wrap">
+            <input id="code-input" class="code-entry-input" type="text" placeholder="Código" autocomplete="off" spellcheck="false" />
+            <button class="code-entry-submit" id="unlock-btn" onclick="unlock()" title="Abrir carta" aria-label="Abrir carta">
+              <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>
+            </button>
+          </div>
+
+          <div class="code-loading" id="code-loading"><span class="code-loading-spinner"></span> Cargando…</div>
+
+          <div class="error-msg" id="error-msg"></div>
+          <div class="error-block" id="error-block">
+            <div class="error-block-msg" id="error-block-msg">Ups, hubo un problema de conexión. ¿Probamos de nuevo?</div>
+            <button class="retry-btn" onclick="retryUnlock()">↻ Reintentar</button>
+          </div>
+
+          <div class="home-tip" id="home-tip"></div>
+        </div>
+
+      </div>
+
+
+    </div>
+
+    <div id="admin-view" class="view-section">
+
+      <!-- Selects nativos, ocultos, siguen existiendo para no romper el JS
+           que lee/escribe su .value (persistLetter, autosave, setupEditorForEdit...) -->
+      <select id="adm-font-select" class="ig-native-hidden" onchange="execCmd('fontName', this.value)" title="Fuente">
+         <option value="Lora">Lora</option>
+         <option value="Inter">Inter</option>
+         <option value="Playfair Display">Playfair</option>
+         <option value="Cormorant Garamond">Cormorant</option>
+         <option value="Cinzel">Cinzel</option>
+         <option value="Montserrat">Montserrat</option>
+         <option value="Raleway">Raleway</option>
+         <option value="Josefin Sans">Josefin</option>
+         <option value="Outfit">Outfit</option>
+         <option value="Dancing Script">Dancing Script</option>
+      </select>
+
+      <div class="ig-stage-shell" id="letter-stage-shell">
+
+        <div id="live-card-container" class="style-a">
+          <div class="letter-card">
+            <div class="stickers-layer" id="live-stickers-layer"></div>
+            <span class="letter-tag">
+              <input id="adm-tag" class="card-editor-input" type="text" placeholder="PARA LEER CUANDO..." value="PARA LEER CUANDO" />
+            </span>
+            <h2 class="letter-title">
+              <input id="adm-title" class="card-editor-input" type="text" placeholder="Título" />
+            </h2>
+            <div class="letter-body">
+              <div id="adm-body" class="card-editor-div" contenteditable="true"></div>
+            </div>
+            <div class="letter-sign">
+              <input id="adm-sign" class="card-editor-input" type="text" placeholder="— Tu Firma" value="— Fran" />
+            </div>
+          </div>
+        </div>
+
+        <!-- Barrita mínima de formato para el cuerpo de la carta: aparece al enfocar #adm-body -->
+        <div class="body-format-bar" id="body-format-bar">
+          <button type="button" class="tb-btn" onmousedown="event.preventDefault()" onclick="execCmdBody('bold')" title="Negrita" style="font-weight:bold;">N</button>
+          <button type="button" class="tb-btn" onmousedown="event.preventDefault()" onclick="execCmdBody('italic')" title="Cursiva" style="font-style:italic;">C</button>
+          <button type="button" class="tb-btn" onmousedown="event.preventDefault()" onclick="execCmdBody('underline')" title="Subrayado" style="text-decoration:underline;">S</button>
+          <button type="button" class="tb-btn" onmousedown="event.preventDefault()" onclick="openBodyColorPicker()" title="Color de fuente"><span class="tb-color-swatch" id="body-color-swatch"></span></button>
+        </div>
+
+        <div class="ig-stage-dim"></div>
+
+        <!-- Rail derecho: colapsado detrás de un botón de lápiz para trabajar más limpio -->
+        <div class="ig-rail" id="adm-tools-rail">
+          <button type="button" class="ig-rail-btn ig-rail-toggle" id="adm-tools-toggle" title="Herramientas" onclick="toggleToolsRail('adm-tools-rail')">✏️</button>
+          <div class="ig-rail-collapsible" id="adm-tools-collapsible">
+            <input type="file" id="adm-sticker-file" accept="image/*" style="display:none;" onchange="uploadStickerFile(this)" />
+            <button type="button" class="ig-rail-btn" title="Insertar imagen" onclick="document.getElementById('adm-sticker-file').click()">🖼️</button>
+            <button type="button" class="ig-rail-btn" id="adm-text-btn" title="Texto" style="font-weight:bold;" onclick="handleTextToolClick('admin')">Aa</button>
+            <button type="button" class="ig-rail-btn" title="Estilo de la carta" onclick="openIgPanel('panel-adm-style')">🎨</button>
+          </div>
+        </div>
+
+        <!-- Rail inferior derecho: volver / galería / guardar. El botón de
+             código (#) desapareció: ahora "Guardar" es la única puerta de
+             entrada al panel de código + disponibilidad + confirmar guardado,
+             para no repetir la misma función en dos botones distintos. -->
+        <div class="ig-rail-bottom-right">
+          <button type="button" class="icon-row-btn ig-rail-btn" onclick="exitAdmin()" title="Salir del panel">←</button>
+          <button type="button" class="icon-row-btn ig-rail-btn" onclick="openGalleryView()" title="Galería de cartas">🗂️</button>
+          <button type="button" class="ig-rail-btn save-btn" id="save-btn" onclick="openIgPanel('panel-adm-code')" title="Guardar">💾</button>
+        </div>
+
+
+        <div class="delete-drop-zone" id="adm-delete-zone"><span>✕</span></div>
+
+        <div class="sticker-props-bar" id="sticker-props-bar">
+          <span class="props-bar-label">Elemento</span>
+          <div class="tb-group">
+            <button type="button" class="layer-btn" id="props-layer-down" title="Enviar atrás">⬇</button>
+            <button type="button" class="layer-btn" id="props-layer-up" title="Traer al frente">⬆</button>
+          </div>
+          <div class="tb-sep"></div>
+          <div class="tb-group props-opacity-group">
+            <span class="opacity-label">Opacidad</span>
+            <input type="range" class="opacity-slider" id="props-opacity" min="0.1" max="1" step="0.05" value="1" title="Opacidad">
+          </div>
+        </div>
+
+        <div class="ig-bottom-bar">
+          <div id="admin-success" class="success-msg" style="margin:0; flex:1; text-align:left;"></div>
+          <div class="autosave-indicator" id="autosave-indicator" style="position:static; margin:0;">borrador guardado localmente</div>
+        </div>
+
+        <!-- ─── Panel: código + disponibilidad + guardar ─── -->
+        <div class="ig-panel" id="panel-adm-code">
+          <div class="ig-panel-header">
+            <span class="ig-panel-title">Guardar carta</span>
+            <button type="button" class="ig-panel-close" onclick="closeIgPanel('panel-adm-code')">✕</button>
+          </div>
+          <div class="ig-panel-body">
+            <div class="tb-group" style="width:100%;">
+              <input list="codes-list" id="adm-code" class="adm-code-input" placeholder="Código" autocomplete="off" title="Código de la carta" style="font-size:1.1rem; padding:1rem;" />
+              <datalist id="codes-list"></datalist>
+            </div>
+
+            <select id="adm-date-type" class="ig-native-hidden" onchange="toggleDateField(this.value)" title="Disponibilidad">
+                <option value="immediate">Inmediata</option>
+                <option value="scheduled">Programada</option>
+                <option value="undefined">Borrador</option>
+            </select>
+            <input id="adm-date" class="tb-input" type="date" style="display:none; font-size:1.05rem; padding:0.9rem;" />
+
+            <!-- Disponibilidad + guardar en una sola fila: los 3 botones
+                 cuadrados (mismo estilo que "Guardar carta", pero 1:1) eligen
+                 el tipo de disponibilidad, a la izquierda del botón de guardar. -->
+            <div class="ig-date-save-row">
+              <div class="ig-sq-row" id="adm-date-type-list">
+                <button type="button" class="ig-sq-btn ig-vscroll-item active" data-datetype="immediate" title="Inmediata">📤</button>
+                <button type="button" class="ig-sq-btn ig-vscroll-item" data-datetype="scheduled" title="Programada">📅</button>
+                <button type="button" class="ig-sq-btn ig-vscroll-item" data-datetype="undefined" title="Borrador">📝</button>
+              </div>
+              <div class="ig-action-row" style="flex:1;" onclick="saveLetter()"><span class="ig-icn">💾</span> Guardar carta</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- ─── Panel: estilo de la carta ─── -->
+        <div class="ig-panel" id="panel-adm-style">
+          <div class="ig-panel-header">
+            <span class="ig-panel-title">Estilo de la carta</span>
+            <button type="button" class="ig-panel-close" onclick="closeIgPanel('panel-adm-style')">✕</button>
+          </div>
+          <div class="ig-panel-body">
+            <select id="adm-style" class="ig-native-hidden" onchange="updateLiveCardStyle(this.value)" title="Estilo de la carta">
+                <option value="style-a">Estilo A</option>
+                <option value="style-b">Estilo B</option>
+                <option value="style-c">Estilo C</option>
+                <option value="style-d">Estilo D</option>
+                <option value="style-e">Estilo E</option>
+                <option value="style-f">Estilo F</option>
+                <option value="style-g">Estilo G</option>
+                <option value="style-h">Estilo H</option>
+            </select>
+            <div class="ig-vscroll" id="adm-style-list">
+              <div class="ig-vscroll-item active" data-style="style-a">Estilo A · claro y minimal</div>
+              <div class="ig-vscroll-item" data-style="style-b">Estilo B · pergamino</div>
+              <div class="ig-vscroll-item" data-style="style-c">Estilo C · terminal</div>
+              <div class="ig-vscroll-item" data-style="style-d">Estilo D · nocturno</div>
+              <div class="ig-vscroll-item" data-style="style-e">Estilo E · correo aéreo</div>
+              <div class="ig-vscroll-item" data-style="style-f">Estilo F · neón</div>
+              <div class="ig-vscroll-item" data-style="style-g">Estilo G · jardín</div>
+              <div class="ig-vscroll-item" data-style="style-h">Estilo H · constelación</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- ─── Herramienta de texto a pantalla completa (estilo IG Stories).
+             Es un overlay único y compartido (ver openTextTool): antes también
+             se usaba para el lienzo de la pantalla de inicio, hoy solo para
+             el cuerpo de la carta. ─── -->
+        <div class="text-tool-overlay" id="canvas-text-tool" onclick="handleTextToolBackgroundTap(event)">
+          <div class="text-tool-dim"></div>
+
+          <div class="text-tool-top">
+            <button type="button" class="tt-icon-btn" id="tt-align-btn" title="Alineación" onclick="cycleTextToolAlign()">
+              <svg id="tt-align-icon" viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><line x1="4" y1="6" x2="20" y2="6"/><line x1="4" y1="12" x2="14" y2="12"/><line x1="4" y1="18" x2="18" y2="18"/></svg>
+            </button>
+            <button type="button" class="tt-icon-btn tt-color-wheel" id="tt-color-wheel-btn" title="Color" onclick="openTextToolColorWheel()"></button>
+            <button type="button" class="tt-icon-btn tt-bg-btn" id="tt-bg-btn" title="Fondo de texto" onclick="cycleTextToolBg()">
+              <span class="tt-bg-icon" id="tt-bg-icon">A</span>
+            </button>
+            <button type="button" class="tt-done-btn" onclick="closeTextTool()">Listo</button>
+          </div>
+
+          <div class="text-tool-slider-wrap">
+            <div class="text-tool-slider-track">
+              <input type="range" id="tt-font-size" min="14" max="90" value="22" title="Tamaño de letra"
+                oninput="onTextToolFontSizeInput(this.value)"
+                onpointerdown="showTextToolSizePreview()" onpointerup="hideTextToolSizePreview()">
+            </div>
+            <div class="text-tool-size-preview" id="tt-size-preview"><span id="tt-size-preview-val">22</span></div>
+          </div>
+
+          <div class="text-tool-input-wrap">
+            <div class="text-tool-input" id="tt-input" contenteditable="true"></div>
+          </div>
+
+          <div class="text-tool-bottom" id="tt-bottom-bar">
+            <div class="tt-font-carousel" id="tt-font-carousel"></div>
+            <div class="tt-color-carousel" id="tt-color-carousel">
+              <button type="button" class="tt-eyedropper" title="Cuentagotas" onclick="useTextToolEyedropper()">💧</button>
+            </div>
+          </div>
+        </div>
+
+      </div>
+
+    </div>
+
+    <div id="gallery-view" class="view-section">
+      <div class="gallery-view-header">
+        <button type="button" class="icon-row-btn" onclick="closeGalleryView()" title="Volver al editor">←</button>
+        <span class="gallery-view-title">Galería de cartas</span>
+      </div>
+
+      <div class="gallery-section">
+        <div class="gallery-category-tabs" id="gallery-category-tabs">
+          <button type="button" class="gallery-category-btn active" data-category="cartas" onclick="setGalleryCategory('cartas')">💌 Cartas</button>
+          <button type="button" class="gallery-category-btn" data-category="urls" onclick="setGalleryCategory('urls')">🔗 URLs</button>
+          <button type="button" class="gallery-category-btn" data-category="imagenes" onclick="setGalleryCategory('imagenes')">🖼️ Imágenes</button>
+        </div>
+
+        <div class="gallery-controls">
+          <button type="button" class="hamburger-btn" id="gallery-menu-btn" onclick="toggleGalleryMenu()" title="Ordenar cartas">☰</button>
+          <input type="text" id="gallery-search" class="gallery-search-input" placeholder="Buscar por código, título o etiqueta..." autocomplete="off" oninput="applyGalleryFilters()" />
+        </div>
+
+        <div class="gallery-menu-panel" id="gallery-menu-panel">
+          <span class="opacity-label">Ordenar por</span>
+          <select id="gallery-sort-field" class="tb-select" onchange="applyGalleryFilters()">
+            <option value="updatedAt">Fecha de modificación</option>
+            <option value="createdAt">Fecha de creación</option>
+          </select>
+          <select id="gallery-sort-dir" class="tb-select" onchange="applyGalleryFilters()">
+            <option value="desc">Más nuevo primero</option>
+            <option value="asc">Más viejo primero</option>
+          </select>
+        </div>
+
+        <div class="gallery-filter-tabs" id="gallery-filter-tabs">
+          <button type="button" class="gallery-filter-btn active" data-filter="all" onclick="setGalleryFilter('all')">Todas</button>
+          <button type="button" class="gallery-filter-btn" data-filter="immediate" onclick="setGalleryFilter('immediate')">Inmediatas</button>
+          <button type="button" class="gallery-filter-btn" data-filter="scheduled" onclick="setGalleryFilter('scheduled')">Programadas</button>
+          <button type="button" class="gallery-filter-btn" data-filter="undefined" onclick="setGalleryFilter('undefined')">Borradores</button>
+        </div>
+
+        <div id="gallery-grid" class="gallery-grid">
+          <div class="gallery-empty">Cargando colección...</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="bulk-actions-bar" id="bulk-actions-bar">
+      <span class="bulk-count" id="bulk-count-label">0 seleccionadas</span>
+      <button type="button" class="bulk-delete-btn" onclick="bulkDeleteSelected()">🗑️ Eliminar</button>
+      <button type="button" class="bulk-cancel-btn" onclick="exitSelectionMode()">Cancelar</button>
+    </div>
+
+    <!-- ─── Editor de fotos ("/img"): igual de simple que el editor de
+         cartas, pero sin campos de texto de carta —solo la foto y un pie
+         de foto opcional. Se guarda con un código propio, como las
+         cartas y los redirects, y aparece como categoría aparte en la
+         galería. ─── -->
+    <div id="image-editor-view" class="view-section">
+      <div class="image-editor-wrap">
+        <div class="gallery-view-header">
+          <button type="button" class="icon-row-btn" onclick="exitImageEditor()" title="Volver">←</button>
+          <span class="gallery-view-title">Foto</span>
+        </div>
+
+        <input type="file" id="img-editor-file" accept="image/*" style="display:none;" onchange="handleImageEditorFileChange(this)" />
+        <input type="file" id="img-sticker-file" accept="image/*" style="display:none;" onchange="uploadImageStickerFile(this)" />
+        <div class="image-editor-drop" id="image-editor-drop" onclick="if (!event.target.closest('.stickers-layer') && !event.target.closest('.ig-rail')) document.getElementById('img-editor-file').click()">
+          <img id="image-editor-preview" alt="" style="display:none;" />
+          <div class="image-editor-drop-inner" id="image-editor-drop-inner">
+            <span class="image-editor-drop-icon">📷</span>
+            <span>Subir foto</span>
+          </div>
+
+          <!-- Mismo sistema de stickers que el editor de cartas (arrastrar,
+               rotar, redimensionar, borrar), pero con su propia data
+               (imageStickers) para no mezclarse con la carta. -->
+          <div class="stickers-layer" id="image-stickers-layer"></div>
+
+          <div class="ig-rail" id="img-tools-rail" style="top:10px; right:10px;">
+            <button type="button" class="ig-rail-btn" title="Insertar imagen" onclick="event.stopPropagation(); document.getElementById('img-sticker-file').click()">🖼️</button>
+            <button type="button" class="ig-rail-btn" id="image-text-btn" title="Texto" style="font-weight:bold;" onclick="event.stopPropagation(); handleTextToolClick('image')">Aa</button>
+          </div>
+
+          <div class="delete-drop-zone" id="image-delete-zone"><span>✕</span></div>
+        </div>
+
+        <input type="text" id="img-caption" class="image-editor-caption-input" placeholder="Pie de foto (opcional)" autocomplete="off" />
+
+        <div class="tb-group" style="width:100%;">
+          <input list="img-codes-list" id="img-code" class="adm-code-input" placeholder="Código" autocomplete="off" style="font-size:1.1rem; padding:1rem;" />
+          <datalist id="img-codes-list"></datalist>
+        </div>
+
+        <div class="ig-action-row" onclick="saveImageEntry()"><span class="ig-icn">💾</span> Guardar foto</div>
+      </div>
+    </div>
+
+    <div id="letter-view" class="view-section">
+      <div id="letter-card-wrapper">
+        <div class="letter-card" id="letter-card">
+          <div class="stickers-layer" id="view-stickers-layer"></div>
+          <span class="letter-tag" id="letter-tag"></span>
+          <h2 class="letter-title" id="letter-title"></h2>
+          <div class="letter-body" id="letter-body"></div>
+          <div class="letter-sign" id="letter-sign"></div>
+        </div>
+      </div>
+      <button class="back-btn" onclick="goBackFromLetter()">← volver</button>
+    </div>
+
+  </div>
+
+  <!-- ─── Botón flotante: dar un toque ─── -->
+  <button type="button" class="touch-fab" id="touch-fab" title="Dar un toque">👋</button>
+  <div class="touch-menu" id="touch-menu">
+    <button type="button" class="touch-opt" onclick="sendToque('extraño')">💭 Te extraño</button>
+    <button type="button" class="touch-opt" onclick="sendToque('hablame')">💬 Hablame</button>
+    <button type="button" class="touch-opt" onclick="sendToque('toque')">👉 Solo un toque</button>
+  </div>
+
+  <!-- ─── Toast: llegó un toque ─── -->
+  <div class="toque-toast" id="toque-toast">
+    <span class="toque-toast-emoji" id="toque-toast-emoji">👋</span>
+    <span class="toque-toast-text">
+      <span id="toque-toast-text"></span>
+      <span class="toque-toast-from" id="toque-toast-from"></span>
+    </span>
+  </div>
+
+  <!-- ─── Modal: ¿quién sos? (para saber a quién avisarle el toque) ─── -->
+  <div class="identity-overlay" id="identity-overlay">
+    <div class="identity-box">
+      <p>Iniciar sesión como:</p>
+      <div class="identity-btns">
+        <button type="button" class="identity-avatar-btn" onclick="setIdentity('fran')">
+          <span class="identity-avatar-circle">
+            <span class="avatar-fallback" id="identity-fallback-fran">F</span>
+            <img id="identity-img-fran" style="display:none;" alt="Fran" />
+          </span>
+          <span class="identity-avatar-name">Fran</span>
+        </button>
+        <button type="button" class="identity-avatar-btn" onclick="setIdentity('pame')">
+          <span class="identity-avatar-circle">
+            <span class="avatar-fallback" id="identity-fallback-pame">P</span>
+            <img id="identity-img-pame" style="display:none;" alt="Pame" />
+          </span>
+          <span class="identity-avatar-name">Pame</span>
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ─── Selector de color personalizado (reemplaza al input[type=color] nativo) ─── -->
+  <div class="cc-picker-overlay" id="cc-picker-overlay">
+    <div class="cc-picker-box">
+      <div class="cc-picker-label">Elegí un color</div>
+      <div class="cc-picker-sv" id="cc-picker-sv">
+        <div class="cc-picker-sv-cursor" id="cc-picker-sv-cursor"></div>
+      </div>
+      <input type="range" class="cc-picker-hue" id="cc-picker-hue" min="0" max="360" value="0" />
+      <div class="cc-picker-footer">
+        <span class="cc-picker-preview" id="cc-picker-preview"></span>
+        <span class="cc-picker-hex" id="cc-picker-hex">#E8DDD0</span>
+        <button type="button" class="cc-picker-done" onclick="closeColorPicker()">Listo</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ─── Modal: cambiar perfil (nombre + foto) ─── -->
+  <div class="profile-modal-overlay" id="profile-modal-overlay">
+    <div class="profile-modal-box">
+      <p>Tu perfil</p>
+      <div class="profile-modal-preview" id="profile-modal-preview" onclick="document.getElementById('avatar-file-input').click()">
+        <span class="avatar-fallback" id="profile-modal-fallback">?</span>
+        <img id="profile-modal-img" style="display:none;" alt="Perfil" />
+      </div>
+      <input type="file" id="avatar-file-input" accept="image/*" style="display:none;" onchange="handleAvatarUpload(event)" />
+      <div class="profile-modal-hint">tocá la foto para cambiarla</div>
+      <div class="profile-modal-btns">
+        <button type="button" class="profile-modal-btn" id="profile-btn-fran" onclick="setIdentity('fran'); refreshProfileModal();">Fran</button>
+        <button type="button" class="profile-modal-btn" id="profile-btn-pame" onclick="setIdentity('pame'); refreshProfileModal();">Pame</button>
+      </div>
+      <button type="button" class="profile-modal-close" onclick="closeProfileModal()">Listo</button>
+    </div>
+  </div>
+
+
+  <!-- ─── TIPTAP (editor de cartas) ───
+       Se carga como módulo ESM desde un CDN (esm.sh), sin build step. Si por
+       algún motivo no hay conexión o el CDN falla, la app sigue funcionando:
+       los cuadros de texto de la carta vuelven al contentEditable de siempre. -->
+  <script type="importmap">
+  {
+    "imports": {
+      "@tiptap/core": "https://esm.sh/@tiptap/core@2",
+      "@tiptap/starter-kit": "https://esm.sh/@tiptap/starter-kit@2",
+      "@tiptap/extension-underline": "https://esm.sh/@tiptap/extension-underline@2",
+      "@tiptap/extension-text-style": "https://esm.sh/@tiptap/extension-text-style@2",
+      "@tiptap/extension-color": "https://esm.sh/@tiptap/extension-color@2",
+      "@tiptap/extension-font-family": "https://esm.sh/@tiptap/extension-font-family@2",
+      "@tiptap/extension-placeholder": "https://esm.sh/@tiptap/extension-placeholder@2"
+    }
   }
-});
+  </script>
+  <script type="module">
+    const modules = {
+      core: '@tiptap/core',
+      starterKit: '@tiptap/starter-kit',
+      underline: '@tiptap/extension-underline',
+      textStyle: '@tiptap/extension-text-style',
+      color: '@tiptap/extension-color',
+      fontFamily: '@tiptap/extension-font-family',
+      placeholder: '@tiptap/extension-placeholder'
+    };
+    try {
+      const entries = await Promise.all(
+        Object.entries(modules).map(async ([key, spec]) => {
+          try {
+            return [key, await import(spec)];
+          } catch (err) {
+            // Volvemos a lanzar con el nombre del paquete puesto adelante, para
+            // que si esto falla algún día se sepa cuál de todos fue.
+            throw new Error(`No se pudo cargar ${spec}: ${err && err.message ? err.message : err}`);
+          }
+        })
+      );
+      const mods = Object.fromEntries(entries);
+      window.__TiptapLib = {
+        Editor: mods.core.Editor,
+        StarterKit: mods.starterKit.default,
+        Underline: mods.underline.default,
+        TextStyle: mods.textStyle.default,
+        Color: mods.color.default,
+        FontFamily: mods.fontFamily.default,
+        Placeholder: mods.placeholder.default
+      };
+      window.dispatchEvent(new Event('tiptap-lib-ready'));
+    } catch (err) {
+      console.warn('Framecorreo: no se pudo cargar Tiptap, se usa el editor de texto clásico.', err);
+      window.dispatchEvent(new Event('tiptap-lib-failed'));
+    }
+  </script>
 
-self.addEventListener('activate', (event) => {
-  event.waitUntil(
-    caches.keys().then((keys) =>
-      Promise.all(keys.filter((k) => k !== CACHE_NAME).map((k) => caches.delete(k)))
-    ).then(() => self.clients.claim())
-  );
-});
+  <script>
+    const BASE_URL_RAW = "https://cartas-pame-default-rtdb.firebaseio.com";
+    const FIREBASE_DB_URL = BASE_URL_RAW.endsWith('/') ? BASE_URL_RAW.slice(0, -1) : BASE_URL_RAW;
+    
+    const ADMIN_KEY = "admin123"; 
+    let currentAdminView = false;
+    let lastUnlockInput = '';
+    let autosaveTimer = null;
+    let currentStickers = [];
+    let selectedStickerIdx = null;
+    // ─── Stickers del editor de fotos ("/img"): mismo concepto que
+    // currentStickers/canvasStickers, pero separados para no mezclarse con
+    // los de la carta ni con los del lienzo compartido. ───
+    let imageStickers = [];
+    let imageSelectedStickerIdx = null;
 
-self.addEventListener('fetch', (event) => {
-  if (event.request.method !== 'GET') return;
+    // ════════════════════════════════════════════════════════════
+    // ─── HERRAMIENTA "MOVER PÁGINA" + colapsar herramientas + Aa dinámico ───
+    // ════════════════════════════════════════════════════════════
+    let moveToolActiveAdmin = false;
+    let moveToolActiveCanvas = false;
+    const pageZoomState = {}; // { shellId: { scale, tx, ty } }
 
-  // Clave: NO tocar pedidos que no sean del propio origen (Firebase, Telegram, etc.).
-  // Si dejamos que el Service Worker intercepte esos pedidos, agarra también las
-  // conexiones EventSource (streams que quedan abiertas para siempre) e intenta
-  // meterlas en la cache con cache.put(), que espera a que el stream termine.
-  // Como nunca termina, la conexión en tiempo real queda inestable: a veces
-  // pasa igual, a veces se corta o tarda en reconectar. Por eso la sincronización
-  // "a veces anda, a veces no". Dejando pasar de largo lo que no es same-origin,
-  // esas conexiones quedan intactas y libres de interferencia.
-  const url = new URL(event.request.url);
-  if (url.origin !== self.location.origin) return;
+    function toggleToolsRail(railId) {
+      const rail = document.getElementById(railId);
+      if (!rail) return;
+      rail.classList.toggle('tools-open');
+      const btn = rail.querySelector('.ig-rail-toggle');
+      if (btn) btn.classList.toggle('active', rail.classList.contains('tools-open'));
+    }
 
-  event.respondWith(
-    fetch(event.request)
-      .then((res) => {
-        const copy = res.clone();
-        caches.open(CACHE_NAME).then((cache) => cache.put(event.request, copy)).catch(() => {});
-        return res;
-      })
-      .catch(() => caches.match(event.request))
-  );
-});
+    function toggleMoveTool(scope) {
+      const isCanvas = scope === 'canvas';
+      if (isCanvas) deactivateCanvasDrawMode();
+      const btn = document.getElementById(isCanvas ? 'canvas-move-tool-btn' : 'adm-move-tool-btn');
+      const shellId = isCanvas ? 'canvas-stage-shell' : 'letter-stage-shell';
+      const contentSelector = isCanvas ? '#canvas-stage' : '#live-card-container';
 
-// ─── Push real (para cuando se configure Firebase Cloud Messaging u otro
-// servicio de push). Por ahora no se dispara desde ningún backend, pero
-// queda listo: si en el futuro llega un push, se muestra la notificación. ───
-self.addEventListener('push', (event) => {
-  let data = { title: 'Framecorreo', body: 'Te llegó un toque 💌' };
-  try { if (event.data) data = event.data.json(); } catch (e) {}
-  event.waitUntil(
-    self.registration.showNotification(data.title || 'Framecorreo', {
-      body: data.body || '',
-      icon: './icon-192.png',
-      badge: './icon-192.png',
-      vibrate: [80, 40, 80]
-    })
-  );
-});
+      if (isCanvas) moveToolActiveCanvas = !moveToolActiveCanvas;
+      else moveToolActiveAdmin = !moveToolActiveAdmin;
 
-self.addEventListener('notificationclick', (event) => {
-  event.notification.close();
-  event.waitUntil(
-    clients.matchAll({ type: 'window' }).then((clientsArr) => {
-      const existing = clientsArr.find((c) => c.url.includes('index.html') || c.url.endsWith('/'));
-      if (existing) return existing.focus();
-      return clients.openWindow('./index.html');
-    })
-  );
-});
+      const active = isCanvas ? moveToolActiveCanvas : moveToolActiveAdmin;
+      if (btn) btn.classList.toggle('active', active);
+      const shellEl = document.getElementById(shellId);
+      if (shellEl) shellEl.classList.toggle('move-tool-active', active);
+
+      if (active) {
+        enablePageZoomPan(shellId, contentSelector);
+      } else {
+        disablePageZoomPan(shellId, contentSelector);
+      }
+    }
+
+    // Zoom/pan libre de la página con dos dedos (o rueda del mouse), sin
+    // mover ningún sticker, mientras la herramienta "mover" esté activa.
+    function enablePageZoomPan(shellId, contentSelector) {
+      const shell = document.getElementById(shellId);
+      const content = shell ? shell.querySelector(contentSelector) : null;
+      if (!shell || !content) return;
+
+      if (!pageZoomState[shellId]) pageZoomState[shellId] = { scale: 1, tx: 0, ty: 0 };
+      content.style.transition = 'none';
+      content.style.transformOrigin = 'center center';
+
+      let touches = {};
+      let startDist = 0, startScale = 1, startTx = 0, startTy = 0, startMidX = 0, startMidY = 0;
+      let panStartX = 0, panStartY = 0;
+      let mouseDown = false;
+
+      function applyTransform() {
+        const st = pageZoomState[shellId];
+        content.style.transform = `translate(${st.tx}px, ${st.ty}px) scale(${st.scale})`;
+      }
+
+      function onTouchStart(e) {
+        if (e.touches.length === 2) {
+          e.preventDefault();
+          const [a, b] = e.touches;
+          startDist = Math.hypot(b.clientX - a.clientX, b.clientY - a.clientY);
+          startMidX = (a.clientX + b.clientX) / 2;
+          startMidY = (a.clientY + b.clientY) / 2;
+          startScale = pageZoomState[shellId].scale;
+          startTx = pageZoomState[shellId].tx;
+          startTy = pageZoomState[shellId].ty;
+        } else if (e.touches.length === 1) {
+          panStartX = e.touches[0].clientX - pageZoomState[shellId].tx;
+          panStartY = e.touches[0].clientY - pageZoomState[shellId].ty;
+        }
+      }
+
+      function onTouchMove(e) {
+        if (e.touches.length === 2) {
+          e.preventDefault();
+          const [a, b] = e.touches;
+          const dist = Math.hypot(b.clientX - a.clientX, b.clientY - a.clientY);
+          const st = pageZoomState[shellId];
+          st.scale = Math.min(4, Math.max(1, startScale * (dist / startDist)));
+          st.tx = startTx + ((a.clientX + b.clientX) / 2 - startMidX);
+          st.ty = startTy + ((a.clientY + b.clientY) / 2 - startMidY);
+          applyTransform();
+        } else if (e.touches.length === 1) {
+          e.preventDefault();
+          const st = pageZoomState[shellId];
+          st.tx = e.touches[0].clientX - panStartX;
+          st.ty = e.touches[0].clientY - panStartY;
+          applyTransform();
+        }
+      }
+
+      // Panear con el mouse (click y arrastrar), para desktop.
+      function onMouseDown(e) {
+        mouseDown = true;
+        panStartX = e.clientX - pageZoomState[shellId].tx;
+        panStartY = e.clientY - pageZoomState[shellId].ty;
+      }
+      function onMouseMove(e) {
+        if (!mouseDown) return;
+        e.preventDefault();
+        const st = pageZoomState[shellId];
+        st.tx = e.clientX - panStartX;
+        st.ty = e.clientY - panStartY;
+        applyTransform();
+      }
+      function onMouseUp() { mouseDown = false; }
+
+      function onWheel(e) {
+        e.preventDefault();
+        const st = pageZoomState[shellId];
+        st.scale = Math.min(4, Math.max(1, st.scale - e.deltaY * 0.0015));
+        applyTransform();
+      }
+
+      shell._zoomHandlers = { onTouchStart, onTouchMove, onWheel, onMouseDown, onMouseMove, onMouseUp };
+      shell.addEventListener('touchstart', onTouchStart, { passive: false });
+      shell.addEventListener('touchmove', onTouchMove, { passive: false });
+      shell.addEventListener('wheel', onWheel, { passive: false });
+      shell.addEventListener('mousedown', onMouseDown);
+      window.addEventListener('mousemove', onMouseMove);
+      window.addEventListener('mouseup', onMouseUp);
+    }
+
+    function disablePageZoomPan(shellId, contentSelector) {
+      const shell = document.getElementById(shellId);
+      const content = shell ? shell.querySelector(contentSelector) : null;
+      if (shell && shell._zoomHandlers) {
+        shell.removeEventListener('touchstart', shell._zoomHandlers.onTouchStart);
+        shell.removeEventListener('touchmove', shell._zoomHandlers.onTouchMove);
+        shell.removeEventListener('wheel', shell._zoomHandlers.onWheel);
+        shell.removeEventListener('mousedown', shell._zoomHandlers.onMouseDown);
+        window.removeEventListener('mousemove', shell._zoomHandlers.onMouseMove);
+        window.removeEventListener('mouseup', shell._zoomHandlers.onMouseUp);
+        delete shell._zoomHandlers;
+      }
+      pageZoomState[shellId] = { scale: 1, tx: 0, ty: 0 };
+      if (content) {
+        content.style.transition = 'transform 0.25s ease';
+        content.style.transform = 'translate(0,0) scale(1)';
+      }
+    }
+
+    // El botón "Aa": si hay un cuadro de texto seleccionado, edita ese en vez
+    // de crear uno nuevo. Misma lógica e interfaz para el lienzo y para la carta:
+    // ambos abren la herramienta de texto a pantalla completa (estilo IG Stories).
+    function handleTextToolClick(scope) {
+      const isCanvas = scope === 'canvas';
+      if (isCanvas) deactivateCanvasDrawMode();
+
+      const idx = scope === 'canvas' ? canvasSelectedStickerIdx : (scope === 'image' ? imageSelectedStickerIdx : selectedStickerIdx);
+      const arr = scope === 'canvas' ? canvasStickers : (scope === 'image' ? imageStickers : currentStickers);
+      const isEditingExisting = idx !== null && idx !== undefined && arr[idx] && arr[idx].type === 'text';
+      openTextTool(scope, isEditingExisting ? idx : null);
+    }
+
+    function updateTextToolButton(scope) {
+      const isCanvas = scope === 'canvas';
+      const idx = scope === 'canvas' ? canvasSelectedStickerIdx : (scope === 'image' ? imageSelectedStickerIdx : selectedStickerIdx);
+      const arr = scope === 'canvas' ? canvasStickers : (scope === 'image' ? imageStickers : currentStickers);
+      const btnId = scope === 'canvas' ? 'canvas-text-btn' : (scope === 'image' ? 'image-text-btn' : 'adm-text-btn');
+      const btn = document.getElementById(btnId);
+      if (!btn) return;
+      const isEditingText = idx !== null && idx !== undefined && arr[idx] && arr[idx].type === 'text';
+      btn.title = isEditingText ? 'Editar texto' : 'Agregar texto';
+      if (isEditingText) syncFontSizeSlider(scope);
+    }
+
+    function syncFontSizeSlider(scope) {
+      const isCanvas = scope === 'canvas';
+      const idx = isCanvas ? canvasSelectedStickerIdx : selectedStickerIdx;
+      const arr = isCanvas ? canvasStickers : currentStickers;
+      const slider = document.getElementById(isCanvas ? 'canvas-font-size' : 'adm-font-size');
+      const label = document.getElementById(isCanvas ? 'canvas-font-size-value' : 'adm-font-size-value');
+      if (!slider || idx === null || idx === undefined || !arr[idx]) return;
+      const size = arr[idx].fontSize || (isCanvas ? 22 : 16);
+      slider.value = size;
+      if (label) label.textContent = Math.round(size) + 'px';
+    }
+
+    function setStickerFontSize(scope, val) {
+      const isCanvas = scope === 'canvas';
+      const size = parseFloat(val);
+      const idx = isCanvas ? canvasSelectedStickerIdx : selectedStickerIdx;
+      const arr = isCanvas ? canvasStickers : currentStickers;
+      const label = document.getElementById(isCanvas ? 'canvas-font-size-value' : 'adm-font-size-value');
+      if (label) label.textContent = Math.round(size) + 'px';
+      if (idx === null || idx === undefined || !arr[idx]) return;
+
+      arr[idx].fontSize = size;
+      const wrapperSel = isCanvas ? '#canvas-stickers-layer' : '#live-stickers-layer';
+      const textEl = document.querySelector(`${wrapperSel} .sticker-wrapper[data-idx="${idx}"] .sticker-text-content`);
+      if (textEl) textEl.style.fontSize = size + 'px';
+
+      if (isCanvas) scheduleCanvasSave(); else scheduleAutosave();
+    }
+    let allCodesCache = [];
+    let allCartasData = {};
+    let allUrlsData = {};
+    let allImagesData = {};
+
+    // ─── TIPTAP: estado del editor de cartas ───
+    // cartaTiptapEditors: idx del sticker -> instancia de Tiptap viva (solo
+    // existen mientras ese cuadro de texto está montado en el DOM editable).
+    // cartaActiveEditor: la última instancia que tuvo el foco; la usan los
+    // botones de la barra de formato, porque al hacer click en un botón el
+    // cuadro de texto pierde el foco antes de que se ejecute el comando.
+    let cartaTiptapEditors = {};
+    let cartaActiveEditor = null;
+
+    function waitForTiptap(timeoutMs = 1500) {
+      return new Promise((resolve) => {
+        if (window.__TiptapLib) { resolve(true); return; }
+        let done = false;
+        const finish = (ok) => {
+          if (done) return;
+          done = true;
+          window.removeEventListener('tiptap-lib-ready', onReady);
+          window.removeEventListener('tiptap-lib-failed', onFail);
+          resolve(ok);
+        };
+        const onReady = () => finish(true);
+        const onFail = () => finish(false);
+        window.addEventListener('tiptap-lib-ready', onReady);
+        window.addEventListener('tiptap-lib-failed', onFail);
+        setTimeout(() => finish(!!window.__TiptapLib), timeoutMs);
+      });
+    }
+
+    window.addEventListener('DOMContentLoaded', async () => {
+      switchView('login-view');
+
+      // La identidad (Fran o Pame) se resuelve primero y sin esperar red,
+      // porque el contador de "visto" depende de saber quién es quien abre
+      // la carta, incluso cuando se entra directo por un link con ?c=código.
+      initIdentity();
+
+      const urlParams = new URLSearchParams(window.location.search);
+      const codeParam = urlParams.get('c');
+      if (codeParam) {
+        document.getElementById('code-input').value = codeParam.trim();
+        unlock();
+      }
+
+      // Esperamos a Tiptap (con límite de tiempo) antes del primer render de
+      // la carta, para no mezclar cuadros de texto viejos y nuevos.
+      await waitForTiptap();
+      restoreAutosave();
+
+      initInstallPrompt();
+      registerServiceWorker();
+      initDrawBoard();
+      initIgAdminPickers();
+      setupColorPicker();
+      restoreCanvasStickers();
+      initCanvasSendMenu();
+      initToques();
+      initTipListener();
+      initTouchFab();
+    });
+
+    // ─── COMANDOS DE FORMATO (RICH TEXT) ───
+    // El input de color (y otros controles) le roban el foco al texto y el navegador
+    // pierde la selección antes de aplicar el comando. Por eso guardamos la última
+    // selección hecha dentro de un cuadro de texto y la restauramos antes de cada comando.
+    let savedTextRange = null;
+
+    // ─── Enfoca un cuadro de texto y ubica el cursor en el punto donde la
+    // persona tocó/clickeó, tanto para el contentEditable clásico como para
+    // Tiptap (que monta su editor real como un hijo adentro de textEl). ───
+    function focusTextAtPoint(textEl, x, y) {
+      const editableTarget = textEl.matches('[contenteditable="true"]')
+        ? textEl
+        : (textEl.querySelector('[contenteditable="true"]') || textEl);
+
+      let range = null;
+      if (document.caretRangeFromPoint) {
+        range = document.caretRangeFromPoint(x, y);
+      } else if (document.caretPositionFromPoint) {
+        const pos = document.caretPositionFromPoint(x, y);
+        if (pos) {
+          range = document.createRange();
+          range.setStart(pos.offsetNode, pos.offset);
+          range.collapse(true);
+        }
+      }
+
+      editableTarget.focus();
+
+      if (range && editableTarget.contains(range.startContainer)) {
+        const sel = window.getSelection();
+        sel.removeAllRanges();
+        sel.addRange(range);
+      }
+    }
+
+    document.addEventListener('selectionchange', () => {
+      const sel = window.getSelection();
+      if (!sel || sel.rangeCount === 0) return;
+      const node = sel.anchorNode;
+      const el = node && (node.nodeType === 3 ? node.parentElement : node);
+      if (el && el.closest && el.closest('.sticker-text-content[contenteditable="true"]')) {
+        savedTextRange = sel.getRangeAt(0).cloneRange();
+      }
+    });
+
+    function restoreSavedSelection() {
+      if (!savedTextRange) return;
+      const container = savedTextRange.startContainer.nodeType === 3 ? savedTextRange.startContainer.parentElement : savedTextRange.startContainer;
+      const editableEl = container && container.closest ? container.closest('.sticker-text-content') : null;
+      if (editableEl) editableEl.focus();
+      const sel = window.getSelection();
+      sel.removeAllRanges();
+      sel.addRange(savedTextRange);
+    }
+
+    function execCmd(command, value = null) {
+      // Si el cuadro de texto activo es un editor Tiptap (carta), el comando
+      // se aplica ahí. Si no (p. ej. todavía no cargó Tiptap, o es un cuadro
+      // de texto del lienzo que sigue con el sistema viejo), usamos el
+      // execCommand clásico como antes.
+      if (cartaActiveEditor && applyTiptapCommand(cartaActiveEditor, command, value)) {
+        scheduleAutosave();
+        return;
+      }
+      restoreSavedSelection();
+      document.execCommand(command, false, value);
+      scheduleAutosave();
+    }
+
+    function applyTiptapCommand(editor, command, value) {
+      if (!editor || editor.isDestroyed) return false;
+      const chain = editor.chain().focus();
+      switch (command) {
+        case 'bold': chain.toggleBold().run(); return true;
+        case 'italic': chain.toggleItalic().run(); return true;
+        case 'underline': chain.toggleUnderline().run(); return true;
+        case 'foreColor': chain.setColor(value).run(); return true;
+        case 'fontName': chain.setFontFamily(value).run(); return true;
+        default: return false;
+      }
+    }
+
+    // Pegado sin formato para los cuadros de texto Tiptap (stickers de la
+    // carta y del lienzo): si se pega texto con estilos propios (color,
+    // tipografía...) desde afuera, sobrepisa el estilo del cuadro y puede
+    // volverse ilegible (p. ej. texto negro sobre fondo oscuro). Tomamos
+    // solo el texto plano del portapapeles e insertamos saltos de línea
+    // como hardBreak, sin ningún estilo pegado.
+    function tiptapPastePlainText(view, event) {
+      const cd = event.clipboardData || window.clipboardData;
+      const text = cd ? cd.getData('text/plain') : '';
+      if (!text) return false;
+      event.preventDefault();
+      const { state } = view;
+      const hardBreak = state.schema.nodes.hardBreak;
+      let tr = state.tr;
+      text.split(/\r\n|\r|\n/).forEach((line, i) => {
+        if (i > 0) tr = hardBreak ? tr.replaceSelectionWith(hardBreak.create(), true) : tr.insertText('\n');
+        if (line) tr = tr.insertText(line);
+      });
+      view.dispatch(tr);
+      return true;
+    }
+
+    // ─── COMANDO DE FORMATO PARA EL CUERPO FIJO DE LA CARTA (#adm-body) ───
+    // #adm-body es un contentEditable clásico (no Tiptap), igual que en la
+    // versión vieja: usa document.execCommand directamente, sin pasar por
+    // execCmd/applyTiptapCommand (que son para los cuadros de texto-sticker).
+    function execCmdBody(command, value = null) {
+      const bodyEl = document.getElementById('adm-body');
+      if (bodyEl) bodyEl.focus();
+      document.execCommand(command, false, value);
+      scheduleAutosave();
+    }
+
+    // ─── COLOR DE FUENTE PARA EL CUERPO FIJO DE LA CARTA (#adm-body) ───
+    // Guardamos la selección de texto antes de abrir la hojita de color
+    // (comparte el mismo selector que usa el cuadro de texto del lienzo),
+    // porque al tocar los controles de la hojita el foco se va de #adm-body
+    // y se pierde la selección si no la restauramos antes de aplicar el color.
+    let savedBodyRange = null;
+    function openBodyColorPicker() {
+      const bodyEl = document.getElementById('adm-body');
+      if (!bodyEl) return;
+      const sel = window.getSelection();
+      savedBodyRange = (sel && sel.rangeCount && bodyEl.contains(sel.anchorNode)) ? sel.getRangeAt(0).cloneRange() : null;
+      const swatch = document.getElementById('body-color-swatch');
+      openColorPicker(swatch ? rgbStringToHex(getComputedStyle(swatch).backgroundColor) : '#e8ddd0', (hex) => {
+        const bodyEl2 = document.getElementById('adm-body');
+        if (!bodyEl2) return;
+        bodyEl2.focus();
+        if (savedBodyRange) {
+          const sel2 = window.getSelection();
+          sel2.removeAllRanges();
+          sel2.addRange(savedBodyRange);
+        }
+        document.execCommand('foreColor', false, hex);
+        if (swatch) swatch.style.background = hex;
+        scheduleAutosave();
+      });
+    }
+    function rgbStringToHex(rgbStr) {
+      const m = (rgbStr || '').match(/\d+/g);
+      if (!m || m.length < 3) return '#e8ddd0';
+      return rgbToHex(+m[0], +m[1], +m[2]);
+    }
+
+    // Cartas viejas (de la etapa de cuadros-sticker con Tiptap) pueden traer
+    // colores de texto pegados adentro del HTML guardado (spans con
+    // style="color:..."). Eso pisa el color propio de cada estilo de carta
+    // y hacía que el texto se viera negro/ilegible. Se lo sacamos siempre
+    // que se carga o se guarda el cuerpo, así el color lo define solamente
+    // el estilo elegido (claro, pergamino, terminal, nocturno).
+    function stripInlineColors(html) {
+      if (!html) return html;
+      const div = document.createElement('div');
+      div.innerHTML = html;
+      div.querySelectorAll('[style]').forEach((el) => {
+        el.style.removeProperty('color');
+        if (!el.getAttribute('style')) el.removeAttribute('style');
+      });
+      div.querySelectorAll('font[color]').forEach((el) => el.removeAttribute('color'));
+      return div.innerHTML;
+    }
+
+    // Muestra/oculta la barrita de formato del cuerpo al enfocar/desenfocar
+    // #adm-body. Los botones de la barra usan onmousedown=preventDefault
+    // para no robarle el foco al cuerpo antes de ejecutar el comando.
+    (function setupBodyFormatBar() {
+      const bodyEl = document.getElementById('adm-body');
+      const bar = document.getElementById('body-format-bar');
+      if (!bodyEl || !bar) return;
+      bodyEl.addEventListener('focus', () => bar.classList.add('visible'));
+      bodyEl.addEventListener('blur', () => {
+        setTimeout(() => {
+          if (document.activeElement !== bodyEl) bar.classList.remove('visible');
+        }, 150);
+      });
+      // Pegar siempre como texto plano: si se pega desde Word/Notion/etc.
+      // suele venir con estilos inline (color negro, tipografía propia...)
+      // que pisan el color del estilo elegido y el texto queda invisible.
+      bodyEl.addEventListener('paste', (e) => {
+        e.preventDefault();
+        const text = (e.clipboardData || window.clipboardData).getData('text/plain');
+        document.execCommand('insertText', false, text);
+      });
+    })();
+
+    // El marco guía del área de trabajo también tiene que reaccionar cuando
+    // crece/achica el cuerpo de la carta a medida que se escribe (no solo
+    // cuando se agregan/mueven stickers decorativos).
+    ['adm-tag', 'adm-title', 'adm-body', 'adm-sign'].forEach((id) => {
+      const el = document.getElementById(id);
+      if (el) el.addEventListener('input', () => { if (currentAdminView) requestAnimationFrame(refreshWorkspaceBoundary); });
+    });
+
+    // ─── AUTOSAVE ───
+    function scheduleAutosave() {
+      clearTimeout(autosaveTimer);
+      autosaveTimer = setTimeout(() => {
+        syncTextStickersContent();
+
+        const draft = {
+          code: document.getElementById('adm-code').value,
+          style: document.getElementById('adm-style').value,
+          dateType: document.getElementById('adm-date-type').value,
+          releaseDate: document.getElementById('adm-date').value,
+          tag: document.getElementById('adm-tag').value,
+          title: document.getElementById('adm-title').value,
+          body: document.getElementById('adm-body').innerHTML,
+          sign: document.getElementById('adm-sign').value,
+          stickers: currentStickers
+        };
+        try {
+          localStorage.setItem('cartas_draft', JSON.stringify(draft));
+          const ind = document.getElementById('autosave-indicator');
+          ind.classList.add('visible');
+          setTimeout(() => ind.classList.remove('visible'), 2500);
+        } catch(e) {}
+
+        // Además de guardar localmente, subimos automáticamente como Borrador
+        // a la nube, para no perder cambios si no se apreta "Guardar" a mano.
+        autosaveDraftToCloud();
+      }, 5000);
+    }
+
+    function syncTextStickersContent() {
+      currentStickers.forEach((st, idx) => {
+        if (st.type === 'text') {
+          const ed = cartaTiptapEditors[idx];
+          if (ed && !ed.isDestroyed) { st.content = ed.getHTML(); return; }
+          const node = document.getElementById(`sticker-text-${idx}`);
+          if (node) st.content = node.innerHTML;
+        }
+      });
+    }
+
+    function restoreAutosave() {
+      try {
+        const raw = localStorage.getItem('cartas_draft');
+        if (!raw) return;
+        const draft = JSON.parse(raw);
+        if (draft.code) document.getElementById('adm-code').value = draft.code;
+        if (draft.style) { document.getElementById('adm-style').value = draft.style; updateLiveCardStyle(draft.style); }
+        if (draft.dateType) { document.getElementById('adm-date-type').value = draft.dateType; toggleDateField(draft.dateType); }
+        if (draft.releaseDate) document.getElementById('adm-date').value = draft.releaseDate;
+        if (draft.tag) document.getElementById('adm-tag').value = draft.tag;
+        if (draft.title) document.getElementById('adm-title').value = draft.title;
+        if (draft.body) document.getElementById('adm-body').innerHTML = stripInlineColors(draft.body);
+        if (draft.sign) document.getElementById('adm-sign').value = draft.sign;
+        if (draft.stickers && draft.stickers.length) {
+          currentStickers = draft.stickers;
+          renderStickers(document.getElementById('live-stickers-layer'), currentStickers, true);
+        }
+      } catch(e) {}
+    }
+
+    function attachAutosaveListeners() {
+      ['adm-code','adm-style','adm-date-type','adm-date','adm-tag','adm-title','adm-body','adm-sign'].forEach(id => {
+        const el = document.getElementById(id);
+        if (el) {
+          el.addEventListener('input', scheduleAutosave);
+          el.addEventListener('change', scheduleAutosave);
+        }
+      });
+    }
+
+    // ─── LISTENER DEL DATALIST PARA CARGA AUTOMÁTICA ───
+    document.getElementById('adm-code').addEventListener('change', async (e) => {
+      const val = e.target.value.toLowerCase().trim();
+      if (!val) return;
+      
+      // Si el código existe en nuestra caché, intentamos cargarlo de la nube
+      if (allCodesCache.includes(val)) {
+        try {
+          const res = await fetch(`${FIREBASE_DB_URL}/cartas/${val}.json`);
+          const carta = await res.json();
+          setupEditorForEdit(val, carta);
+        } catch(err) { alert('Error cargando la carta elegida.'); }
+      } else {
+        // Es un código nuevo, forzamos que se guarde como borrador
+        scheduleAutosave();
+      }
+    });
+
+    // ─── ENTER PARA GUARDAR EN EL EDITOR DE FOTOS ───
+    // El campo de código del editor de fotos no tenía forma de confirmar
+    // con Enter (a diferencia de otros campos que se manejan por botón);
+    // esto lo deja igual de accesible que tocar "Guardar foto".
+    document.getElementById('img-code').addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') {
+        e.preventDefault();
+        saveImageEntry();
+      }
+    });
+
+    // ─── LOADING STATE ───
+    function setLoadingState(loading) {
+      const btn = document.getElementById('unlock-btn');
+      if (btn) {
+        btn.disabled = loading;
+        btn.style.opacity = loading ? '0.4' : '1';
+        btn.style.pointerEvents = loading ? 'none' : 'auto';
+      }
+      const loadingEl = document.getElementById('code-loading');
+      if (loadingEl) loadingEl.classList.toggle('visible', loading);
+    }
+
+    // ─── ERROR BLOCK ───
+    function showErrorBlock(msg) {
+      const block = document.getElementById('error-block');
+      const msgEl = document.getElementById('error-block-msg');
+      if (msgEl) msgEl.textContent = msg || 'Ups, hubo un problema de conexión. ¿Probamos de nuevo?';
+      if (block) block.classList.add('visible');
+    }
+
+    function hideErrorBlock() {
+      const block = document.getElementById('error-block');
+      if (block) block.classList.remove('visible');
+    }
+
+    function retryUnlock() {
+      hideErrorBlock();
+      document.getElementById('error-msg').textContent = '';
+      unlock();
+    }
+
+    function toggleDateField(type) {
+      const dateEl = document.getElementById('adm-date');
+      if (dateEl) dateEl.style.display = (type === 'scheduled') ? 'inline-block' : 'none';
+      if (type !== 'scheduled') dateEl.value = '';
+
+      // Mantiene resaltado el botón cuadrado que corresponde al tipo actual,
+      // incluso cuando el valor se setea a mano (edición, reset, autosave)
+      // y no por un click directo sobre el botón.
+      const list = document.getElementById('adm-date-type-list');
+      if (list) {
+        list.querySelectorAll('.ig-vscroll-item').forEach((item) => {
+          item.classList.toggle('active', item.dataset.datetype === type);
+        });
+      }
+    }
+
+    function updateLiveCardStyle(styleId) {
+      const container = document.getElementById('live-card-container');
+      if (container) container.className = styleId;
+
+      const bodyBats = document.querySelectorAll('.bat');
+      if (styleId === 'style-c') {
+        bodyBats.forEach(b => b.style.opacity = '0.01');
+      } else if (styleId === 'style-d' || styleId === 'style-f' || styleId === 'style-h') {
+        bodyBats.forEach(b => b.style.opacity = '0.12');
+      } else {
+        bodyBats.forEach(b => b.style.opacity = '0.07');
+      }
+    }
+
+    // Atajo secreto: tocar el gatito de arriba del campo de código carga
+    // sola la contraseña de admin, pero SOLO si el perfil activo es el de
+    // Fran (ver myIdentity, más abajo). Para Pame el toque no hace nada
+    // visible, para no delatar que el atajo existe.
+    function handleCatIconTap() {
+      if (myIdentity !== 'fran') return;
+      const input = document.getElementById('code-input');
+      if (!input) return;
+      input.value = ADMIN_KEY;
+      input.focus();
+    }
+
+    async function unlock() {
+      const rawInput = document.getElementById('code-input').value.trim();
+      const input = rawInput.toLowerCase();
+      document.getElementById('error-msg').textContent = '';
+      hideErrorBlock();
+
+      if (!input) return;
+      lastUnlockInput = input;
+
+      // Comando secreto "/tip <texto>" (y "/tip del" para borrarlo): solo
+      // desde el perfil de Fran, en la pantalla principal. El tip se guarda
+      // en Firebase y se muestra debajo del recuadro de código para los dos
+      // perfiles (ver initTipListener). No es un código de carta, así que
+      // cortamos acá antes de tocar nada de eso.
+      if (myIdentity === 'fran' && /^\/tip(\s|$)/i.test(rawInput)) {
+        await handleTipCommand(rawInput);
+        document.getElementById('code-input').value = '';
+        return;
+      }
+
+      // Comando secreto "/url <código> <url>": solo Fran puede crearlos.
+      // Guarda un redirect en Firebase para ese código; de ahí en más,
+      // cuando cualquiera (Fran o Pame) escriba ese código, en vez de
+      // buscar una carta lo mandamos derecho al link guardado (ver más
+      // abajo, antes de llamar a fetchAndDisplayLetter).
+      const urlMatch = rawInput.match(/^\/url\s+(\S+)\s+(\S+)\s*$/i);
+      if (myIdentity === 'fran' && urlMatch) {
+        await handleAddRedirectCommand(urlMatch[1], urlMatch[2]);
+        document.getElementById('code-input').value = '';
+        return;
+      }
+
+      // Comando secreto "/c": atajo para entrar directo al editor de
+      // cartas, sin tener que tipear la contraseña de admin.
+      if (myIdentity === 'fran' && /^\/c$/i.test(rawInput)) {
+        currentAdminView = true;
+        switchView('admin-view');
+        resetEditorForm();
+        attachAutosaveListeners();
+        await loadGallery();
+        document.getElementById('code-input').value = '';
+        return;
+      }
+
+      // Comando secreto "/img": abre el editor de fotos (sin campos de
+      // texto de carta, solo foto + pie de foto opcional).
+      if (myIdentity === 'fran' && /^\/img$/i.test(rawInput)) {
+        openImageEditor();
+        document.getElementById('code-input').value = '';
+        return;
+      }
+
+      // Comando secreto "/g": atajo para entrar directo a la galería sin
+      // pasar primero por el editor, solo para Fran.
+      if (myIdentity === 'fran' && /^\/g$/i.test(rawInput)) {
+        currentAdminView = true;
+        resetEditorForm();
+        attachAutosaveListeners();
+        switchView('gallery-view');
+        await loadGallery();
+        document.getElementById('code-input').value = '';
+        return;
+      }
+
+      // El panel de admin solo se abre para el perfil de Fran: si alguien
+      // más (Pame) tipea la contraseña, no pasa nada especial y el código
+      // sigue de largo hacia la búsqueda normal de carta (que no va a
+      // encontrar nada, sin dar ninguna pista de que existía un admin).
+      if (input === ADMIN_KEY.toLowerCase() && myIdentity === 'fran') {
+        currentAdminView = true;
+        switchView('admin-view');
+        resetEditorForm();
+        attachAutosaveListeners();
+        await loadGallery();
+        return;
+      }
+
+      currentAdminView = false;
+      setLoadingState(true);
+
+      // Antes de buscar una carta: ¿es un código creado con "/url" o
+      // "/img"? Si es así, no es una carta: o mandamos derecho al link
+      // guardado, o mostramos la foto en un pop-up sobre esta misma
+      // pantalla. Las dos búsquedas van en paralelo para no duplicar el
+      // tiempo de espera de cada código que se escribe.
+      try {
+        const [redirRes, imgRes] = await Promise.allSettled([
+          fetch(`${FIREBASE_DB_URL}/redirects/${input}.json`).then(r => r.ok ? r.json() : null),
+          fetch(`${FIREBASE_DB_URL}/imagenes/${input}.json`).then(r => r.ok ? r.json() : null)
+        ]);
+
+        const redir = redirRes.status === 'fulfilled' ? redirRes.value : null;
+        if (redir && redir.url) {
+          window.location.href = redir.url;
+          return;
+        }
+
+        const img = imgRes.status === 'fulfilled' ? imgRes.value : null;
+        if (img && img.image) {
+          setLoadingState(false);
+          document.getElementById('code-input').value = '';
+          showImagePopup(img);
+          return;
+        }
+      } catch (e) {
+        // Si falla, seguimos de largo y probamos como carta normal.
+      }
+
+      await fetchAndDisplayLetter(input);
+      setLoadingState(false);
+    }
+
+    // ─── REDIRECTS ("/url <código> <url>") ───
+    async function handleAddRedirectCommand(rawCode, rawUrl) {
+      const code = rawCode.trim().toLowerCase();
+      let url = rawUrl.trim();
+      if (!/^https?:\/\//i.test(url)) url = 'https://' + url;
+
+      const msgEl = document.getElementById('error-msg');
+      setLoadingState(true);
+      try {
+        await fetch(`${FIREBASE_DB_URL}/redirects/${code}.json`, {
+          method: 'PUT',
+          body: JSON.stringify({ url, createdAt: Date.now() })
+        });
+        if (msgEl) {
+          msgEl.style.color = '#7adf7a';
+          msgEl.textContent = `Listo: "${code}" ahora redirige a ese link.`;
+          setTimeout(() => { msgEl.textContent = ''; msgEl.style.color = ''; }, 3500);
+        }
+      } catch (e) {
+        if (msgEl) {
+          msgEl.style.color = '';
+          msgEl.textContent = 'No se pudo guardar el redirect (revisá la conexión).';
+        }
+      }
+      setLoadingState(false);
+    }
+
+    // ─── TIP COMPARTIDO (pantalla principal) ───
+    // Se guarda como un único valor en Firebase (no una lista, como los
+    // toques): así el evento "put" que llega por EventSource, tanto al
+    // conectar como en cada cambio posterior, siempre trae el tip vigente
+    // completo y alcanza para pintar el recuadro sin pedir nada aparte.
+    function renderTip(text) {
+      const el = document.getElementById('home-tip');
+      if (!el) return;
+      el.textContent = text || '';
+    }
+
+    async function handleTipCommand(rawInput) {
+      const rest = rawInput.replace(/^\/tip/i, '').trim();
+      setLoadingState(true);
+      try {
+        if (rest.toLowerCase() === 'del') {
+          await fetch(`${FIREBASE_DB_URL}/tip.json`, { method: 'DELETE' });
+          renderTip('');
+        } else if (rest) {
+          await fetch(`${FIREBASE_DB_URL}/tip.json`, {
+            method: 'PUT',
+            body: JSON.stringify({ text: rest, from: myIdentity, ts: Date.now() })
+          });
+          renderTip(rest);
+        }
+      } catch (e) {
+        // Si falla la red, no rompemos el flujo: el próximo /tip lo va a reintentar.
+      }
+      setLoadingState(false);
+    }
+
+    function initTipListener() {
+      try {
+        const es = new EventSource(`${FIREBASE_DB_URL}/tip.json`);
+        es.addEventListener('put', (e) => {
+          try {
+            const payload = JSON.parse(e.data);
+            renderTip(payload.data && payload.data.text ? payload.data.text : '');
+          } catch (err) {}
+        });
+      } catch (e) {}
+    }
+
+    // ─── CAMPOS FIJOS DE LA CARTA (tag/título/cuerpo/firma) ───
+    // Antes todo el texto vivía como cuadros-sticker con Tiptap; ahora son
+    // campos fijos otra vez (como en la versión vieja), así que la carta
+    // fluye y se puede scrollear en vez de cortarse en un lienzo de alto fijo.
+    // Los stickers ahora son solo decoración (imágenes / cuadros de texto libres).
+    //
+    // Compatibilidad: si una carta quedó guardada con el sistema viejo de
+    // cuadros-sticker con role (tag/title/body/sign), estas funciones
+    // recuperan el texto automáticamente desde ahí; no se pierde nada de lo
+    // ya escrito.
+    function extractStickerRoleText(carta, role) {
+      if (Array.isArray(carta.stickers)) {
+        const st = carta.stickers.find(s => s.role === role);
+        if (st && st.content) {
+          const div = document.createElement('div');
+          div.innerHTML = st.content;
+          return div.textContent.trim();
+        }
+      }
+      return '';
+    }
+
+    function extractStickerRoleHtml(carta, role) {
+      if (Array.isArray(carta.stickers)) {
+        const st = carta.stickers.find(s => s.role === role);
+        if (st && st.content) return st.content;
+      }
+      return '';
+    }
+
+    function getCartaTag(carta) { return carta.tag || extractStickerRoleText(carta, 'tag'); }
+    function getCartaTitleRaw(carta) { return carta.title || extractStickerRoleText(carta, 'title'); }
+    function getCartaBody(carta) { return stripInlineColors(carta.body || extractStickerRoleHtml(carta, 'body')); }
+    function getCartaSign(carta) { return carta.sign || extractStickerRoleText(carta, 'sign'); }
+
+    // Stickers decorativos nomás: los que tenían role (tag/title/body/sign)
+    // ya se leyeron arriba como campos fijos, no hace falta mostrarlos también
+    // como cuadros arrastrables.
+    function getDecorativeStickers(carta) {
+      return Array.isArray(carta.stickers) ? carta.stickers.filter(st => !st.role) : [];
+    }
+
+    function getCartaTitleText(carta) {
+      const t = getCartaTitleRaw(carta);
+      return t || '(Sin título)';
+    }
+
+    function getCartaTagText(carta) {
+      return getCartaTag(carta);
+    }
+
+    function formatEditedLabel(ts) {
+      if (!ts) return '';
+      const diffMs = Date.now() - ts;
+      const diffMin = Math.floor(diffMs / 60000);
+      if (diffMin < 1) return 'Editado justo ahora';
+      if (diffMin < 60) return `Editado hace ${diffMin} min`;
+      const diffHr = Math.floor(diffMin / 60);
+      if (diffHr < 24) return `Editado hace ${diffHr} h`;
+      const diffDay = Math.floor(diffHr / 24);
+      if (diffDay === 1) return 'Editado ayer';
+      if (diffDay < 7) return `Editado hace ${diffDay} d`;
+      const d = new Date(ts);
+      return `Editado ${d.toLocaleDateString('es-AR', { day: '2-digit', month: '2-digit', year: '2-digit' })}`;
+    }
+
+    function resetEditorForm() {
+      document.getElementById('adm-code').value = '';
+      document.getElementById('adm-style').value = 'style-a';
+      document.getElementById('adm-date-type').value = 'immediate';
+      document.getElementById('adm-tag').value = 'PARA LEER CUANDO';
+      document.getElementById('adm-title').value = '';
+      document.getElementById('adm-body').innerHTML = '';
+      document.getElementById('adm-sign').value = '— Fran';
+      currentStickers = [];
+      selectedStickerIdx = null;
+      renderStickers(document.getElementById('live-stickers-layer'), currentStickers, true);
+      toggleDateField('immediate');
+      updateLiveCardStyle('style-a');
+      try { localStorage.removeItem('cartas_draft'); } catch(e) {}
+    }
+
+    async function fetchAndDisplayLetter(code) {
+      try {
+        const targetUrl = `${FIREBASE_DB_URL}/cartas/${code}.json`;
+        const res = await fetch(targetUrl);
+        
+        if (!res.ok) {
+          throw new Error(`HTTP Error Status: ${res.status}`);
+        }
+        
+        const carta = await res.json();
+
+        if (!carta) {
+          if (!currentAdminView) {
+            document.getElementById('error-msg').textContent = 'Código incorrecto';
+          } else {
+            alert('No se encontró la carta buscada.');
+          }
+          return;
+        }
+
+        if (!currentAdminView) {
+          if (carta.dateType === 'undefined') {
+            document.getElementById('error-msg').textContent = 'Código incorrecto';
+            return;
+          }
+          if (carta.dateType === 'scheduled' && carta.releaseDate) {
+            const today = new Date().toISOString().split('T')[0]; 
+            if (today < carta.releaseDate) {
+              document.getElementById('error-msg').textContent = 'Código incorrecto';
+              return;
+            }
+          }
+
+          // El contador de "visto" solo tiene sentido si la que abrió la
+          // carta es Pame: si abre Fran (para revisar/probar algo) no debe
+          // sumar, y si por algo no se sabe la identidad tampoco se cuenta.
+          if (myIdentity === 'pame') {
+            const currentViews = carta.views || 0;
+            await fetch(`${FIREBASE_DB_URL}/cartas/${code}/views.json`, {
+              method: 'PUT',
+              body: JSON.stringify(currentViews + 1)
+            });
+            sendTelegramMessage(TELEGRAM_CHAT_FRAN, `💌 Pame abrió la carta "${code}"`);
+          }
+        }
+
+        document.getElementById('letter-card-wrapper').className = carta.style || 'style-a';
+
+        document.getElementById('letter-tag').textContent = getCartaTag(carta);
+        document.getElementById('letter-title').textContent = getCartaTitleRaw(carta);
+
+        const bodyEl = document.getElementById('letter-body');
+        const signEl = document.getElementById('letter-sign');
+        bodyEl.innerHTML = '';
+        signEl.textContent = '';
+
+        const bodyHtml = getCartaBody(carta);
+        if (bodyHtml) {
+          if (bodyHtml.includes('<') && bodyHtml.includes('>')) {
+            bodyEl.innerHTML = bodyHtml;
+          } else {
+            bodyHtml.split(/\n+/).forEach(para => {
+              if (para.trim()) {
+                const p = document.createElement('p');
+                p.textContent = para.trim();
+                bodyEl.appendChild(p);
+              }
+            });
+          }
+        }
+        signEl.textContent = getCartaSign(carta);
+
+        const viewLayer = document.getElementById('view-stickers-layer');
+        renderStickers(viewLayer, getDecorativeStickers(carta), false);
+
+        switchView('letter-view');
+      } catch (err) {
+        console.error("Error capturado en fetchAndDisplayLetter:", err);
+        setLoadingState(false);
+        if (!currentAdminView) {
+          showErrorBlock('Ups, hubo un problema de conexión. ¿Probamos de nuevo?');
+        } else {
+          alert(`Error de red o conexión: ${err.message}.`);
+        }
+      }
+    }
+
+    async function resetViewsCounter(code) {
+      if (!confirm(`¿Querés resetear a 0 las vistas de la carta #${code}?`)) return;
+      
+      try {
+        const res = await fetch(`${FIREBASE_DB_URL}/cartas/${code}/views.json`, {
+          method: 'PUT',
+          body: JSON.stringify(0)
+        });
+        if (res.ok) {
+          await loadGallery();
+        } else {
+          alert('No se pudo actualizar el contador en Firebase.');
+        }
+      } catch (err) {
+        console.error(err);
+        alert('Error de conexión al resetear vistas.');
+      }
+    }
+
+    async function deleteLetter(code) {
+      if (!confirm(`¿Seguro que querés eliminar la carta #${code}? Esta acción no se puede deshacer.`)) return;
+      try {
+        const res = await fetch(`${FIREBASE_DB_URL}/cartas/${code}.json`, { method: 'DELETE' });
+        if (!res.ok) throw new Error('Error al eliminar');
+        await loadGallery();
+      } catch (err) {
+        console.error(err);
+        alert('No se pudo eliminar la carta. Probá de nuevo.');
+      }
+    }
+
+    function getGallerySearchTerm() {
+      const el = document.getElementById('gallery-search');
+      return el ? el.value.trim().toLowerCase() : '';
+    }
+
+    function matchesGallerySearch(code, carta, term) {
+      if (!term) return true;
+      const title = getCartaTitleText(carta).toLowerCase();
+      const tag = getCartaTagText(carta).toLowerCase();
+      return code.toLowerCase().includes(term) || title.includes(term) || tag.includes(term);
+    }
+
+    function applyGalleryFilters() {
+      renderGalleryGrids();
+    }
+
+    function toggleGalleryMenu() {
+      const panel = document.getElementById('gallery-menu-panel');
+      const btn = document.getElementById('gallery-menu-btn');
+      if (!panel || !btn) return;
+      const isOpen = panel.classList.toggle('open');
+      btn.classList.toggle('active', isOpen);
+    }
+
+    async function loadGallery() {
+      const grid = document.getElementById('gallery-grid');
+      if (grid) grid.innerHTML = '<div class="gallery-empty">Buscando...</div>';
+
+      try {
+        const [cartasRes, urlsRes, imgsRes] = await Promise.all([
+          fetch(`${FIREBASE_DB_URL}/cartas.json`),
+          fetch(`${FIREBASE_DB_URL}/redirects.json`),
+          fetch(`${FIREBASE_DB_URL}/imagenes.json`)
+        ]);
+
+        allCartasData = cartasRes.ok ? ((await cartasRes.json()) || {}) : {};
+        allUrlsData = urlsRes.ok ? ((await urlsRes.json()) || {}) : {};
+        allImagesData = imgsRes.ok ? ((await imgsRes.json()) || {}) : {};
+        allCodesCache = Object.keys(allCartasData);
+
+        const dl = document.getElementById('codes-list');
+        if (dl) {
+          dl.innerHTML = '';
+          allCodesCache.forEach(c => {
+            const opt = document.createElement('option');
+            opt.value = c;
+            dl.appendChild(opt);
+          });
+        }
+
+        const imgDl = document.getElementById('img-codes-list');
+        if (imgDl) {
+          imgDl.innerHTML = '';
+          Object.keys(allImagesData).forEach(c => {
+            const opt = document.createElement('option');
+            opt.value = c;
+            imgDl.appendChild(opt);
+          });
+        }
+
+        renderGalleryGrids();
+      } catch (err) {
+        console.error(err);
+      }
+    }
+
+    function matchesSimpleSearch(code, text, term) {
+      if (!term) return true;
+      return code.toLowerCase().includes(term) || (text || '').toLowerCase().includes(term);
+    }
+
+    // ─── CATEGORÍA DE GALERÍA (Cartas / URLs / Imágenes) ───
+    let currentGalleryCategory = 'cartas';
+
+    function setGalleryCategory(category) {
+      currentGalleryCategory = category;
+      document.querySelectorAll('.gallery-category-btn').forEach(b => {
+        b.classList.toggle('active', b.dataset.category === category);
+      });
+      // El filtro por disponibilidad (Inmediata/Programada/Borrador) solo
+      // tiene sentido para Cartas: para URLs e Imágenes no se muestra.
+      const filterTabs = document.getElementById('gallery-filter-tabs');
+      if (filterTabs) filterTabs.style.display = (category === 'cartas') ? 'flex' : 'none';
+      renderGalleryGrids();
+    }
+
+    // ─── FILTRO DE GALERÍA (Todas / Inmediatas / Programadas / Borradores) ───
+    let currentGalleryFilter = 'all';
+
+    function setGalleryFilter(filter) {
+      currentGalleryFilter = filter;
+      document.querySelectorAll('.gallery-filter-btn').forEach(b => {
+        b.classList.toggle('active', b.dataset.filter === filter);
+      });
+      renderGalleryGrids();
+    }
+
+    function renderGalleryGrids() {
+      const grid = document.getElementById('gallery-grid');
+      if (!grid) return;
+
+      exitSelectionMode();
+
+      const term = getGallerySearchTerm();
+      const sortFieldEl = document.getElementById('gallery-sort-field');
+      const sortDirEl = document.getElementById('gallery-sort-dir');
+      const sortField = sortFieldEl ? sortFieldEl.value : 'updatedAt';
+      const sortDir = sortDirEl ? sortDirEl.value : 'desc';
+
+      grid.innerHTML = '';
+
+      if (currentGalleryCategory === 'urls') {
+        let entries = Object.keys(allUrlsData).map(code => [code, allUrlsData[code]]);
+        entries = entries.filter(([code, data]) => matchesSimpleSearch(code, data.url, term));
+        entries.sort((a, b) => {
+          const av = a[1][sortField] || a[1].createdAt || 0;
+          const bv = b[1][sortField] || b[1].createdAt || 0;
+          return sortDir === 'asc' ? av - bv : bv - av;
+        });
+        if (!entries.length) {
+          grid.innerHTML = term ? '<div class="gallery-empty">Sin resultados.</div>' : '<div class="gallery-empty">Todavía no creaste ningún link (escribí "/url código link" en la pantalla principal).</div>';
+          return;
+        }
+        entries.forEach(([code, data]) => grid.appendChild(buildUrlThumb(code, data)));
+        return;
+      }
+
+      if (currentGalleryCategory === 'imagenes') {
+        let entries = Object.keys(allImagesData).map(code => [code, allImagesData[code]]);
+        entries = entries.filter(([code, data]) => matchesSimpleSearch(code, data.caption, term));
+        entries.sort((a, b) => {
+          const av = a[1][sortField] || a[1].createdAt || 0;
+          const bv = b[1][sortField] || b[1].createdAt || 0;
+          return sortDir === 'asc' ? av - bv : bv - av;
+        });
+        if (!entries.length) {
+          grid.innerHTML = term ? '<div class="gallery-empty">Sin resultados.</div>' : '<div class="gallery-empty">Todavía no subiste ninguna foto (escribí "/img" en la pantalla principal).</div>';
+          return;
+        }
+        entries.forEach(([code, data]) => grid.appendChild(buildImageThumb(code, data)));
+        return;
+      }
+
+      let entries = Object.keys(allCartasData).map(code => [code, allCartasData[code]]);
+      entries = entries.filter(([code, carta]) => matchesGallerySearch(code, carta, term));
+      if (currentGalleryFilter !== 'all') {
+        entries = entries.filter(([code, carta]) => (carta.dateType || 'immediate') === currentGalleryFilter);
+      }
+      entries.sort((a, b) => {
+        const av = a[1][sortField] || 0;
+        const bv = b[1][sortField] || 0;
+        return sortDir === 'asc' ? av - bv : bv - av;
+      });
+
+      if (!entries.length) {
+        grid.innerHTML = term ? '<div class="gallery-empty">Sin resultados.</div>' : '<div class="gallery-empty">No hay cartas en esta categoría.</div>';
+        return;
+      }
+
+      entries.forEach(([code, carta]) => {
+        grid.appendChild(buildGalleryThumb(code, carta));
+      });
+    }
+
+    // ─── Miniaturas de la galería para las categorías URLs e Imágenes.
+    // Reutilizan las mismas clases visuales que buildGalleryThumb (cartas)
+    // para que las tres categorías se vean parejas. No entran en el modo
+    // de selección múltiple (eso quedó pensado solo para cartas). ───
+    function buildUrlThumb(code, data) {
+      const thumb = document.createElement('div');
+      thumb.className = 'gallery-card-thumb';
+      thumb.onclick = () => { if (data.url) window.open(data.url, '_blank'); };
+
+      const editedLabel = formatEditedLabel(data.updatedAt || data.createdAt);
+
+      thumb.innerHTML = `
+        <div class="thumb-header-row">
+          <span class="thumb-code">#${code}</span>
+          <span class="thumb-type-icon">🔗</span>
+        </div>
+        <div class="thumb-tag">Redirect</div>
+        <div class="thumb-title" style="font-size:0.85rem; word-break:break-all;">${data.url || ''}</div>
+        <div class="thumb-preview-wrap"><div class="thumb-preview-placeholder">🔗</div></div>
+        <div class="thumb-footer-row"><span class="thumb-edited">${editedLabel}</span></div>
+      `;
+
+      const editBtn = document.createElement('div');
+      editBtn.className = 'thumb-edit-btn';
+      editBtn.innerHTML = '✏️';
+      editBtn.onclick = (e) => {
+        e.stopPropagation();
+        const newUrl = prompt(`Editar link para "${code}":`, data.url || '');
+        if (newUrl === null) return;
+        const trimmed = newUrl.trim();
+        if (!trimmed) return;
+        handleAddRedirectCommand(code, trimmed).then(() => loadGallery());
+      };
+      thumb.appendChild(editBtn);
+
+      const deleteBtn = document.createElement('div');
+      deleteBtn.className = 'thumb-delete-btn';
+      deleteBtn.innerHTML = '🗑️';
+      deleteBtn.title = 'Eliminar link';
+      deleteBtn.onclick = async (e) => {
+        e.stopPropagation();
+        if (!confirm(`¿Eliminar el link #${code}? Esta acción no se puede deshacer.`)) return;
+        try {
+          await fetch(`${FIREBASE_DB_URL}/redirects/${code}.json`, { method: 'DELETE' });
+          await loadGallery();
+        } catch (err) {
+          alert('No se pudo eliminar. Probá de nuevo.');
+        }
+      };
+      thumb.appendChild(deleteBtn);
+
+      return thumb;
+    }
+
+    function buildImageThumb(code, data) {
+      const thumb = document.createElement('div');
+      thumb.className = 'gallery-card-thumb';
+      thumb.onclick = () => { showImagePopup(data); };
+
+      const editedLabel = formatEditedLabel(data.updatedAt || data.createdAt);
+      const previewInner = data.image
+        ? `<img src="${data.image}" class="gallery-thumb-preview" alt="" />`
+        : `<div class="thumb-preview-placeholder">🖼️</div>`;
+
+      thumb.innerHTML = `
+        <div class="thumb-header-row">
+          <span class="thumb-code">#${code}</span>
+          <span class="thumb-type-icon">🖼️</span>
+        </div>
+        <div class="thumb-tag">${data.caption ? 'Con pie de foto' : ''}</div>
+        <div class="thumb-title" style="font-size:0.85rem; font-style:italic;">${data.caption || ''}</div>
+        <div class="thumb-preview-wrap">${previewInner}</div>
+        <div class="thumb-footer-row"><span class="thumb-edited">${editedLabel}</span></div>
+      `;
+
+      const editBtn = document.createElement('div');
+      editBtn.className = 'thumb-edit-btn';
+      editBtn.innerHTML = '✏️';
+      editBtn.onclick = (e) => {
+        e.stopPropagation();
+        openImageEditor(code, data);
+      };
+      thumb.appendChild(editBtn);
+
+      const deleteBtn = document.createElement('div');
+      deleteBtn.className = 'thumb-delete-btn';
+      deleteBtn.innerHTML = '🗑️';
+      deleteBtn.title = 'Eliminar foto';
+      deleteBtn.onclick = async (e) => {
+        e.stopPropagation();
+        if (!confirm(`¿Eliminar la foto #${code}? Esta acción no se puede deshacer.`)) return;
+        try {
+          await fetch(`${FIREBASE_DB_URL}/imagenes/${code}.json`, { method: 'DELETE' });
+          await loadGallery();
+        } catch (err) {
+          alert('No se pudo eliminar. Probá de nuevo.');
+        }
+      };
+      thumb.appendChild(deleteBtn);
+
+      return thumb;
+    }
+
+    // ─── SELECCIÓN EN MASA (mantener pulsado en celular / long-press) ───
+    let selectionMode = false;
+    let selectedCodes = new Set();
+
+    function toggleBulkSelect(code, thumbEl) {
+      if (selectedCodes.has(code)) {
+        selectedCodes.delete(code);
+        thumbEl.classList.remove('selected-for-bulk');
+      } else {
+        selectedCodes.add(code);
+        thumbEl.classList.add('selected-for-bulk');
+      }
+      updateBulkBar();
+      if (selectionMode && selectedCodes.size === 0) exitSelectionMode();
+    }
+
+    function enterSelectionMode(code, thumbEl) {
+      selectionMode = true;
+      const grid = document.getElementById('gallery-grid');
+      if (grid) grid.classList.add('selection-mode');
+      toggleBulkSelect(code, thumbEl);
+    }
+
+    function exitSelectionMode() {
+      selectionMode = false;
+      selectedCodes.clear();
+      const grid = document.getElementById('gallery-grid');
+      if (grid) grid.classList.remove('selection-mode');
+      document.querySelectorAll('.gallery-card-thumb.selected-for-bulk').forEach(t => t.classList.remove('selected-for-bulk'));
+      updateBulkBar();
+    }
+
+    function updateBulkBar() {
+      const bar = document.getElementById('bulk-actions-bar');
+      const label = document.getElementById('bulk-count-label');
+      if (!bar || !label) return;
+      if (selectionMode && selectedCodes.size > 0) {
+        bar.classList.add('visible');
+        label.textContent = `${selectedCodes.size} seleccionada${selectedCodes.size === 1 ? '' : 's'}`;
+      } else {
+        bar.classList.remove('visible');
+      }
+    }
+
+    async function bulkDeleteSelected() {
+      if (!selectedCodes.size) return;
+      const codes = Array.from(selectedCodes);
+      if (!confirm(`¿Eliminar ${codes.length} carta(s) seleccionada(s)? Esta acción no se puede deshacer.`)) return;
+
+      try {
+        await Promise.all(codes.map(code => fetch(`${FIREBASE_DB_URL}/cartas/${code}.json`, { method: 'DELETE' })));
+      } catch (err) {
+        console.error(err);
+        alert('Hubo un error eliminando algunas de las cartas.');
+      }
+
+      exitSelectionMode();
+      await loadGallery();
+    }
+
+    function attachLongPress(thumbEl, code) {
+      let timer = null;
+      let moved = false;
+
+      const start = () => {
+        moved = false;
+        timer = setTimeout(() => {
+          if (moved) return;
+          if (navigator.vibrate) navigator.vibrate(30);
+          if (!selectionMode) enterSelectionMode(code, thumbEl);
+          else toggleBulkSelect(code, thumbEl);
+        }, 500);
+      };
+      const cancelTimer = () => clearTimeout(timer);
+      const markMoved = () => { moved = true; clearTimeout(timer); };
+
+      thumbEl.addEventListener('touchstart', start, { passive: true });
+      thumbEl.addEventListener('touchmove', markMoved, { passive: true });
+      thumbEl.addEventListener('touchend', cancelTimer);
+      thumbEl.addEventListener('touchcancel', cancelTimer);
+      thumbEl.addEventListener('contextmenu', (e) => {
+        e.preventDefault();
+        if (!selectionMode) enterSelectionMode(code, thumbEl);
+        else toggleBulkSelect(code, thumbEl);
+      });
+    }
+
+    function buildGalleryThumb(code, carta) {
+      const thumb = document.createElement('div');
+      thumb.className = 'gallery-card-thumb';
+      if (selectionMode && selectedCodes.has(code)) thumb.classList.add('selected-for-bulk');
+
+      thumb.onclick = () => {
+        if (selectionMode) {
+          toggleBulkSelect(code, thumb);
+          return;
+        }
+        currentAdminView = true;
+        fetchAndDisplayLetter(code);
+      };
+
+      const totalViews = carta.views || 0;
+
+      let icon = '';
+      if (carta.dateType === 'scheduled') icon = '📅';
+      if (carta.dateType === 'undefined') icon = '📝';
+
+      const tagText = getCartaTagText(carta);
+      const titleText = getCartaTitleText(carta);
+      const editedLabel = formatEditedLabel(carta.updatedAt || carta.createdAt);
+
+      const previewInner = carta.cardImage
+        ? `<img src="${carta.cardImage}" class="gallery-thumb-preview" alt="" />`
+        : `<div class="thumb-preview-placeholder">✉️</div>`;
+
+      thumb.innerHTML = `
+        <div class="thumb-header-row">
+          <span class="thumb-code">#${code}</span>
+          <span class="thumb-type-icon">${icon}</span>
+        </div>
+        <div class="thumb-tag">${tagText}</div>
+        <div class="thumb-title">${titleText}</div>
+        <div class="thumb-preview-wrap">${previewInner}</div>
+        <div class="thumb-footer-row">
+          <span class="thumb-edited">${editedLabel}</span>
+        </div>
+      `;
+
+      const viewsSpan = document.createElement('span');
+      if (totalViews > 0) {
+        viewsSpan.className = 'thumb-views-status status-seen';
+        viewsSpan.innerHTML = `✔️ ${totalViews}`;
+      } else {
+        viewsSpan.className = 'thumb-views-status status-unseen';
+        viewsSpan.innerHTML = `✔️ 0`;
+      }
+      
+      viewsSpan.onclick = (e) => {
+        e.stopPropagation();
+        if (selectionMode) return;
+        resetViewsCounter(code);
+      };
+
+      const previewWrap = thumb.querySelector('.thumb-preview-wrap');
+      if (previewWrap) previewWrap.appendChild(viewsSpan);
+
+      const editBtn = document.createElement('div');
+      editBtn.className = 'thumb-edit-btn';
+      editBtn.innerHTML = '✏️';
+      editBtn.onclick = (e) => {
+        e.stopPropagation();
+        if (selectionMode) return;
+        switchView('admin-view');
+        setupEditorForEdit(code, carta);
+      };
+
+      thumb.appendChild(editBtn);
+
+      const deleteBtn = document.createElement('div');
+      deleteBtn.className = 'thumb-delete-btn';
+      deleteBtn.innerHTML = '🗑️';
+      deleteBtn.title = 'Eliminar carta';
+      deleteBtn.onclick = (e) => {
+        e.stopPropagation();
+        if (selectionMode) return;
+        deleteLetter(code);
+      };
+
+      thumb.appendChild(deleteBtn);
+
+      const selectCheck = document.createElement('div');
+      selectCheck.className = 'thumb-select-check';
+      selectCheck.innerHTML = '✓';
+      selectCheck.onclick = (e) => {
+        e.stopPropagation();
+        if (!selectionMode) enterSelectionMode(code, thumb);
+        else toggleBulkSelect(code, thumb);
+      };
+      thumb.appendChild(selectCheck);
+
+      attachLongPress(thumb, code);
+
+      return thumb;
+    }
+
+    function setupEditorForEdit(code, carta) {
+      document.getElementById('adm-code').value = code;
+      document.getElementById('adm-style').value = carta.style || 'style-a';
+      document.getElementById('adm-tag').value = getCartaTag(carta);
+      document.getElementById('adm-title').value = getCartaTitleRaw(carta);
+
+      const bodyHtml = getCartaBody(carta);
+      if (bodyHtml) {
+        document.getElementById('adm-body').innerHTML = bodyHtml.includes('<') ? bodyHtml : bodyHtml.replace(/\n/g, '<br>');
+      } else {
+        document.getElementById('adm-body').innerHTML = '';
+      }
+
+      document.getElementById('adm-sign').value = getCartaSign(carta);
+
+      const dateType = carta.dateType || 'immediate';
+      document.getElementById('adm-date-type').value = dateType;
+      toggleDateField(dateType);
+      
+      if (dateType === 'scheduled') {
+        document.getElementById('adm-date').value = carta.releaseDate || '';
+      }
+
+      // Solo quedan en stickers los elementos decorativos (imágenes / cuadros
+      // de texto libres); el texto de tag/título/cuerpo/firma ya se extrajo
+      // arriba a los campos fijos.
+      currentStickers = getDecorativeStickers(carta);
+      selectedStickerIdx = null;
+      renderStickers(document.getElementById('live-stickers-layer'), currentStickers, true);
+
+      updateLiveCardStyle(carta.style || 'style-a');
+      document.getElementById('live-card-container').scrollIntoView({ behavior: 'smooth' });
+    }
+
+    // Genera una imagen (PNG) plana de la carta tal cual se ve, como una "story" que se pisa cada vez
+    async function renderCardSnapshot() {
+      // Deseleccionamos todo para que no salgan bordes ni controles en la foto
+      selectedStickerIdx = null;
+      document.querySelectorAll('.sticker-wrapper').forEach(w => w.classList.remove('selected'));
+      if (document.activeElement) document.activeElement.blur();
+      await new Promise(r => setTimeout(r, 60));
+
+      const target = document.querySelector('#live-card-container .letter-card');
+      if (!target || typeof html2canvas === 'undefined') return null;
+
+      // Ocultamos el marco guía del área de trabajo (es solo una ayuda visual del editor)
+      const boundaryEl = document.getElementById('workspace-boundary-guide');
+      if (boundaryEl) boundaryEl.style.display = 'none';
+
+      try {
+        const canvas = await html2canvas(target, { backgroundColor: null, scale: 2, useCORS: true });
+        return canvas.toDataURL('image/png');
+      } catch (err) {
+        console.error('No se pudo generar la imagen de la carta:', err);
+        return null;
+      } finally {
+        if (boundaryEl) boundaryEl.style.display = '';
+      }
+    }
+
+    let isPersisting = false;
+
+    // Guarda la carta en Firebase. Si isAutosave=true, siempre queda como "Borrador"
+    // (dateType 'undefined'), sin importar lo que esté elegido en el selector,
+    // para que un cambio no guardado a mano nunca quede publicado por error.
+    async function persistLetter({ isAutosave = false } = {}) {
+      if (isPersisting) return false;
+
+      syncTextStickersContent();
+
+      const code = document.getElementById('adm-code').value.trim().toLowerCase();
+      if (!code) return false;
+
+      const style = document.getElementById('adm-style').value;
+      const releaseDate = document.getElementById('adm-date').value;
+      let dateType = document.getElementById('adm-date-type').value;
+      const tag = document.getElementById('adm-tag').value.trim();
+      const title = document.getElementById('adm-title').value.trim();
+      const body = stripInlineColors(document.getElementById('adm-body').innerHTML);
+      const sign = document.getElementById('adm-sign').value.trim();
+
+      if (isAutosave) {
+        dateType = 'undefined';
+      } else if (dateType === 'scheduled' && !releaseDate) {
+        alert('Falta ingresar la fecha de liberación.');
+        return false;
+      } else if (!title || !body) {
+        alert('Por favor completá al menos el Título y el Cuerpo.');
+        return false;
+      }
+
+      isPersisting = true;
+      try {
+        let existingViews = 0;
+        let existingCreatedAt = null;
+        try {
+          const checkRes = await fetch(`${FIREBASE_DB_URL}/cartas/${code}.json`);
+          const checkData = await checkRes.json();
+          if (checkData !== null) {
+            existingViews = checkData.views || 0;
+            existingCreatedAt = checkData.createdAt || null;
+          }
+        } catch(e) {}
+
+        // El PNG ya no se usa para mostrarle la carta a Pame (ahora ve texto
+        // real), pero se sigue generando para la miniatura de la galería del admin.
+        const cardImage = await renderCardSnapshot();
+        renderStickers(document.getElementById('live-stickers-layer'), currentStickers, true);
+
+        const now = Date.now();
+        const nuevaCarta = {
+          style, dateType, releaseDate, tag, title, body, sign,
+          views: existingViews, stickers: currentStickers, cardImage,
+          createdAt: existingCreatedAt || now, updatedAt: now
+        };
+
+        const res = await fetch(`${FIREBASE_DB_URL}/cartas/${code}.json`, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(nuevaCarta)
+        });
+
+        if (!res.ok) throw new Error('Error al guardar');
+        return true;
+      } catch (err) {
+        if (!isAutosave) alert('Error al intentar guardar en Firebase.');
+        else console.error('Autoguardado en la nube falló:', err);
+        return false;
+      } finally {
+        isPersisting = false;
+      }
+    }
+
+    async function saveLetter() {
+      const codeInput = document.getElementById('adm-code');
+      const code = codeInput.value.trim().toLowerCase();
+      if (!code) {
+        // Todavía no se estableció un código para la carta: abrimos el panel
+        // para que la persona lo cargue, en vez de solo avisar con un alert.
+        openIgPanel('panel-adm-code');
+        setTimeout(() => codeInput.focus(), 60);
+        return;
+      }
+
+      const ok = await persistLetter({ isAutosave: false });
+      if (!ok) return;
+
+      const msg = document.getElementById('admin-success');
+      if (msg) {
+        msg.textContent = `¡Sincronizada carta #${code} con éxito!`;
+        setTimeout(() => { msg.textContent = ''; }, 3000);
+      }
+
+      resetEditorForm();
+      await loadGallery();
+    }
+
+    // Autoguardado silencioso en la nube: si el usuario no tocó "Guardar",
+    // la carta se sigue subiendo pero siempre como Borrador.
+    async function autosaveDraftToCloud() {
+      const code = document.getElementById('adm-code').value.trim().toLowerCase();
+      if (!code) return;
+
+      const ok = await persistLetter({ isAutosave: true });
+      if (ok) {
+        const ind = document.getElementById('autosave-indicator');
+        if (ind) {
+          ind.textContent = 'guardado automáticamente como borrador';
+          ind.classList.add('visible');
+          setTimeout(() => {
+            ind.classList.remove('visible');
+            ind.textContent = 'borrador guardado localmente';
+          }, 2500);
+        }
+        if (currentAdminView) loadGallery();
+      }
+    }
+
+    function switchView(viewId) {
+      document.getElementById('login-view').style.display = (viewId === 'login-view') ? 'block' : 'none';
+      
+      const adminView = document.getElementById('admin-view');
+      if (viewId === 'admin-view') adminView.classList.add('active');
+      else adminView.classList.remove('active');
+
+      const galleryView = document.getElementById('gallery-view');
+      if (viewId === 'gallery-view') galleryView.classList.add('active');
+      else galleryView.classList.remove('active');
+
+      const imageEditorView = document.getElementById('image-editor-view');
+      if (imageEditorView) {
+        if (viewId === 'image-editor-view') imageEditorView.classList.add('active');
+        else imageEditorView.classList.remove('active');
+      }
+
+      const letterView = document.getElementById('letter-view');
+      if (viewId === 'letter-view') letterView.classList.add('active');
+      else letterView.classList.remove('active');
+
+      // El FAB de "dar un toque" no tiene sentido dentro del editor, la
+      // galería ni el editor de fotos.
+      const fab = document.getElementById('touch-fab');
+      const menu = document.getElementById('touch-menu');
+      const hideFab = (viewId === 'admin-view' || viewId === 'gallery-view' || viewId === 'image-editor-view');
+      if (fab) fab.style.display = hideFab ? 'none' : 'flex';
+      if (menu && hideFab) menu.classList.remove('visible');
+
+      window.scrollTo(0, 0);
+    }
+
+    function openGalleryView() {
+      switchView('gallery-view');
+      loadGallery();
+    }
+
+    function closeGalleryView() {
+      switchView('admin-view');
+    }
+
+    function goBackFromLetter() {
+      if (currentAdminView) {
+        switchView('admin-view');
+      } else {
+        switchView('login-view');
+        document.getElementById('code-input').value = '';
+      }
+    }
+
+    function exitAdmin() {
+      switchView('login-view');
+      document.getElementById('code-input').value = '';
+    }
+
+    document.getElementById('code-input').addEventListener('keydown', e => {
+      if (e.key === 'Enter') unlock();
+    });
+
+    // ─── ESC: volver atrás desde cualquier pantalla ───
+    document.addEventListener('keydown', (e) => {
+      if (e.key !== 'Escape') return;
+
+      // Si hay una selección en masa activa, primero la cancelamos
+      if (selectionMode) {
+        exitSelectionMode();
+        return;
+      }
+
+      // Si hay un sticker seleccionado en el editor, lo deseleccionamos primero
+      if (currentAdminView && selectedStickerIdx !== null) {
+        syncTextStickersContent();
+        selectedStickerIdx = null;
+        document.querySelectorAll('.sticker-wrapper').forEach(w => w.classList.remove('selected'));
+        refreshPropsPanel();
+        return;
+      }
+
+      const letterView = document.getElementById('letter-view');
+      const adminView = document.getElementById('admin-view');
+
+      if (letterView && letterView.classList.contains('active')) {
+        goBackFromLetter();
+      } else if (adminView && adminView.classList.contains('active')) {
+        exitAdmin();
+      }
+    });
+
+    // ══════════════════════════════════════
+    //   SISTEMA DE MANIPULACIÓN DE STICKERS
+    // ══════════════════════════════════════
+
+    function addStickerToData(base64Src) {
+      const newSticker = {
+        type: 'image', src: base64Src, left: 35, top: 25, width: 30, rotation: 0
+      };
+      currentStickers.push(newSticker);
+      selectedStickerIdx = currentStickers.length - 1;
+      renderStickers(document.getElementById('live-stickers-layer'), currentStickers, true);
+      scheduleAutosave();
+    }
+
+    function addTextSticker() {
+      const newText = {
+        type: 'text', content: '', placeholder: 'Escribí algo...', left: 35, top: 25, width: 40, rotation: 0, fontSize: 16
+      };
+      currentStickers.push(newText);
+      const idx = currentStickers.length - 1;
+      selectedStickerIdx = idx;
+      renderStickers(document.getElementById('live-stickers-layer'), currentStickers, true);
+      scheduleAutosave();
+      focusStickerTextEditor(idx, true);
+    }
+
+    // Enfoca (y abre el teclado en mobile) el editor de un cuadro de texto recién
+    // creado, para que se pueda escribir de inmediato sin tener que tocarlo antes.
+    function focusStickerTextEditor(idx, isCanvas) {
+      requestAnimationFrame(() => {
+        const editorsMap = isCanvas ? canvasTiptapEditors : cartaTiptapEditors;
+        const ed = editorsMap[idx];
+        if (ed && !ed.isDestroyed) { ed.commands.focus('end'); return; }
+        const node = document.getElementById(isCanvas ? `canvas-sticker-text-${idx}` : `sticker-text-${idx}`);
+        if (node) {
+          if (node.isContentEditable) { node.focus(); }
+          else {
+            const inner = node.querySelector('[contenteditable="true"]');
+            if (inner) inner.focus();
+          }
+        }
+      });
+    }
+
+    function uploadStickerFile(input) {
+      if (input.files && input.files[0]) {
+        const reader = new FileReader();
+        reader.onload = function(e) {
+          addStickerToData(e.target.result);
+        };
+        reader.readAsDataURL(input.files[0]);
+        input.value = '';
+      }
+    }
+
+    window.addEventListener('paste', (e) => {
+      if (!currentAdminView) return;
+      if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA' || e.target.isContentEditable) return;
+      
+      const items = (e.clipboardData || e.originalEvent.clipboardData).items;
+      for (let i = 0; i < items.length; i++) {
+        if (items[i].type.indexOf('image') !== -1) {
+          const blob = items[i].getAsFile();
+          const reader = new FileReader();
+          reader.onload = function(evt) {
+            addStickerToData(evt.target.result);
+          };
+          reader.readAsDataURL(blob);
+          break;
+        }
+      }
+    });
+
+    // Clic afuera para limpiar la selección de stickers
+    document.addEventListener('click', (e) => {
+      if (!currentAdminView) return;
+      if (!e.target.closest('.sticker-wrapper') && !e.target.closest('.ig-rail') && !e.target.closest('.ig-rail-left') && !e.target.closest('.ig-rail-bottom-right') && !e.target.closest('.ig-panel') && !e.target.closest('#sticker-props-bar')) {
+        syncTextStickersContent();
+        selectedStickerIdx = null;
+        document.querySelectorAll('.sticker-wrapper').forEach(w => w.classList.remove('selected'));
+        refreshPropsPanel();
+        // Tocar lejos del texto/sticker vuelve al lienzo: cerramos cualquier
+        // herramienta (texto, color, fuente, etc.) que haya quedado abierta.
+        const shell = document.getElementById('letter-stage-shell');
+        if (shell) shell.querySelectorAll('.ig-panel.open').forEach((p) => closeIgPanel(p.id));
+      }
+    });
+
+    // ─── PANEL FIJO DE PROPIEDADES (capas + opacidad) ───
+    function refreshPropsPanel() {
+      const bar = document.getElementById('sticker-props-bar');
+      if (!bar) return;
+
+      if (selectedStickerIdx === null || !currentStickers[selectedStickerIdx]) {
+        bar.classList.remove('visible');
+        updateTextToolButton('admin');
+        return;
+      }
+
+      const idx = selectedStickerIdx;
+      const st = currentStickers[idx];
+      bar.classList.add('visible');
+      updateTextToolButton('admin');
+
+      const opacitySlider = document.getElementById('props-opacity');
+      opacitySlider.value = (st.opacity === undefined || st.opacity === null) ? 1 : st.opacity;
+      opacitySlider.oninput = (e) => {
+        st.opacity = parseFloat(e.target.value);
+        const wrapper = document.querySelector(`#live-stickers-layer .sticker-wrapper[data-idx="${idx}"]`);
+        if (wrapper) wrapper.style.opacity = st.opacity;
+      };
+      opacitySlider.onchange = () => scheduleAutosave();
+
+      const downBtn = document.getElementById('props-layer-down');
+      const upBtn = document.getElementById('props-layer-up');
+
+      downBtn.onclick = () => {
+        if (idx > 0) {
+          [currentStickers[idx - 1], currentStickers[idx]] = [currentStickers[idx], currentStickers[idx - 1]];
+          selectedStickerIdx = idx - 1;
+          syncTextStickersContent();
+          renderStickers(document.getElementById('live-stickers-layer'), currentStickers, true);
+          scheduleAutosave();
+        }
+      };
+
+      upBtn.onclick = () => {
+        if (idx < currentStickers.length - 1) {
+          [currentStickers[idx + 1], currentStickers[idx]] = [currentStickers[idx], currentStickers[idx + 1]];
+          selectedStickerIdx = idx + 1;
+          syncTextStickersContent();
+          renderStickers(document.getElementById('live-stickers-layer'), currentStickers, true);
+          scheduleAutosave();
+        }
+      };
+    }
+
+    // Monta un editor Tiptap dentro de textDiv, para un sticker de texto de
+    // la carta (idx = índice en currentStickers). Formato simple e inline
+    // nada más (negrita/cursiva/subrayado/color/fuente): sin títulos, listas
+    // ni bloques, para que siga comportándose como el cuadro de texto de
+    // siempre y no rompa el resto del sistema de stickers.
+    function mountCartaTextEditor(textDiv, st, idx) {
+      const { Editor, StarterKit, Underline, TextStyle, Color, FontFamily, Placeholder } = window.__TiptapLib;
+
+      const editor = new Editor({
+        element: textDiv,
+        content: st.content || '',
+        editorProps: {
+          attributes: { class: 'tiptap-carta-content' },
+          handlePaste: (view, event) => tiptapPastePlainText(view, event)
+        },
+        extensions: [
+          StarterKit.configure({
+            heading: false, blockquote: false, bulletList: false, orderedList: false,
+            listItem: false, codeBlock: false, horizontalRule: false, code: false, strike: false
+          }),
+          Underline,
+          TextStyle,
+          Color,
+          FontFamily,
+          Placeholder.configure({ placeholder: st.placeholder || '' })
+        ],
+        onUpdate: ({ editor }) => {
+          st.content = editor.getHTML();
+          scheduleAutosave();
+        },
+        onFocus: ({ editor }) => {
+          cartaActiveEditor = editor;
+        }
+      });
+
+      cartaTiptapEditors[idx] = editor;
+    }
+
+    // El marco guía (workspace-boundary-guide) tiene que cubrir toda la
+    // carta, no solo lo que entra en la pantalla. Como .letter-card tiene
+    // overflow-y:auto con altura fija (el tamaño del visor), medimos el
+    // punto más bajo real entre todos los stickers + el propio alto del
+    // contenedor, y se lo aplicamos como "height" en píxeles al marco.
+    function refreshWorkspaceBoundary() {
+      const card = document.querySelector('#live-card-container .letter-card');
+      const layer = document.getElementById('live-stickers-layer');
+      const guide = document.getElementById('workspace-boundary-guide');
+      if (!card || !guide) return;
+      let maxBottom = card.clientHeight || 0;
+      if (layer) {
+        maxBottom = Math.max(maxBottom, layer.scrollHeight || 0);
+        Array.from(layer.children).forEach((child) => {
+          const bottom = (child.offsetTop || 0) + (child.offsetHeight || 0);
+          if (bottom > maxBottom) maxBottom = bottom;
+        });
+      }
+      guide.style.height = maxBottom + 'px';
+    }
+    window.addEventListener('resize', () => { if (currentAdminView) refreshWorkspaceBoundary(); });
+
+    function renderStickers(layerContainer, stickersArray, isEditable) {
+      if (!layerContainer) return;
+
+      // Si esta capa es la editable (la carta en el panel de admin), destruimos
+      // las instancias de Tiptap anteriores antes de tirar el DOM abajo, para
+      // no dejar editores vivos sin contenedor.
+      if (isEditable) {
+        Object.values(cartaTiptapEditors).forEach((ed) => { try { if (!ed.isDestroyed) ed.destroy(); } catch (e) {} });
+        cartaTiptapEditors = {};
+        cartaActiveEditor = null;
+      }
+
+      layerContainer.innerHTML = '';
+
+      stickersArray.forEach((st, idx) => {
+        const wrapper = document.createElement('div');
+        wrapper.className = 'sticker-wrapper';
+        wrapper.dataset.idx = idx;
+        if (isEditable && selectedStickerIdx === idx) {
+          wrapper.classList.add('selected');
+        }
+        wrapper.style.left = st.left + '%';
+        wrapper.style.top = st.top + '%';
+        wrapper.style.width = st.width + '%';
+        wrapper.style.transform = `rotate(${st.rotation || 0}deg)`;
+        wrapper.style.opacity = (st.opacity === undefined || st.opacity === null) ? 1 : st.opacity;
+
+        if (st.type === 'text') {
+           const textDiv = document.createElement('div');
+           textDiv.className = 'sticker-text-content';
+           textDiv.id = `sticker-text-${idx}`;
+           // Mismo estilo que en el lienzo: fuente, color, alineación y fondo
+           // los define la herramienta de texto a pantalla completa (Aa).
+           applyCanvasTextStyle(textDiv, st);
+           if (st.role === 'tag') { textDiv.style.letterSpacing = '0.25em'; textDiv.style.textTransform = 'uppercase'; }
+           if (st.role === 'title') { textDiv.style.fontFamily = "'Lora', serif"; textDiv.style.fontStyle = 'italic'; }
+           if (st.role === 'sign') { textDiv.style.fontFamily = "'Lora', serif"; textDiv.style.fontStyle = 'italic'; textDiv.style.textAlign = 'right'; }
+
+           wrapper.appendChild(textDiv);
+
+           if (isEditable && window.__TiptapLib) {
+             mountCartaTextEditor(textDiv, st, idx);
+           } else if (isEditable) {
+             // Tiptap no llegó a cargar (sin conexión, CDN caído, etc.): editor clásico de siempre.
+             textDiv.contentEditable = "true";
+             textDiv.innerHTML = st.content || '';
+             if (st.placeholder) textDiv.setAttribute('placeholder', st.placeholder);
+             textDiv.addEventListener('input', () => {
+               st.content = textDiv.innerHTML;
+               scheduleAutosave();
+             });
+           } else {
+             // Vista de lectura (el destinatario): solo mostramos el HTML, sin editor.
+             textDiv.contentEditable = "false";
+             textDiv.innerHTML = st.content || '';
+           }
+        } else {
+           const img = document.createElement('img');
+           img.className = 'sticker-img';
+           img.src = st.src;
+           wrapper.appendChild(img);
+        }
+
+        if (isEditable) {
+          const moveBtn = document.createElement('div');
+          moveBtn.className = 'sticker-control control-move';
+          moveBtn.innerHTML = '✥';
+          wrapper.appendChild(moveBtn);
+
+          const delBtn = document.createElement('div');
+          delBtn.className = 'sticker-control control-delete';
+          delBtn.innerHTML = '✕';
+          delBtn.onclick = (e) => {
+            e.stopPropagation();
+            stickersArray.splice(idx, 1);
+            if (selectedStickerIdx === idx) selectedStickerIdx = null;
+            else if (selectedStickerIdx > idx) selectedStickerIdx--;
+            renderStickers(layerContainer, stickersArray, isEditable);
+            scheduleAutosave();
+          };
+          wrapper.appendChild(delBtn);
+
+          const cloneBtn = document.createElement('div');
+          cloneBtn.className = 'sticker-control control-clone';
+          cloneBtn.innerHTML = '＋';
+          cloneBtn.onclick = (e) => {
+            e.stopPropagation();
+            syncTextStickersContent();
+            const cloned = JSON.parse(JSON.stringify(st));
+            cloned.left = Math.min(st.left + 5, 85);
+            cloned.top = Math.min(st.top + 5, 85);
+            if (cloned.role) delete cloned.role; // el clon es un cuadro libre, no reemplaza al original
+            stickersArray.push(cloned);
+            selectedStickerIdx = stickersArray.length - 1;
+            renderStickers(layerContainer, stickersArray, isEditable);
+            scheduleAutosave();
+          };
+          wrapper.appendChild(cloneBtn);
+
+          if (st.type !== 'text') {
+            const copyBtn = document.createElement('div');
+            copyBtn.className = 'sticker-control control-copy';
+            copyBtn.innerHTML = '📋';
+            copyBtn.title = 'Copiar al portapapeles';
+            copyBtn.onclick = async (e) => {
+              e.stopPropagation();
+              try {
+                const response = await fetch(st.src);
+                const blob = await response.blob();
+                await navigator.clipboard.write([
+                  new ClipboardItem({ [blob.type]: blob })
+                ]);
+                alert("¡Imagen copiada al portapapeles!");
+              } catch (err) {
+                alert("No se pudo copiar la imagen al portapapeles.");
+              }
+            };
+            wrapper.appendChild(copyBtn);
+          }
+
+          const rotBtn = document.createElement('div');
+          rotBtn.className = 'sticker-control control-rotate';
+          rotBtn.innerHTML = '↻';
+          wrapper.appendChild(rotBtn);
+
+          const resBtn = document.createElement('div');
+          resBtn.className = 'sticker-control control-resize';
+          resBtn.innerHTML = '⤡';
+          wrapper.appendChild(resBtn);
+
+          const sideLeftBtn = document.createElement('div');
+          sideLeftBtn.className = 'sticker-control control-resize-side control-resize-side-left';
+          sideLeftBtn.innerHTML = '⋮';
+          sideLeftBtn.title = 'Ajustar ancho del recuadro';
+          wrapper.appendChild(sideLeftBtn);
+
+          const sideRightBtn = document.createElement('div');
+          sideRightBtn.className = 'sticker-control control-resize-side control-resize-side-right';
+          sideRightBtn.innerHTML = '⋮';
+          sideRightBtn.title = 'Ajustar ancho del recuadro';
+          wrapper.appendChild(sideRightBtn);
+
+          setupStickerDragAndTransform(wrapper, st, layerContainer, rotBtn, resBtn, idx, sideLeftBtn, sideRightBtn);
+        }
+
+        layerContainer.appendChild(wrapper);
+      });
+
+      if (isEditable) refreshPropsPanel();
+      if (isEditable) requestAnimationFrame(refreshWorkspaceBoundary);
+    }
+
+    function setupStickerDragAndTransform(wrapper, stickerData, layerContainer, rotBtn, resBtn, idx, sideLeftBtn, sideRightBtn) {
+      wrapper.addEventListener('dragstart', (e) => e.preventDefault());
+
+      // 1. MOVER (DRAG)
+      wrapper.addEventListener('mousedown', startMove);
+      wrapper.addEventListener('touchstart', startMove, { passive: false });
+
+      function startMove(e) {
+        if (moveToolActiveAdmin) return; // herramienta "mover página": no tocar elementos
+        if (e.touches && e.touches.length > 1) return; // dos dedos: lo maneja el pellizco
+
+        const isMoveControl = e.target.closest('.control-move');
+        const isOtherControl = (e.target.closest('.sticker-control') || e.target.closest('.sticker-props-panel')) && !isMoveControl;
+        const isText = (stickerData.type === 'text');
+        const textEl = isText ? wrapper.querySelector('.sticker-text-content') : null;
+        const isActivelyEditing = isText && textEl && (document.activeElement === textEl || textEl.contains(document.activeElement));
+
+        if (isOtherControl) return;
+
+        // Si el cuadro de texto ya tiene el foco (se está escribiendo), no
+        // interceptamos: dejamos que el navegador mueva el cursor, marque
+        // selección, etc., con su comportamiento normal.
+        if (isActivelyEditing) return;
+
+        e.preventDefault();
+
+        const clientX = e.touches ? e.touches[0].clientX : e.clientX;
+        const clientY = e.touches ? e.touches[0].clientY : e.clientY;
+        const startX = clientX;
+        const startY = clientY;
+        const DRAG_THRESHOLD = 6; // px: por debajo de esto es un toque/clic, no un arrastre
+
+        let dragging = false;
+        let containerRect = null;
+        let initialLeftPx = 0;
+        let initialTopPx = 0;
+        const deleteZone = document.getElementById('adm-delete-zone');
+
+        function beginDrag() {
+          dragging = true;
+          syncTextStickersContent();
+
+          selectedStickerIdx = idx;
+          document.querySelectorAll('.sticker-wrapper').forEach(w => w.classList.remove('selected'));
+          wrapper.classList.add('selected');
+          wrapper.classList.add('active');
+          refreshPropsPanel();
+
+          containerRect = layerContainer.getBoundingClientRect();
+          initialLeftPx = (stickerData.left / 100) * containerRect.width;
+          initialTopPx = (stickerData.top / 100) * containerRect.height;
+        }
+
+        function doMove(moveEvent) {
+          const mX = moveEvent.touches ? moveEvent.touches[0].clientX : moveEvent.clientX;
+          const mY = moveEvent.touches ? moveEvent.touches[0].clientY : moveEvent.clientY;
+
+          if (!dragging) {
+            if (Math.hypot(mX - startX, mY - startY) < DRAG_THRESHOLD) return;
+            beginDrag();
+          }
+
+          const deltaX = mX - startX;
+          const deltaY = mY - startY;
+
+          stickerData.left = ((initialLeftPx + deltaX) / containerRect.width) * 100;
+          stickerData.top = ((initialTopPx + deltaY) / containerRect.height) * 100;
+
+          wrapper.style.left = stickerData.left + '%';
+          wrapper.style.top = stickerData.top + '%';
+
+          if (deleteZone) {
+            deleteZone.classList.add('visible');
+            const zoneRect = deleteZone.getBoundingClientRect();
+            const nearDelete = Math.hypot(mX - (zoneRect.left + zoneRect.width / 2), mY - (zoneRect.top + zoneRect.height / 2)) < 55;
+            deleteZone.classList.toggle('armed', nearDelete);
+            wrapper.style.opacity = nearDelete ? '0.35' : ((stickerData.opacity === undefined || stickerData.opacity === null) ? 1 : stickerData.opacity);
+          }
+        }
+
+        function stopMove(upEvent) {
+          window.removeEventListener('mousemove', doMove);
+          window.removeEventListener('mouseup', stopMove);
+          window.removeEventListener('touchmove', doMove);
+          window.removeEventListener('touchend', stopMove);
+
+          if (dragging) {
+            wrapper.classList.remove('active');
+            if (deleteZone && deleteZone.classList.contains('armed')) {
+              deleteZone.classList.remove('visible', 'armed');
+              currentStickers.splice(idx, 1);
+              if (selectedStickerIdx === idx) selectedStickerIdx = null;
+              else if (selectedStickerIdx > idx) selectedStickerIdx--;
+              renderStickers(layerContainer, currentStickers, true);
+              scheduleAutosave();
+              return;
+            }
+            if (deleteZone) deleteZone.classList.remove('visible', 'armed');
+            scheduleAutosave();
+            refreshWorkspaceBoundary();
+            return;
+          }
+
+          // No hubo arrastre: fue un toque/clic simple. Seleccionamos el
+          // cuadro y, si es de texto, lo abrimos para escribir con el
+          // cursor puesto justo donde tocó la persona.
+          selectedStickerIdx = idx;
+          document.querySelectorAll('.sticker-wrapper').forEach(w => w.classList.remove('selected'));
+          wrapper.classList.add('selected');
+          refreshPropsPanel();
+
+          if (isText && textEl) {
+            focusTextAtPoint(textEl, startX, startY);
+          }
+        }
+
+        window.addEventListener('mousemove', doMove);
+        window.addEventListener('mouseup', stopMove);
+        window.addEventListener('touchmove', doMove, { passive: false });
+        window.addEventListener('touchend', stopMove);
+      }
+
+      // 1b. PELLIZCAR CON DOS DEDOS: agranda/achica y rota a la vez
+      wrapper.addEventListener('touchstart', startPinch, { passive: false });
+
+      function startPinch(e) {
+        if (moveToolActiveAdmin) return;
+        if (!e.touches || e.touches.length !== 2) return;
+        e.preventDefault();
+        e.stopPropagation();
+
+        selectedStickerIdx = idx;
+        document.querySelectorAll('.sticker-wrapper').forEach(w => w.classList.remove('selected'));
+        wrapper.classList.add('selected');
+        refreshPropsPanel();
+
+        const t0 = e.touches[0], t1 = e.touches[1];
+        const startDist = Math.hypot(t1.clientX - t0.clientX, t1.clientY - t0.clientY);
+        const startAngle = Math.atan2(t1.clientY - t0.clientY, t1.clientX - t0.clientX) * 180 / Math.PI;
+        const initialWidthPercent = stickerData.width;
+        const initialFontSize = stickerData.fontSize || 16;
+        const initialRotation = stickerData.rotation || 0;
+
+        function doPinch(moveEvt) {
+          if (!moveEvt.touches || moveEvt.touches.length < 2) return;
+          moveEvt.preventDefault();
+          const a = moveEvt.touches[0], b = moveEvt.touches[1];
+          const dist = Math.hypot(b.clientX - a.clientX, b.clientY - a.clientY);
+          const angle = Math.atan2(b.clientY - a.clientY, b.clientX - a.clientX) * 180 / Math.PI;
+
+          let newWidthPercent = initialWidthPercent * (dist / startDist);
+          const maxWidthPercent = stickerData.type === 'text' ? 2000 : 100;
+          if (newWidthPercent < 5) newWidthPercent = 5;
+          if (newWidthPercent > maxWidthPercent) newWidthPercent = maxWidthPercent;
+          stickerData.width = newWidthPercent;
+          wrapper.style.width = stickerData.width + '%';
+
+          if (stickerData.type === 'text') {
+            let newFontSize = initialFontSize * (newWidthPercent / initialWidthPercent);
+            if (newFontSize < 6) newFontSize = 6;
+            stickerData.fontSize = newFontSize;
+            const textEl = wrapper.querySelector('.sticker-text-content');
+            if (textEl) textEl.style.fontSize = newFontSize + 'px';
+            const slider = document.getElementById('adm-font-size');
+            if (slider && selectedStickerIdx === idx) { slider.value = newFontSize; const lbl = document.getElementById('adm-font-size-value'); if (lbl) lbl.textContent = Math.round(newFontSize) + 'px'; }
+          }
+
+          stickerData.rotation = initialRotation + (angle - startAngle);
+          wrapper.style.transform = `rotate(${stickerData.rotation}deg)`;
+        }
+
+        function stopPinch() {
+          window.removeEventListener('touchmove', doPinch);
+          window.removeEventListener('touchend', stopPinch);
+          window.removeEventListener('touchcancel', stopPinch);
+          scheduleAutosave();
+          refreshWorkspaceBoundary();
+        }
+
+        window.addEventListener('touchmove', doPinch, { passive: false });
+        window.addEventListener('touchend', stopPinch);
+        window.addEventListener('touchcancel', stopPinch);
+      }
+
+      // 2. REDIMENSIONAR
+      resBtn.addEventListener('mousedown', startResize);
+      resBtn.addEventListener('touchstart', startResize, { passive: false });
+
+      function startResize(e) {
+        e.stopPropagation();
+        e.preventDefault();
+
+        const containerRect = layerContainer.getBoundingClientRect();
+        const wrapperRect = wrapper.getBoundingClientRect();
+        
+        const centerX = wrapperRect.left + wrapperRect.width / 2;
+        const centerY = wrapperRect.top + wrapperRect.height / 2;
+
+        const startClientX = e.touches ? e.touches[0].clientX : e.clientX;
+        const startClientY = e.touches ? e.touches[0].clientY : e.clientY;
+        const startRadius = Math.hypot(startClientX - centerX, startClientY - centerY);
+        const initialWidthPercent = stickerData.width;
+        const initialFontSize = stickerData.fontSize || 16;
+
+        function doResize(moveEvent) {
+          const mX = moveEvent.touches ? moveEvent.touches[0].clientX : moveEvent.clientX;
+          const mY = moveEvent.touches ? moveEvent.touches[0].clientY : moveEvent.clientY;
+          
+          const currentRadius = Math.hypot(mX - centerX, mY - centerY);
+          const ratio = currentRadius / startRadius;
+          
+          let newWidthPercent = initialWidthPercent * ratio;
+          const maxWidthPercent = stickerData.type === 'text' ? 2000 : 100;
+          if (newWidthPercent < 5) newWidthPercent = 5;
+          if (newWidthPercent > maxWidthPercent) newWidthPercent = maxWidthPercent;
+
+          stickerData.width = newWidthPercent;
+          wrapper.style.width = stickerData.width + '%';
+
+          if (stickerData.type === 'text') {
+            // El texto escala con el cuadro, como si fuera una imagen vectorial (sin control de tamaño aparte)
+            let newFontSize = initialFontSize * (newWidthPercent / initialWidthPercent);
+            if (newFontSize < 6) newFontSize = 6;
+            stickerData.fontSize = newFontSize;
+            const textEl = wrapper.querySelector('.sticker-text-content');
+            if (textEl) textEl.style.fontSize = newFontSize + 'px';
+          }
+        }
+
+        function stopResize() {
+          window.removeEventListener('mousemove', doResize);
+          window.removeEventListener('mouseup', stopResize);
+          window.removeEventListener('touchmove', doResize);
+          window.removeEventListener('touchend', stopResize);
+          scheduleAutosave();
+          refreshWorkspaceBoundary();
+        }
+
+        window.addEventListener('mousemove', doResize);
+        window.addEventListener('mouseup', stopResize);
+        window.addEventListener('touchmove', doResize, { passive: false });
+        window.addEventListener('touchend', stopResize);
+      }
+
+      // 2b. REDIMENSIONAR ANCHO DESDE LOS LADOS: cambia el ancho del recuadro
+      // (y, si es texto, cuántas palabras entran por línea) sin afectar el
+      // tamaño de letra ni la altura de una imagen.
+      if (sideLeftBtn) {
+        sideLeftBtn.addEventListener('mousedown', (e) => startResizeSide(e, 'left'));
+        sideLeftBtn.addEventListener('touchstart', (e) => startResizeSide(e, 'left'), { passive: false });
+      }
+      if (sideRightBtn) {
+        sideRightBtn.addEventListener('mousedown', (e) => startResizeSide(e, 'right'));
+        sideRightBtn.addEventListener('touchstart', (e) => startResizeSide(e, 'right'), { passive: false });
+      }
+
+      function startResizeSide(e, side) {
+        e.stopPropagation();
+        e.preventDefault();
+
+        const containerRect = layerContainer.getBoundingClientRect();
+        const startClientX = e.touches ? e.touches[0].clientX : e.clientX;
+        const initialWidthPercent = stickerData.width;
+        const initialLeftPercent = stickerData.left;
+
+        function doResizeSide(moveEvent) {
+          const mX = moveEvent.touches ? moveEvent.touches[0].clientX : moveEvent.clientX;
+          const deltaPercent = ((mX - startClientX) / containerRect.width) * 100;
+
+          let newWidth, newLeft;
+          if (side === 'right') {
+            newWidth = initialWidthPercent + deltaPercent;
+            newLeft = initialLeftPercent;
+          } else {
+            newWidth = initialWidthPercent - deltaPercent;
+            newLeft = initialLeftPercent + deltaPercent;
+          }
+
+          if (newWidth < 12) { newWidth = 12; }
+          if (newWidth > 400) { newWidth = 400; }
+
+          stickerData.width = newWidth;
+          stickerData.left = newLeft;
+          wrapper.style.width = newWidth + '%';
+          wrapper.style.left = newLeft + '%';
+        }
+
+        function stopResizeSide() {
+          window.removeEventListener('mousemove', doResizeSide);
+          window.removeEventListener('mouseup', stopResizeSide);
+          window.removeEventListener('touchmove', doResizeSide);
+          window.removeEventListener('touchend', stopResizeSide);
+          scheduleAutosave();
+          refreshWorkspaceBoundary();
+        }
+
+        window.addEventListener('mousemove', doResizeSide);
+        window.addEventListener('mouseup', stopResizeSide);
+        window.addEventListener('touchmove', doResizeSide, { passive: false });
+        window.addEventListener('touchend', stopResizeSide);
+      }
+
+      // 3. ROTAR
+      rotBtn.addEventListener('mousedown', startRotate);
+      rotBtn.addEventListener('touchstart', startRotate, { passive: false });
+
+      function startRotate(e) {
+        e.stopPropagation();
+        e.preventDefault();
+
+        const wrapperRect = wrapper.getBoundingClientRect();
+        const centerX = wrapperRect.left + wrapperRect.width / 2;
+        const centerY = wrapperRect.top + wrapperRect.height / 2;
+
+        function doRotate(moveEvent) {
+          const mX = moveEvent.touches ? moveEvent.touches[0].clientX : moveEvent.clientX;
+          const mY = moveEvent.touches ? moveEvent.touches[0].clientY : moveEvent.clientY;
+
+          const angleRad = Math.atan2(mY - centerY, mX - centerX);
+          let angleDeg = (angleRad * 180) / Math.PI;
+          
+          angleDeg = (angleDeg + 90) % 360;
+
+          stickerData.rotation = angleDeg;
+          wrapper.style.transform = `rotate(${stickerData.rotation}deg)`;
+        }
+
+        function stopRotate() {
+          window.removeEventListener('mousemove', doRotate);
+          window.removeEventListener('mouseup', stopRotate);
+          window.removeEventListener('touchmove', doRotate);
+          window.removeEventListener('touchend', stopRotate);
+          scheduleAutosave();
+        }
+
+        window.addEventListener('mousemove', doRotate);
+        window.addEventListener('mouseup', stopRotate);
+        window.addEventListener('touchmove', doRotate, { passive: false });
+        window.addEventListener('touchend', stopRotate);
+      }
+    }
+
+    // ════════════════════════════════════════════════════════════
+    // ─── IDENTIDAD: ¿sos Fran o Pame? (solo se pregunta una vez) ───
+    // ════════════════════════════════════════════════════════════
+    let myIdentity = null;
+
+    function initIdentity() {
+      myIdentity = localStorage.getItem('fc_identity');
+      if (!myIdentity) {
+        loadIdentityAvatars();
+        document.getElementById('identity-overlay').classList.add('visible');
+      } else {
+        loadMyProfile();
+      }
+    }
+
+    // Trae las fotos de perfil de Fran y Pame (local primero, después la nube)
+    // para mostrarlas como avatares tocables en el selector inicial de usuario.
+    function setIdentityAvatarImg(who, src) {
+      const img = document.getElementById(`identity-img-${who}`);
+      const fb = document.getElementById(`identity-fallback-${who}`);
+      if (img) { img.src = src; img.style.display = 'block'; }
+      if (fb) fb.style.display = 'none';
+    }
+
+    function loadIdentityAvatars() {
+      ['fran', 'pame'].forEach((who) => {
+        try {
+          const cached = localStorage.getItem(`fc_avatar_${who}`);
+          if (cached) setIdentityAvatarImg(who, cached);
+        } catch (e) {}
+      });
+      ['fran', 'pame'].forEach(async (who) => {
+        try {
+          const res = await fetch(`${FIREBASE_DB_URL}/perfiles/${who}.json`);
+          const data = await res.json();
+          if (data && data.img) {
+            setIdentityAvatarImg(who, data.img);
+            try { localStorage.setItem(`fc_avatar_${who}`, data.img); } catch (e) {}
+          }
+        } catch (e) {}
+      });
+    }
+
+    function setIdentity(who) {
+      myIdentity = who;
+      try { localStorage.setItem('fc_identity', who); } catch (e) {}
+      document.getElementById('identity-overlay').classList.remove('visible');
+      loadMyProfile();
+    }
+
+    function otherName() {
+      return myIdentity === 'fran' ? 'Pame' : 'Fran';
+    }
+    function myName() {
+      return myIdentity === 'fran' ? 'Fran' : 'Pame';
+    }
+
+    // ════════════════════════════════════════════════════════════
+    // ─── PERFIL: avatar + nombre visible arriba a la derecha ───
+    // ════════════════════════════════════════════════════════════
+    let profileCache = {}; // { fran: {img}, pame: {img} }
+
+    function renderAvatarInto(imgEl, fallbackEl, identity) {
+      const data = profileCache[identity];
+      if (data && data.img) {
+        imgEl.src = data.img;
+        imgEl.style.display = 'block';
+        fallbackEl.style.display = 'none';
+      } else {
+        imgEl.style.display = 'none';
+        fallbackEl.style.display = 'flex';
+        fallbackEl.textContent = identity === 'fran' ? 'F' : identity === 'pame' ? 'P' : '?';
+      }
+    }
+
+    function updateAvatarDisplay() {
+      const imgEl = document.getElementById('avatar-img');
+      const fallbackEl = document.getElementById('avatar-fallback');
+      if (!imgEl || !fallbackEl) return;
+      renderAvatarInto(imgEl, fallbackEl, myIdentity);
+      const btn = document.getElementById('profile-avatar-btn');
+      if (btn) btn.title = myIdentity ? `Sos ${myName()} · tocá para cambiar de perfil` : 'Elegí tu perfil';
+    }
+
+    async function loadMyProfile() {
+      if (!myIdentity) return;
+      try {
+        // Cache local primero, para que se vea instantáneo
+        const cached = localStorage.getItem(`fc_avatar_${myIdentity}`);
+        if (cached) profileCache[myIdentity] = { img: cached };
+        updateAvatarDisplay();
+
+        const res = await fetch(`${FIREBASE_DB_URL}/perfiles/${myIdentity}.json`);
+        const data = await res.json();
+        if (data && data.img) {
+          profileCache[myIdentity] = data;
+          try { localStorage.setItem(`fc_avatar_${myIdentity}`, data.img); } catch (e) {}
+          updateAvatarDisplay();
+        }
+      } catch (e) {}
+    }
+
+    function openProfileModal() {
+      document.getElementById('profile-modal-overlay').classList.add('visible');
+      refreshProfileModal();
+    }
+
+    // ─── PC: el campo de código vive escondido detrás de un botón circular
+    // (simétrico al avatar de perfil) y se abre/cierra como un popover. ───
+    function toggleCodeEntry(forceOpen) {
+      const wrap = document.getElementById('code-entry-wrap');
+      const btn = document.getElementById('code-toggle-btn');
+      if (!wrap || !btn) return;
+      const open = typeof forceOpen === 'boolean' ? forceOpen : !wrap.classList.contains('open');
+      wrap.classList.toggle('open', open);
+      btn.classList.toggle('active', open);
+      if (open) {
+        const input = document.getElementById('code-input');
+        if (input) setTimeout(() => input.focus(), 50);
+      }
+    }
+    document.addEventListener('click', (e) => {
+      const wrap = document.getElementById('code-entry-wrap');
+      const btn = document.getElementById('code-toggle-btn');
+      if (!wrap || !wrap.classList.contains('open')) return;
+      if (wrap.contains(e.target) || btn.contains(e.target)) return;
+      toggleCodeEntry(false);
+    });
+    function closeProfileModal() {
+      document.getElementById('profile-modal-overlay').classList.remove('visible');
+      updateAvatarDisplay();
+    }
+
+    // ─── Mobile: cuando se abre el teclado, la barra de código (fija por
+    // `position: fixed`) queda anclada al viewport de layout, que el
+    // teclado no achica — por eso se ve tapada o "flotando" en un punto
+    // raro. Usamos window.visualViewport (que sí encoge cuando aparece el
+    // teclado) para calcular cuánto ocupa el teclado y subir la barra (y
+    // el fab de toque, que vive en la misma fila) esa misma distancia. ───
+    (function followKeyboard() {
+      const vv = window.visualViewport;
+      if (!vv) return;
+      const nav = document.getElementById('bottom-nav-bar');
+      const fab = document.getElementById('touch-fab');
+      const menu = document.getElementById('touch-menu');
+      let raf = null;
+      function update() {
+        raf = null;
+        // Diferencia entre la altura "de layout" (la de siempre) y la
+        // altura visual real (la que queda libre arriba del teclado).
+        const overlap = Math.max(0, window.innerHeight - vv.height - vv.offsetTop);
+        const shift = overlap > 40 ? overlap : 0; // 40px de margen: evita
+        // temblores por barras de navegación del navegador que achican un
+        // poco el viewport sin que haya teclado de por medio.
+        const px = shift ? `${shift}px` : '';
+        if (nav) nav.style.transform = shift ? `translateY(-${px})` : '';
+        if (fab) fab.style.transform = shift ? `translateY(-${px})` : '';
+        if (menu) menu.style.setProperty('--kb-shift', shift ? `-${shift}px` : '0px');
+      }
+      function onChange() {
+        if (raf) cancelAnimationFrame(raf);
+        raf = requestAnimationFrame(update);
+      }
+      vv.addEventListener('resize', onChange);
+      vv.addEventListener('scroll', onChange);
+    })();
+
+    function refreshProfileModal() {
+      const imgEl = document.getElementById('profile-modal-img');
+      const fallbackEl = document.getElementById('profile-modal-fallback');
+      if (imgEl && fallbackEl) renderAvatarInto(imgEl, fallbackEl, myIdentity);
+
+      document.getElementById('profile-btn-fran').classList.toggle('active', myIdentity === 'fran');
+      document.getElementById('profile-btn-pame').classList.toggle('active', myIdentity === 'pame');
+    }
+
+    function handleAvatarUpload(e) {
+      const file = e.target.files && e.target.files[0];
+      if (!file || !myIdentity) return;
+
+      const reader = new FileReader();
+      reader.onload = (ev) => {
+        const img = new Image();
+        img.onload = async () => {
+          // Achicar a un cuadrado pequeño para no llenar Firebase de datos pesados
+          const size = 240;
+          const canvas = document.createElement('canvas');
+          canvas.width = size; canvas.height = size;
+          const ctx = canvas.getContext('2d');
+          const minSide = Math.min(img.width, img.height);
+          const sx = (img.width - minSide) / 2;
+          const sy = (img.height - minSide) / 2;
+          ctx.drawImage(img, sx, sy, minSide, minSide, 0, 0, size, size);
+          const dataUrl = canvas.toDataURL('image/jpeg', 0.85);
+
+          profileCache[myIdentity] = { img: dataUrl };
+          try { localStorage.setItem(`fc_avatar_${myIdentity}`, dataUrl); } catch (err) {}
+          refreshProfileModal();
+          updateAvatarDisplay();
+
+          try {
+            await fetch(`${FIREBASE_DB_URL}/perfiles/${myIdentity}.json`, {
+              method: 'PUT',
+              body: JSON.stringify({ img: dataUrl, ts: Date.now() })
+            });
+          } catch (err) {}
+        };
+        img.src = ev.target.result;
+      };
+      reader.readAsDataURL(file);
+      e.target.value = '';
+    }
+
+    // ════════════════════════════════════════════════════════════
+    // ─── PWA: instalar como app + service worker ───
+    // ════════════════════════════════════════════════════════════
+    let deferredInstallPrompt = null;
+
+    function initInstallPrompt() {
+      window.addEventListener('beforeinstallprompt', (e) => {
+        e.preventDefault();
+        deferredInstallPrompt = e;
+        const btn = document.getElementById('install-btn');
+        if (btn) btn.classList.add('visible');
+      });
+      window.addEventListener('appinstalled', () => {
+        deferredInstallPrompt = null;
+        const btn = document.getElementById('install-btn');
+        if (btn) btn.classList.remove('visible');
+      });
+    }
+
+    async function installApp() {
+      if (!deferredInstallPrompt) return;
+      deferredInstallPrompt.prompt();
+      await deferredInstallPrompt.userChoice;
+      deferredInstallPrompt = null;
+      document.getElementById('install-btn').classList.remove('visible');
+    }
+
+    function registerServiceWorker() {
+      if (!('serviceWorker' in navigator)) return;
+
+      // Si venimos de recargar justo después de una auto-actualización,
+      // mostramos el aviso de "se actualizó a..." con la versión que nos
+      // mandó el Service Worker antes del reload (ver mensaje SKIP_WAITING).
+      try {
+        const updatedVersion = sessionStorage.getItem('fc_updated_version');
+        if (updatedVersion) {
+          sessionStorage.removeItem('fc_updated_version');
+          showUpdateToast(updatedVersion);
+        }
+      } catch (e) {}
+
+      navigator.serviceWorker.register('sw.js').then((reg) => {
+        // Caso 1: ya había un SW esperando cuando abrimos la app.
+        if (reg.waiting) applyUpdateSilently(reg.waiting);
+
+        // Caso 2: se está instalando uno nuevo mientras la app está abierta.
+        reg.addEventListener('updatefound', () => {
+          const newWorker = reg.installing;
+          if (!newWorker) return;
+          newWorker.addEventListener('statechange', () => {
+            // "installed" + ya había un controller = es una actualización,
+            // no la primera instalación.
+            if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
+              applyUpdateSilently(newWorker);
+            }
+          });
+        });
+
+        // Revisa si hay versión nueva cada vez que la app vuelve a primer plano.
+        document.addEventListener('visibilitychange', () => {
+          if (document.visibilityState === 'visible') reg.update();
+        });
+      }).catch(() => {
+        // Si falla (por ejemplo abriendo el archivo local sin servidor), no rompe nada.
+      });
+
+      // El Service Worker nuevo nos contesta con su versión (CACHE_NAME)
+      // justo antes de tomar el control, así podemos mostrar el aviso
+      // después de recargar.
+      navigator.serviceWorker.addEventListener('message', (event) => {
+        if (event.data && event.data.type === 'FRAMECORREO_UPDATED') {
+          try { sessionStorage.setItem('fc_updated_version', event.data.version || ''); } catch (e) {}
+        }
+      });
+
+      // Cuando el SW nuevo toma control (apenas se auto-instala), recargamos
+      // sin preguntar nada.
+      let refreshing = false;
+      navigator.serviceWorker.addEventListener('controllerchange', () => {
+        if (refreshing) return;
+        refreshing = true;
+        window.location.reload();
+      });
+    }
+
+    // Instala la versión nueva apenas está disponible, sin banner ni
+    // confirmación del usuario.
+    function applyUpdateSilently(worker) {
+      if (!worker) return;
+      worker.postMessage('SKIP_WAITING');
+    }
+
+    // Avisito temporal (se autodescarta solo) confirmando a qué versión se
+    // actualizó la app, usando el mismo texto que figura en CACHE_NAME.
+    function showUpdateToast(version) {
+      const el = document.getElementById('update-toast');
+      if (!el) return;
+      el.textContent = version ? `Framecorreo se actualizó a la versión ${version} ✨` : 'Framecorreo se actualizó ✨';
+      el.classList.add('visible');
+      setTimeout(() => el.classList.remove('visible'), 4000);
+    }
+
+    // ─── POP-UP DE FOTO ("/img") ───
+    // Se muestra encima de cualquier pantalla (por eso vive fuera de los
+    // view-section, directo en el <body>) cuando se escribe el código de
+    // una foto guardada. Tocar el fondo la cierra (ver onclick en el HTML).
+    function showImagePopup(data) {
+      const overlay = document.getElementById('image-popup-overlay');
+      const imgEl = document.getElementById('image-popup-img');
+      const capEl = document.getElementById('image-popup-caption');
+      if (!overlay || !imgEl || !capEl) return;
+      imgEl.src = data.image;
+      imgEl.alt = data.caption || 'Foto';
+      capEl.textContent = data.caption || '';
+      // Stickers en modo solo-lectura: reutiliza la misma función genérica
+      // que ya usa la vista final de la carta (isEditable=false).
+      renderStickers(document.getElementById('image-popup-stickers-layer'), data.stickers || [], false);
+      overlay.classList.add('visible');
+    }
+
+    function closeImagePopup() {
+      const overlay = document.getElementById('image-popup-overlay');
+      if (overlay) overlay.classList.remove('visible');
+    }
+
+    // ─── EDITOR DE FOTOS ("/img") ───
+    // Guarda cada foto en /imagenes/<código>.json en Firebase, en base64
+    // (mismo enfoque que ya se usa para los stickers de imagen de las
+    // cartas). pendingImageDataUrl guarda la foto elegida (nueva o, si se
+    // está editando una existente, la que ya tenía) hasta que se guarda.
+    let pendingImageDataUrl = null;
+
+    function openImageEditor(code, data) {
+      resetImageEditorForm();
+      if (code && data) {
+        document.getElementById('img-code').value = code;
+        document.getElementById('img-caption').value = data.caption || '';
+        if (data.image) {
+          pendingImageDataUrl = data.image;
+          const preview = document.getElementById('image-editor-preview');
+          preview.src = data.image;
+          preview.style.display = 'block';
+          document.getElementById('image-editor-drop').classList.add('has-image');
+        }
+        imageStickers = Array.isArray(data.stickers) ? data.stickers : [];
+        imageSelectedStickerIdx = null;
+        renderImageStickers();
+      }
+      switchView('image-editor-view');
+    }
+
+    function exitImageEditor() {
+      switchView('login-view');
+    }
+
+    function resetImageEditorForm() {
+      pendingImageDataUrl = null;
+      imageStickers = [];
+      imageSelectedStickerIdx = null;
+      const codeEl = document.getElementById('img-code');
+      const capEl = document.getElementById('img-caption');
+      const preview = document.getElementById('image-editor-preview');
+      const drop = document.getElementById('image-editor-drop');
+      if (codeEl) codeEl.value = '';
+      if (capEl) capEl.value = '';
+      if (preview) { preview.src = ''; preview.style.display = 'none'; }
+      if (drop) drop.classList.remove('has-image');
+      renderImageStickers();
+    }
+
+    function handleImageEditorFileChange(input) {
+      if (input.files && input.files[0]) {
+        const reader = new FileReader();
+        reader.onload = (e) => {
+          pendingImageDataUrl = e.target.result;
+          const preview = document.getElementById('image-editor-preview');
+          preview.src = pendingImageDataUrl;
+          preview.style.display = 'block';
+          document.getElementById('image-editor-drop').classList.add('has-image');
+        };
+        reader.readAsDataURL(input.files[0]);
+        input.value = '';
+      }
+    }
+
+    async function saveImageEntry() {
+      const codeInput = document.getElementById('img-code');
+      const code = codeInput.value.trim().toLowerCase();
+      if (!code) { codeInput.focus(); return; }
+      if (!pendingImageDataUrl) { alert('Subí una foto primero.'); return; }
+
+      const caption = document.getElementById('img-caption').value.trim();
+
+      try {
+        await fetch(`${FIREBASE_DB_URL}/imagenes/${code}.json`, {
+          method: 'PUT',
+          body: JSON.stringify({ image: pendingImageDataUrl, caption, stickers: imageStickers, createdAt: Date.now(), updatedAt: Date.now() })
+        });
+        resetImageEditorForm();
+        switchView('login-view');
+      } catch (e) {
+        alert('No se pudo guardar la foto. Probá de nuevo.');
+      }
+    }
+
+    // ═══════════════════════════════════════════════════════════════
+    // ─── STICKERS DEL EDITOR DE FOTOS: mismo comportamiento (arrastrar,
+    // rotar, redimensionar, pellizcar, clonar, borrar) que los de la carta
+    // y el lienzo, pero con su propia data (imageStickers) y sin depender
+    // de Tiptap: el contenido de texto se edita solo con la herramienta
+    // "Aa" a pantalla completa (openTextTool/closeTextTool), tocar el
+    // cuadro ya colocado la vuelve a abrir para editar. ───
+    // ═══════════════════════════════════════════════════════════════
+
+    function addImageStickerToData(base64Src) {
+      imageStickers.push({ type: 'image', src: base64Src, left: 30, top: 25, width: 35, rotation: 0 });
+      imageSelectedStickerIdx = imageStickers.length - 1;
+      renderImageStickers();
+    }
+
+    function addImageTextSticker(posLeft, posTop) {
+      imageStickers.push({
+        type: 'text', content: '', placeholder: 'Escribí algo...',
+        left: (posLeft != null ? posLeft : 15), top: (posTop != null ? posTop : 38), width: 70, rotation: 0,
+        fontSize: 22, font: 'Lora', color: '#e8ddd0', align: 'center', bgMode: 'none'
+      });
+      const idx = imageStickers.length - 1;
+      imageSelectedStickerIdx = idx;
+      renderImageStickers();
+      return idx;
+    }
+
+    function uploadImageStickerFile(input) {
+      if (input.files && input.files[0]) {
+        const reader = new FileReader();
+        reader.onload = (e) => addImageStickerToData(e.target.result);
+        reader.readAsDataURL(input.files[0]);
+        input.value = '';
+      }
+    }
+
+    function renderImageStickers() {
+      const layerContainer = document.getElementById('image-stickers-layer');
+      if (!layerContainer) return;
+      layerContainer.innerHTML = '';
+
+      imageStickers.forEach((st, idx) => {
+        const wrapper = document.createElement('div');
+        wrapper.className = 'sticker-wrapper';
+        wrapper.dataset.idx = idx;
+        if (imageSelectedStickerIdx === idx) wrapper.classList.add('selected');
+        wrapper.style.left = st.left + '%';
+        wrapper.style.top = st.top + '%';
+        wrapper.style.width = st.width + '%';
+        wrapper.style.transform = `rotate(${st.rotation || 0}deg)`;
+        wrapper.style.opacity = (st.opacity === undefined || st.opacity === null) ? 1 : st.opacity;
+
+        if (st.type === 'text') {
+          const textDiv = document.createElement('div');
+          textDiv.className = 'sticker-text-content';
+          textDiv.id = `image-sticker-text-${idx}`;
+          applyCanvasTextStyle(textDiv, st);
+          textDiv.contentEditable = "false";
+          textDiv.innerHTML = st.content || (st.placeholder ? `<span style="opacity:0.55;">${st.placeholder}</span>` : '');
+          wrapper.appendChild(textDiv);
+        } else {
+          const img = document.createElement('img');
+          img.className = 'sticker-img';
+          img.src = st.src;
+          wrapper.appendChild(img);
+        }
+
+        const moveBtn = document.createElement('div');
+        moveBtn.className = 'sticker-control control-move';
+        moveBtn.innerHTML = '✥';
+        wrapper.appendChild(moveBtn);
+
+        const delBtn = document.createElement('div');
+        delBtn.className = 'sticker-control control-delete';
+        delBtn.innerHTML = '✕';
+        delBtn.onclick = (e) => {
+          e.stopPropagation();
+          imageStickers.splice(idx, 1);
+          if (imageSelectedStickerIdx === idx) imageSelectedStickerIdx = null;
+          else if (imageSelectedStickerIdx > idx) imageSelectedStickerIdx--;
+          renderImageStickers();
+        };
+        wrapper.appendChild(delBtn);
+
+        const cloneBtn = document.createElement('div');
+        cloneBtn.className = 'sticker-control control-clone';
+        cloneBtn.innerHTML = '＋';
+        cloneBtn.onclick = (e) => {
+          e.stopPropagation();
+          const cloned = JSON.parse(JSON.stringify(st));
+          cloned.left = Math.min(st.left + 5, 85);
+          cloned.top = Math.min(st.top + 5, 85);
+          imageStickers.push(cloned);
+          imageSelectedStickerIdx = imageStickers.length - 1;
+          renderImageStickers();
+        };
+        wrapper.appendChild(cloneBtn);
+
+        const rotBtn = document.createElement('div');
+        rotBtn.className = 'sticker-control control-rotate';
+        rotBtn.innerHTML = '↻';
+        wrapper.appendChild(rotBtn);
+
+        const resBtn = document.createElement('div');
+        resBtn.className = 'sticker-control control-resize';
+        resBtn.innerHTML = '⤡';
+        wrapper.appendChild(resBtn);
+
+        const sideLeftBtn = document.createElement('div');
+        sideLeftBtn.className = 'sticker-control control-resize-side control-resize-side-left';
+        sideLeftBtn.innerHTML = '⋮';
+        sideLeftBtn.title = 'Ajustar ancho del recuadro';
+        wrapper.appendChild(sideLeftBtn);
+
+        const sideRightBtn = document.createElement('div');
+        sideRightBtn.className = 'sticker-control control-resize-side control-resize-side-right';
+        sideRightBtn.innerHTML = '⋮';
+        sideRightBtn.title = 'Ajustar ancho del recuadro';
+        wrapper.appendChild(sideRightBtn);
+
+        setupImageStickerDragAndTransform(wrapper, st, layerContainer, rotBtn, resBtn, idx, sideLeftBtn, sideRightBtn);
+
+        layerContainer.appendChild(wrapper);
+      });
+    }
+
+    function setupImageStickerDragAndTransform(wrapper, stickerData, layerContainer, rotBtn, resBtn, idx, sideLeftBtn, sideRightBtn) {
+      wrapper.addEventListener('dragstart', (e) => e.preventDefault());
+
+      // 1. MOVER (DRAG)
+      wrapper.addEventListener('mousedown', startMove);
+      wrapper.addEventListener('touchstart', startMove, { passive: false });
+
+      function startMove(e) {
+        if (e.touches && e.touches.length > 1) return; // dos dedos: lo maneja el pellizco
+
+        const isMoveControl = e.target.closest('.control-move');
+        const isOtherControl = e.target.closest('.sticker-control') && !isMoveControl;
+        if (isOtherControl) return;
+
+        e.preventDefault();
+        e.stopPropagation();
+
+        const clientX = e.touches ? e.touches[0].clientX : e.clientX;
+        const clientY = e.touches ? e.touches[0].clientY : e.clientY;
+        const startX = clientX;
+        const startY = clientY;
+        const DRAG_THRESHOLD = 6;
+
+        let dragging = false;
+        let containerRect = null;
+        let initialLeftPx = 0;
+        let initialTopPx = 0;
+        const deleteZone = document.getElementById('image-delete-zone');
+
+        function beginDrag() {
+          dragging = true;
+          imageSelectedStickerIdx = idx;
+          document.querySelectorAll('#image-stickers-layer .sticker-wrapper').forEach(w => w.classList.remove('selected'));
+          wrapper.classList.add('selected');
+          wrapper.classList.add('active');
+
+          containerRect = layerContainer.getBoundingClientRect();
+          initialLeftPx = (stickerData.left / 100) * containerRect.width;
+          initialTopPx = (stickerData.top / 100) * containerRect.height;
+        }
+
+        function doMove(moveEvent) {
+          const mX = moveEvent.touches ? moveEvent.touches[0].clientX : moveEvent.clientX;
+          const mY = moveEvent.touches ? moveEvent.touches[0].clientY : moveEvent.clientY;
+
+          if (!dragging) {
+            if (Math.hypot(mX - startX, mY - startY) < DRAG_THRESHOLD) return;
+            beginDrag();
+          }
+
+          const deltaX = mX - startX;
+          const deltaY = mY - startY;
+
+          stickerData.left = ((initialLeftPx + deltaX) / containerRect.width) * 100;
+          stickerData.top = ((initialTopPx + deltaY) / containerRect.height) * 100;
+
+          wrapper.style.left = stickerData.left + '%';
+          wrapper.style.top = stickerData.top + '%';
+
+          if (deleteZone) {
+            deleteZone.classList.add('visible');
+            const zoneRect = deleteZone.getBoundingClientRect();
+            const nearDelete = Math.hypot(mX - (zoneRect.left + zoneRect.width / 2), mY - (zoneRect.top + zoneRect.height / 2)) < 55;
+            deleteZone.classList.toggle('armed', nearDelete);
+            wrapper.style.opacity = nearDelete ? '0.35' : ((stickerData.opacity === undefined || stickerData.opacity === null) ? 1 : stickerData.opacity);
+          }
+        }
+
+        function stopMove(upEvent) {
+          window.removeEventListener('mousemove', doMove);
+          window.removeEventListener('mouseup', stopMove);
+          window.removeEventListener('touchmove', doMove);
+          window.removeEventListener('touchend', stopMove);
+
+          if (dragging) {
+            wrapper.classList.remove('active');
+            if (deleteZone && deleteZone.classList.contains('armed')) {
+              deleteZone.classList.remove('visible', 'armed');
+              imageStickers.splice(idx, 1);
+              if (imageSelectedStickerIdx === idx) imageSelectedStickerIdx = null;
+              else if (imageSelectedStickerIdx > idx) imageSelectedStickerIdx--;
+              renderImageStickers();
+              return;
+            }
+            if (deleteZone) deleteZone.classList.remove('visible', 'armed');
+            return;
+          }
+
+          // No hubo arrastre: fue un toque/clic simple. Seleccionamos el
+          // cuadro y, si es de texto, abrimos la herramienta "Aa" para
+          // editarlo (los stickers de la foto no se editan en el lugar).
+          imageSelectedStickerIdx = idx;
+          document.querySelectorAll('#image-stickers-layer .sticker-wrapper').forEach(w => w.classList.remove('selected'));
+          wrapper.classList.add('selected');
+
+          if (stickerData.type === 'text') {
+            openTextTool('image', idx);
+          }
+        }
+
+        window.addEventListener('mousemove', doMove);
+        window.addEventListener('mouseup', stopMove);
+        window.addEventListener('touchmove', doMove, { passive: false });
+        window.addEventListener('touchend', stopMove);
+      }
+
+      // 1b. PELLIZCAR CON DOS DEDOS: agranda/achica y rota a la vez
+      wrapper.addEventListener('touchstart', startPinch, { passive: false });
+
+      function startPinch(e) {
+        if (!e.touches || e.touches.length !== 2) return;
+        e.preventDefault();
+        e.stopPropagation();
+
+        imageSelectedStickerIdx = idx;
+        document.querySelectorAll('#image-stickers-layer .sticker-wrapper').forEach(w => w.classList.remove('selected'));
+        wrapper.classList.add('selected');
+
+        const t0 = e.touches[0], t1 = e.touches[1];
+        const startDist = Math.hypot(t1.clientX - t0.clientX, t1.clientY - t0.clientY);
+        const startAngle = Math.atan2(t1.clientY - t0.clientY, t1.clientX - t0.clientX) * 180 / Math.PI;
+        const initialWidthPercent = stickerData.width;
+        const initialFontSize = stickerData.fontSize || 22;
+        const initialRotation = stickerData.rotation || 0;
+
+        function doPinch(moveEvt) {
+          if (!moveEvt.touches || moveEvt.touches.length < 2) return;
+          moveEvt.preventDefault();
+          const a = moveEvt.touches[0], b = moveEvt.touches[1];
+          const dist = Math.hypot(b.clientX - a.clientX, b.clientY - a.clientY);
+          const angle = Math.atan2(b.clientY - a.clientY, b.clientX - a.clientX) * 180 / Math.PI;
+
+          let newWidthPercent = initialWidthPercent * (dist / startDist);
+          const maxWidthPercent = stickerData.type === 'text' ? 2000 : 100;
+          if (newWidthPercent < 5) newWidthPercent = 5;
+          if (newWidthPercent > maxWidthPercent) newWidthPercent = maxWidthPercent;
+          stickerData.width = newWidthPercent;
+          wrapper.style.width = stickerData.width + '%';
+
+          if (stickerData.type === 'text') {
+            let newFontSize = initialFontSize * (newWidthPercent / initialWidthPercent);
+            if (newFontSize < 6) newFontSize = 6;
+            stickerData.fontSize = newFontSize;
+            const textEl = wrapper.querySelector('.sticker-text-content');
+            if (textEl) textEl.style.fontSize = newFontSize + 'px';
+          }
+
+          stickerData.rotation = initialRotation + (angle - startAngle);
+          wrapper.style.transform = `rotate(${stickerData.rotation}deg)`;
+        }
+
+        function stopPinch() {
+          window.removeEventListener('touchmove', doPinch);
+          window.removeEventListener('touchend', stopPinch);
+          window.removeEventListener('touchcancel', stopPinch);
+        }
+
+        window.addEventListener('touchmove', doPinch, { passive: false });
+        window.addEventListener('touchend', stopPinch);
+        window.addEventListener('touchcancel', stopPinch);
+      }
+
+      // 2. REDIMENSIONAR (esquina)
+      resBtn.addEventListener('mousedown', startResize);
+      resBtn.addEventListener('touchstart', startResize, { passive: false });
+
+      function startResize(e) {
+        e.stopPropagation();
+        e.preventDefault();
+
+        const wrapperRect = wrapper.getBoundingClientRect();
+        const centerX = wrapperRect.left + wrapperRect.width / 2;
+        const centerY = wrapperRect.top + wrapperRect.height / 2;
+
+        const startClientX = e.touches ? e.touches[0].clientX : e.clientX;
+        const startClientY = e.touches ? e.touches[0].clientY : e.clientY;
+        const startRadius = Math.hypot(startClientX - centerX, startClientY - centerY);
+        const initialWidthPercent = stickerData.width;
+        const initialFontSize = stickerData.fontSize || 16;
+
+        function doResize(moveEvent) {
+          const mX = moveEvent.touches ? moveEvent.touches[0].clientX : moveEvent.clientX;
+          const mY = moveEvent.touches ? moveEvent.touches[0].clientY : moveEvent.clientY;
+
+          const currentRadius = Math.hypot(mX - centerX, mY - centerY);
+          const ratio = currentRadius / startRadius;
+
+          let newWidthPercent = initialWidthPercent * ratio;
+          const maxWidthPercent = stickerData.type === 'text' ? 2000 : 100;
+          if (newWidthPercent < 5) newWidthPercent = 5;
+          if (newWidthPercent > maxWidthPercent) newWidthPercent = maxWidthPercent;
+
+          stickerData.width = newWidthPercent;
+          wrapper.style.width = stickerData.width + '%';
+
+          if (stickerData.type === 'text') {
+            let newFontSize = initialFontSize * (newWidthPercent / initialWidthPercent);
+            if (newFontSize < 6) newFontSize = 6;
+            stickerData.fontSize = newFontSize;
+            const textEl = wrapper.querySelector('.sticker-text-content');
+            if (textEl) textEl.style.fontSize = newFontSize + 'px';
+          }
+        }
+
+        function stopResize() {
+          window.removeEventListener('mousemove', doResize);
+          window.removeEventListener('mouseup', stopResize);
+          window.removeEventListener('touchmove', doResize);
+          window.removeEventListener('touchend', stopResize);
+        }
+
+        window.addEventListener('mousemove', doResize);
+        window.addEventListener('mouseup', stopResize);
+        window.addEventListener('touchmove', doResize, { passive: false });
+        window.addEventListener('touchend', stopResize);
+      }
+
+      // 2b. REDIMENSIONAR ANCHO DESDE LOS LADOS
+      if (sideLeftBtn) {
+        sideLeftBtn.addEventListener('mousedown', (e) => startResizeSide(e, 'left'));
+        sideLeftBtn.addEventListener('touchstart', (e) => startResizeSide(e, 'left'), { passive: false });
+      }
+      if (sideRightBtn) {
+        sideRightBtn.addEventListener('mousedown', (e) => startResizeSide(e, 'right'));
+        sideRightBtn.addEventListener('touchstart', (e) => startResizeSide(e, 'right'), { passive: false });
+      }
+
+      function startResizeSide(e, side) {
+        e.stopPropagation();
+        e.preventDefault();
+
+        const containerRect = layerContainer.getBoundingClientRect();
+        const startClientX = e.touches ? e.touches[0].clientX : e.clientX;
+        const initialWidthPercent = stickerData.width;
+        const initialLeftPercent = stickerData.left;
+
+        function doResizeSide(moveEvent) {
+          const mX = moveEvent.touches ? moveEvent.touches[0].clientX : moveEvent.clientX;
+          const deltaPercent = ((mX - startClientX) / containerRect.width) * 100;
+
+          let newWidth, newLeft;
+          if (side === 'right') {
+            newWidth = initialWidthPercent + deltaPercent;
+            newLeft = initialLeftPercent;
+          } else {
+            newWidth = initialWidthPercent - deltaPercent;
+            newLeft = initialLeftPercent + deltaPercent;
+          }
+
+          if (newWidth < 12) newWidth = 12;
+          if (newWidth > 400) newWidth = 400;
+
+          stickerData.width = newWidth;
+          stickerData.left = newLeft;
+          wrapper.style.width = newWidth + '%';
+          wrapper.style.left = newLeft + '%';
+        }
+
+        function stopResizeSide() {
+          window.removeEventListener('mousemove', doResizeSide);
+          window.removeEventListener('mouseup', stopResizeSide);
+          window.removeEventListener('touchmove', doResizeSide);
+          window.removeEventListener('touchend', stopResizeSide);
+        }
+
+        window.addEventListener('mousemove', doResizeSide);
+        window.addEventListener('mouseup', stopResizeSide);
+        window.addEventListener('touchmove', doResizeSide, { passive: false });
+        window.addEventListener('touchend', stopResizeSide);
+      }
+
+      // 3. ROTAR
+      rotBtn.addEventListener('mousedown', startRotate);
+      rotBtn.addEventListener('touchstart', startRotate, { passive: false });
+
+      function startRotate(e) {
+        e.stopPropagation();
+        e.preventDefault();
+
+        const wrapperRect = wrapper.getBoundingClientRect();
+        const centerX = wrapperRect.left + wrapperRect.width / 2;
+        const centerY = wrapperRect.top + wrapperRect.height / 2;
+
+        function doRotate(moveEvent) {
+          const mX = moveEvent.touches ? moveEvent.touches[0].clientX : moveEvent.clientX;
+          const mY = moveEvent.touches ? moveEvent.touches[0].clientY : moveEvent.clientY;
+
+          const angleRad = Math.atan2(mY - centerY, mX - centerX);
+          let angleDeg = (angleRad * 180) / Math.PI;
+          angleDeg = (angleDeg + 90) % 360;
+
+          stickerData.rotation = angleDeg;
+          wrapper.style.transform = `rotate(${stickerData.rotation}deg)`;
+        }
+
+        function stopRotate() {
+          window.removeEventListener('mousemove', doRotate);
+          window.removeEventListener('mouseup', stopRotate);
+          window.removeEventListener('touchmove', doRotate);
+          window.removeEventListener('touchend', stopRotate);
+        }
+
+        window.addEventListener('mousemove', doRotate);
+        window.addEventListener('mouseup', stopRotate);
+        window.addEventListener('touchmove', doRotate, { passive: false });
+        window.addEventListener('touchend', stopRotate);
+      }
+    }
+
+    // Clic afuera de un sticker (pero dentro del editor de fotos) para
+    // limpiar la selección, igual que en la carta y el lienzo.
+    document.addEventListener('click', (e) => {
+      const imgView = document.getElementById('image-editor-view');
+      if (!imgView || !imgView.classList.contains('active')) return;
+      if (!e.target.closest('.sticker-wrapper') && !e.target.closest('.ig-rail') && !e.target.closest('.text-tool-overlay')) {
+        imageSelectedStickerIdx = null;
+        document.querySelectorAll('#image-stickers-layer .sticker-wrapper').forEach(w => w.classList.remove('selected'));
+      }
+    });
+
+    // ════════════════════════════════════════════════════════════
+    // ─── PANELES ESTILO "STORIES": abrir/cerrar, oscurecer el fondo ───
+    // ════════════════════════════════════════════════════════════
+    // Vincula un picker vertical (.ig-vscroll con .ig-vscroll-item[data-*])
+    // a un <select> nativo oculto: al tocar un ítem, actualiza el select y
+    // dispara 'change' para que la lógica de siempre (execCmd, updateLiveCardStyle,
+    // toggleDateField...) siga funcionando sin cambios.
+    function wireIgVscrollToSelect(listId, selectId, dataAttr) {
+      const list = document.getElementById(listId);
+      const select = document.getElementById(selectId);
+      if (!list || !select) return;
+      list.querySelectorAll('.ig-vscroll-item').forEach((item) => {
+        item.addEventListener('click', () => {
+          list.querySelectorAll('.ig-vscroll-item').forEach((i) => i.classList.remove('active'));
+          item.classList.add('active');
+          select.value = item.dataset[dataAttr];
+          select.dispatchEvent(new Event('change'));
+        });
+      });
+    }
+    // ─── Selector de color personalizado (reemplaza al <input type="color"> nativo) ───
+    let ccPickerHue = 30, ccPickerSat = 0.15, ccPickerVal = 0.9, ccPickerOnChange = null;
+
+    function hexToRgb(hex) {
+      hex = (hex || '#e8ddd0').replace('#', '');
+      if (hex.length === 3) hex = hex.split('').map((c) => c + c).join('');
+      const num = parseInt(hex, 16) || 0;
+      return [(num >> 16) & 255, (num >> 8) & 255, num & 255];
+    }
+    function rgbToHex(r, g, b) {
+      return '#' + [r, g, b].map((x) => Math.round(x).toString(16).padStart(2, '0')).join('');
+    }
+    function rgbToHsv(r, g, b) {
+      r /= 255; g /= 255; b /= 255;
+      const max = Math.max(r, g, b), min = Math.min(r, g, b), d = max - min;
+      let h = 0;
+      if (d !== 0) {
+        if (max === r) h = ((g - b) / d) % 6;
+        else if (max === g) h = (b - r) / d + 2;
+        else h = (r - g) / d + 4;
+        h *= 60;
+        if (h < 0) h += 360;
+      }
+      const s = max === 0 ? 0 : d / max;
+      return [h, s, max];
+    }
+    function hsvToRgb(h, s, v) {
+      const c = v * s, x = c * (1 - Math.abs(((h / 60) % 2) - 1)), m = v - c;
+      let r, g, b;
+      if (h < 60) [r, g, b] = [c, x, 0];
+      else if (h < 120) [r, g, b] = [x, c, 0];
+      else if (h < 180) [r, g, b] = [0, c, x];
+      else if (h < 240) [r, g, b] = [0, x, c];
+      else if (h < 300) [r, g, b] = [x, 0, c];
+      else [r, g, b] = [c, 0, x];
+      return [(r + m) * 255, (g + m) * 255, (b + m) * 255];
+    }
+
+    function openColorPicker(initialHex, onChange) {
+      ccPickerOnChange = onChange;
+      const [r, g, b] = hexToRgb(initialHex);
+      [ccPickerHue, ccPickerSat, ccPickerVal] = rgbToHsv(r, g, b);
+      document.getElementById('cc-picker-hue').value = ccPickerHue;
+      updateColorPickerUI();
+      document.getElementById('cc-picker-overlay').classList.add('visible');
+    }
+    function closeColorPicker() {
+      document.getElementById('cc-picker-overlay').classList.remove('visible');
+      ccPickerOnChange = null;
+    }
+    function updateColorPickerUI() {
+      const sv = document.getElementById('cc-picker-sv');
+      sv.style.backgroundColor = `hsl(${ccPickerHue}, 100%, 50%)`;
+      const cursor = document.getElementById('cc-picker-sv-cursor');
+      cursor.style.left = (ccPickerSat * 100) + '%';
+      cursor.style.top = ((1 - ccPickerVal) * 100) + '%';
+      const [r, g, b] = hsvToRgb(ccPickerHue, ccPickerSat, ccPickerVal);
+      const hex = rgbToHex(r, g, b);
+      document.getElementById('cc-picker-preview').style.background = hex;
+      document.getElementById('cc-picker-hex').textContent = hex.toUpperCase();
+      if (ccPickerOnChange) ccPickerOnChange(hex);
+    }
+    function setupColorPicker() {
+      const sv = document.getElementById('cc-picker-sv');
+      const hueInput = document.getElementById('cc-picker-hue');
+      let dragging = false;
+      function setFromEvent(e) {
+        const rect = sv.getBoundingClientRect();
+        let x = (e.clientX - rect.left) / rect.width;
+        let y = (e.clientY - rect.top) / rect.height;
+        x = Math.max(0, Math.min(1, x));
+        y = Math.max(0, Math.min(1, y));
+        ccPickerSat = x; ccPickerVal = 1 - y;
+        updateColorPickerUI();
+      }
+      sv.addEventListener('pointerdown', (e) => { dragging = true; sv.setPointerCapture(e.pointerId); setFromEvent(e); });
+      sv.addEventListener('pointermove', (e) => { if (dragging) setFromEvent(e); });
+      sv.addEventListener('pointerup', () => { dragging = false; });
+      sv.addEventListener('pointercancel', () => { dragging = false; });
+      hueInput.addEventListener('input', (e) => { ccPickerHue = parseFloat(e.target.value); updateColorPickerUI(); });
+      document.getElementById('cc-picker-overlay').addEventListener('click', (e) => {
+        if (e.target.id === 'cc-picker-overlay') closeColorPicker();
+      });
+    }
+
+    function initIgAdminPickers() {
+      wireIgVscrollToSelect('adm-font-list', 'adm-font-select', 'font');
+      wireIgVscrollToSelect('adm-style-list', 'adm-style', 'style');
+      wireIgVscrollToSelect('adm-date-type-list', 'adm-date-type', 'datetype');
+      const colorList = document.getElementById('adm-color-list');
+      if (colorList) {
+        colorList.querySelectorAll('.ig-vscroll-item').forEach((item) => {
+          item.addEventListener('click', () => {
+            colorList.querySelectorAll('.ig-vscroll-item').forEach((i) => i.classList.remove('active'));
+            item.classList.add('active');
+            const color = item.dataset.color;
+            document.getElementById('adm-color').value = color;
+            execCmd('foreColor', color);
+          });
+        });
+      }
+    }
+
+    function openIgPanel(id) {
+      const panel = document.getElementById(id);
+      if (!panel) return;
+      const shell = panel.closest('.ig-stage-shell');
+      document.querySelectorAll('.ig-panel.open').forEach((p) => p.classList.remove('open'));
+      panel.classList.add('open');
+      if (shell) shell.classList.add('editing');
+    }
+    function closeIgPanel(id) {
+      const panel = document.getElementById(id);
+      if (!panel) return;
+      panel.classList.remove('open');
+      const shell = panel.closest('.ig-stage-shell');
+      if (shell && !shell.querySelector('.ig-panel.open')) shell.classList.remove('editing');
+    }
+
+    // ════════════════════════════════════════════════════════════
+    // ─── PIZARRA COMPARTIDA: dibujo entre los dos ───
+    // ════════════════════════════════════════════════════════════
+    let drawCtx = null;
+    let drawCanvas = null;
+    let drawing = false;
+    let drawColor = '#e8ddd0';
+    let drawSize = 6;
+    let drawBrushType = 'normal'; // normal | arrow | highlighter | neon | eraser
+    let drawHistory = []; // snapshots para "deshacer"
+    let lastRemoteImg = null;
+    let drawSaveTimer = null;
+    // Modo dibujo: por default tocar el lienzo abre la herramienta de texto
+    // (estilo IG Stories). Solo dibuja a mano alzada si este modo está activo,
+    // que se prende tocando el botón de pincel. Mientras está activo, la
+    // interfaz normal del lienzo (rail de herramientas, barra inferior) se
+    // esconde y se muestra la interfaz dedicada de dibujo a pantalla completa.
+    let canvasDrawModeActive = false;
+
+    function toggleCanvasDrawMode() {
+      canvasDrawModeActive = !canvasDrawModeActive;
+      const railBtn = document.getElementById('canvas-brush-btn');
+      if (railBtn) railBtn.classList.toggle('active', canvasDrawModeActive);
+      const shell = document.getElementById('canvas-stage-shell');
+      const ui = document.getElementById('draw-mode-ui');
+      if (shell) shell.classList.toggle('draw-mode-active', canvasDrawModeActive);
+      if (ui) ui.classList.toggle('open', canvasDrawModeActive);
+      if (canvasDrawModeActive) updateDrawUndoBtnState();
+    }
+    function deactivateCanvasDrawMode() {
+      if (!canvasDrawModeActive) return;
+      canvasDrawModeActive = false;
+      const railBtn = document.getElementById('canvas-brush-btn');
+      if (railBtn) railBtn.classList.remove('active');
+      const shell = document.getElementById('canvas-stage-shell');
+      const ui = document.getElementById('draw-mode-ui');
+      if (shell) shell.classList.remove('draw-mode-active');
+      if (ui) ui.classList.remove('open');
+    }
+
+    function initDrawBoard() {
+      drawCanvas = document.getElementById('draw-canvas');
+      if (!drawCanvas) return;
+      drawCtx = drawCanvas.getContext('2d');
+
+      const resize = () => {
+        const box = drawCanvas.parentElement;
+        const ratio = window.devicePixelRatio || 1;
+        const w = box.clientWidth, h = box.clientHeight;
+        // Preservamos el dibujo actual al redimensionar
+        const prev = drawCanvas.width ? drawCanvas.toDataURL('image/png') : null;
+        drawCanvas.width = w * ratio;
+        drawCanvas.height = h * ratio;
+        drawCtx.setTransform(ratio, 0, 0, ratio, 0, 0);
+        drawCtx.globalAlpha = 1;
+        drawCtx.fillStyle = '#0a080d';
+        drawCtx.fillRect(0, 0, w, h);
+        if (prev) {
+          const img = new Image();
+          img.onload = () => drawCtx.drawImage(img, 0, 0, w, h);
+          img.src = prev;
+        } else if (lastRemoteImg) {
+          drawCtx.drawImage(lastRemoteImg, 0, 0, w, h);
+        }
+      };
+      resize();
+      window.addEventListener('resize', resize);
+
+      drawCtx.lineCap = 'round';
+      drawCtx.lineJoin = 'round';
+
+      const getPos = (e) => {
+        const rect = drawCanvas.getBoundingClientRect();
+        const clientX = e.touches ? e.touches[0].clientX : e.clientX;
+        const clientY = e.touches ? e.touches[0].clientY : e.clientY;
+        return { x: clientX - rect.left, y: clientY - rect.top };
+      };
+
+      // Dibuja una flecha recta entre dos puntos (línea + punta triangular).
+      const drawArrowShape = (from, to) => {
+        const width = Math.max(2, drawSize);
+        const headLen = Math.max(14, width * 3.2);
+        const angle = Math.atan2(to.y - from.y, to.x - from.x);
+        drawCtx.save();
+        drawCtx.globalAlpha = 1;
+        drawCtx.strokeStyle = drawColor;
+        drawCtx.fillStyle = drawColor;
+        drawCtx.lineCap = 'round';
+        drawCtx.lineJoin = 'round';
+        drawCtx.lineWidth = width;
+        drawCtx.beginPath();
+        drawCtx.moveTo(from.x, from.y);
+        drawCtx.lineTo(to.x, to.y);
+        drawCtx.stroke();
+        drawCtx.beginPath();
+        drawCtx.moveTo(to.x, to.y);
+        drawCtx.lineTo(to.x - headLen * Math.cos(angle - Math.PI / 7), to.y - headLen * Math.sin(angle - Math.PI / 7));
+        drawCtx.lineTo(to.x - headLen * Math.cos(angle + Math.PI / 7), to.y - headLen * Math.sin(angle + Math.PI / 7));
+        drawCtx.closePath();
+        drawCtx.fill();
+        drawCtx.restore();
+      };
+
+      // Aplica el estilo de trazo según el pincel elegido, antes de cada segmento.
+      const applyStrokeStyle = () => {
+        drawCtx.shadowBlur = 0;
+        drawCtx.shadowColor = 'transparent';
+        switch (drawBrushType) {
+          case 'eraser':
+            drawCtx.globalAlpha = 1;
+            drawCtx.strokeStyle = '#0a080d';
+            drawCtx.lineCap = 'round';
+            drawCtx.lineJoin = 'round';
+            drawCtx.lineWidth = drawSize;
+            break;
+          case 'highlighter':
+            drawCtx.globalAlpha = 0.28;
+            drawCtx.strokeStyle = drawColor;
+            drawCtx.lineCap = 'square';
+            drawCtx.lineJoin = 'round';
+            drawCtx.lineWidth = drawSize * 1.9;
+            break;
+          case 'neon':
+            drawCtx.globalAlpha = 1;
+            drawCtx.strokeStyle = drawColor;
+            drawCtx.lineCap = 'round';
+            drawCtx.lineJoin = 'round';
+            drawCtx.lineWidth = Math.max(2, drawSize * 0.6);
+            drawCtx.shadowBlur = Math.max(10, drawSize * 1.6);
+            drawCtx.shadowColor = drawColor;
+            break;
+          default: // normal / arrow (mientras se arrastra, la flecha usa el mismo trazo base)
+            drawCtx.globalAlpha = 1;
+            drawCtx.strokeStyle = drawColor;
+            drawCtx.lineCap = 'round';
+            drawCtx.lineJoin = 'round';
+            drawCtx.lineWidth = drawSize;
+        }
+      };
+
+      // ─── Easter egg: mantener presionado en una zona vacía del lienzo
+      // rellena toda la pantalla con el color elegido (sólido con el
+      // marcador, translúcido con el resaltador). ───
+      let dmLongPressTimer = null;
+      let dmLongPressTriggered = false;
+      let dmPressStartPos = null;
+      let arrowBaseSnapshot = null;
+      const DM_LONG_PRESS_MS = 550;
+      const DM_LONG_PRESS_TOLERANCE = 6;
+
+      const isCanvasPointEmpty = (p) => {
+        try {
+          const ratio = window.devicePixelRatio || 1;
+          const x = Math.max(0, Math.round(p.x * ratio)), y = Math.max(0, Math.round(p.y * ratio));
+          const d = drawCtx.getImageData(x, y, 1, 1).data;
+          return Math.abs(d[0] - 10) < 14 && Math.abs(d[1] - 8) < 14 && Math.abs(d[2] - 13) < 14;
+        } catch (e) { return false; }
+      };
+
+      const fillDrawCanvasWithColor = () => {
+        const w = drawCanvas.clientWidth, h = drawCanvas.clientHeight;
+        drawCtx.save();
+        if (drawBrushType === 'eraser') {
+          drawCtx.globalAlpha = 1;
+          drawCtx.fillStyle = '#0a080d';
+        } else if (drawBrushType === 'highlighter') {
+          drawCtx.globalAlpha = 0.28;
+          drawCtx.fillStyle = drawColor;
+        } else {
+          drawCtx.globalAlpha = 1;
+          drawCtx.fillStyle = drawColor;
+        }
+        drawCtx.fillRect(0, 0, w, h);
+        drawCtx.restore();
+        scheduleDrawSave();
+        updateDrawUndoBtnState();
+        if (navigator.vibrate) navigator.vibrate(30);
+      };
+
+      const start = (e) => {
+        if (moveToolActiveCanvas) return;
+        if (!canvasDrawModeActive) {
+          e.preventDefault();
+          const p = getPos(e);
+          const box = drawCanvas.getBoundingClientRect();
+          const leftPct = Math.max(4, Math.min(70, (p.x / box.width) * 100 - 5));
+          const topPct = Math.max(4, Math.min(70, (p.y / box.height) * 100 - 5));
+          openTextTool('canvas', null, leftPct, topPct);
+          return;
+        }
+        e.preventDefault();
+        const p = getPos(e);
+        dmPressStartPos = p;
+        dmLongPressTriggered = false;
+        clearTimeout(dmLongPressTimer);
+        dmLongPressTimer = setTimeout(() => {
+          if (drawing && isCanvasPointEmpty(p)) {
+            dmLongPressTriggered = true;
+            fillDrawCanvasWithColor();
+          }
+        }, DM_LONG_PRESS_MS);
+
+        drawing = true;
+        pushHistory();
+        updateDrawUndoBtnState();
+        if (drawBrushType === 'arrow') {
+          arrowBaseSnapshot = drawCtx.getImageData(0, 0, drawCanvas.width, drawCanvas.height);
+        }
+        drawCtx.beginPath();
+        drawCtx.moveTo(p.x, p.y);
+      };
+      const move = (e) => {
+        if (!drawing) return;
+        e.preventDefault();
+        const p = getPos(e);
+        if (dmPressStartPos && dmLongPressTimer) {
+          const dx = p.x - dmPressStartPos.x, dy = p.y - dmPressStartPos.y;
+          if (Math.hypot(dx, dy) > DM_LONG_PRESS_TOLERANCE) { clearTimeout(dmLongPressTimer); dmLongPressTimer = null; }
+        }
+        if (dmLongPressTriggered) return;
+        if (drawBrushType === 'arrow') {
+          if (arrowBaseSnapshot) drawCtx.putImageData(arrowBaseSnapshot, 0, 0);
+          drawArrowShape(dmPressStartPos, p);
+          return;
+        }
+        applyStrokeStyle();
+        drawCtx.lineTo(p.x, p.y);
+        drawCtx.stroke();
+      };
+      const end = (e) => {
+        clearTimeout(dmLongPressTimer);
+        dmLongPressTimer = null;
+        if (!drawing) return;
+        drawing = false;
+        dmLongPressTriggered = false;
+        arrowBaseSnapshot = null;
+        drawCtx.globalAlpha = 1;
+        drawCtx.shadowBlur = 0;
+        scheduleDrawSave();
+      };
+
+      drawCanvas.addEventListener('mousedown', start);
+      drawCanvas.addEventListener('mousemove', move);
+      window.addEventListener('mouseup', end);
+      drawCanvas.addEventListener('touchstart', start, { passive: false });
+      drawCanvas.addEventListener('touchmove', move, { passive: false });
+      drawCanvas.addEventListener('touchend', end);
+
+      // ─── Selector de pinceles de la nueva interfaz de dibujo ───
+      document.querySelectorAll('#dm-brush-select .dm-brush-btn').forEach((btn) => {
+        btn.addEventListener('click', () => selectDrawBrush(btn.dataset.brush));
+      });
+
+      // ─── Paleta de colores (misma lista que la herramienta de texto, para
+      // que ambas interfaces sean coherentes) + cuentagotas ───
+      renderDrawPalette();
+
+      // ─── Slider vertical de grosor con previsualización flotante ───
+      const dmSizeSlider = document.getElementById('dm-size-slider');
+      if (dmSizeSlider) dmSizeSlider.value = drawSize;
+
+      // Fuente del texto (panel "Texto"): misma lógica que en las cartas
+      wireIgVscrollToSelect('canvas-font-list', 'canvas-font-select', 'font');
+
+      // Color del texto (panel "Texto"): misma lógica que la paleta de dibujo
+      document.querySelectorAll('#canvas-text-colors .ig-vscroll-item').forEach((item) => {
+        item.addEventListener('click', () => {
+          document.querySelectorAll('#canvas-text-colors .ig-vscroll-item').forEach((i) => i.classList.remove('active'));
+          item.classList.add('active');
+          const color = item.dataset.color;
+          document.getElementById('canvas-text-color').value = color;
+          execCanvasCmd('foreColor', color);
+        });
+      });
+
+      document.getElementById('draw-undo-btn').addEventListener('click', undoDraw);
+
+      document.getElementById('draw-clear-btn').addEventListener('click', () => {
+        pushHistory();
+        updateDrawUndoBtnState();
+        const w = drawCanvas.clientWidth, h = drawCanvas.clientHeight;
+        drawCtx.globalAlpha = 1;
+        drawCtx.fillStyle = '#0a080d';
+        drawCtx.fillRect(0, 0, w, h);
+        scheduleDrawSave();
+      });
+
+      // ─── Deshacer con Ctrl+Z (o Cmd+Z en Mac) ───
+      // Si el foco está en un campo de texto o cuadro editable, dejamos que el
+      // navegador maneje su propio deshacer de texto en vez de interferir.
+      document.addEventListener('keydown', (e) => {
+        const key = e.key ? e.key.toLowerCase() : '';
+        if (!(e.ctrlKey || e.metaKey) || key !== 'z' || e.shiftKey) return;
+        const active = document.activeElement;
+        const isEditableFocus = active && (
+          active.tagName === 'INPUT' || active.tagName === 'TEXTAREA' || active.isContentEditable
+        );
+        if (isEditableFocus) return;
+        e.preventDefault();
+        undoDraw();
+      });
+
+      loadDrawBoard();
+      listenDrawBoard();
+    }
+
+    function undoDraw() {
+      if (!drawCtx || !drawHistory.length) return;
+      const prev = drawHistory.pop();
+      drawCtx.putImageData(prev, 0, 0);
+      scheduleDrawSave();
+      updateDrawUndoBtnState();
+    }
+
+    function updateDrawUndoBtnState() {
+      const btn = document.getElementById('dm-undo-btn');
+      if (btn) btn.disabled = !drawHistory.length;
+    }
+
+    // ─── Paleta de colores del modo dibujo: reutiliza la misma lista de
+    // colores que la herramienta de texto (TT_COLORS), para que ambas
+    // interfaces se sientan coherentes entre sí. ───
+    function renderDrawPalette() {
+      const wrap = document.getElementById('dm-palette');
+      if (!wrap) return;
+      wrap.querySelectorAll('.dm-color-circle').forEach((c) => c.remove());
+      TT_COLORS.forEach((hex) => {
+        const btn = document.createElement('button');
+        btn.type = 'button';
+        btn.className = 'dm-color-circle' + (drawColor.toLowerCase() === hex.toLowerCase() ? ' active' : '');
+        btn.style.background = hex;
+        btn.title = hex;
+        btn.onclick = () => selectDrawColor(hex);
+        wrap.appendChild(btn);
+      });
+    }
+    function selectDrawColor(hex) {
+      drawColor = hex;
+      if (drawBrushType === 'eraser') selectDrawBrush('normal');
+      renderDrawPalette();
+      updateDrawSizePreviewVisual();
+    }
+    async function useDrawEyedropper() {
+      if (!window.EyeDropper) {
+        alert('Tu navegador todavía no soporta el cuentagotas. Elegí un color de la lista.');
+        return;
+      }
+      try {
+        const ed = new window.EyeDropper();
+        const result = await ed.open();
+        if (result && result.sRGBHex) selectDrawColor(result.sRGBHex);
+      } catch (e) {
+        // El usuario canceló el cuentagotas: no hacemos nada.
+      }
+    }
+
+    function selectDrawBrush(type) {
+      drawBrushType = type;
+      document.querySelectorAll('#dm-brush-select .dm-brush-btn').forEach((b) => {
+        b.classList.toggle('active', b.dataset.brush === type);
+      });
+      updateDrawSizePreviewVisual();
+    }
+
+    function onDrawSizeInput(val) {
+      drawSize = parseFloat(val);
+      updateDrawSizePreviewVisual();
+    }
+    function updateDrawSizePreviewVisual() {
+      const dot = document.getElementById('dm-size-preview-dot');
+      const val = document.getElementById('dm-size-preview-val');
+      if (!dot || !val) return;
+      const visualSize = Math.max(8, Math.min(90, drawSize));
+      dot.style.width = visualSize + 'px';
+      dot.style.height = visualSize + 'px';
+      if (drawBrushType === 'eraser') {
+        dot.style.background = 'rgba(255,255,255,0.18)';
+        dot.style.border = '1px dashed rgba(255,255,255,0.5)';
+      } else if (drawBrushType === 'highlighter') {
+        dot.style.background = hexToRgbaStr(drawColor, 0.35);
+        dot.style.border = '1px solid rgba(255,255,255,0.35)';
+      } else {
+        dot.style.background = drawColor;
+        dot.style.border = '1px solid rgba(255,255,255,0.35)';
+      }
+      val.textContent = Math.round(drawSize) + 'px';
+    }
+    function showDrawSizePreview() {
+      const preview = document.getElementById('dm-size-preview');
+      if (preview) preview.classList.add('visible');
+      updateDrawSizePreviewVisual();
+    }
+    function hideDrawSizePreview() {
+      const preview = document.getElementById('dm-size-preview');
+      if (preview) preview.classList.remove('visible');
+    }
+
+    function pushHistory() {
+      try {
+        const data = drawCtx.getImageData(0, 0, drawCanvas.width, drawCanvas.height);
+        drawHistory.push(data);
+        if (drawHistory.length > 15) drawHistory.shift();
+      } catch (e) {}
+    }
+
+    function scheduleDrawSave() {
+      const note = document.getElementById('draw-sync-note');
+      note.textContent = 'guardando...';
+      note.classList.add('saving');
+      clearTimeout(drawSaveTimer);
+      drawSaveTimer = setTimeout(async () => {
+        try {
+          const dataUrl = drawCanvas.toDataURL('image/png', 0.8);
+          await fetch(`${FIREBASE_DB_URL}/dibujo.json`, {
+            method: 'PUT',
+            body: JSON.stringify({ img: dataUrl, ts: Date.now(), by: myIdentity || 'alguien' })
+          });
+          note.textContent = 'se guarda solo, y aparece del otro lado ✦';
+        } catch (e) {
+          note.textContent = 'no se pudo guardar, revisá la conexión';
+        }
+        note.classList.remove('saving');
+      }, 500);
+    }
+
+    async function loadDrawBoard() {
+      try {
+        const res = await fetch(`${FIREBASE_DB_URL}/dibujo.json`);
+        const data = await res.json();
+        if (data && data.img) applyRemoteDrawing(data.img);
+      } catch (e) {}
+    }
+
+    function listenDrawBoard() {
+      try {
+        const es = new EventSource(`${FIREBASE_DB_URL}/dibujo.json`);
+        es.addEventListener('put', (e) => {
+          try {
+            const payload = JSON.parse(e.data);
+            const data = payload.data;
+            if (!data || !data.img) return;
+            // Ignoramos el eco de nuestro propio guardado, pero por identidad (no por tiempo),
+            // así nunca se pierde una actualización real del otro por una coincidencia de timing.
+            if (data.by && myIdentity && data.by === myIdentity) return;
+            applyRemoteDrawing(data.img);
+          } catch (err) {}
+        });
+        es.onerror = () => {}; // Firebase reconecta solo; si falla, la próxima apertura igual carga el dibujo.
+      } catch (e) {}
+    }
+
+    function applyRemoteDrawing(dataUrl) {
+      const img = new Image();
+      img.onload = () => {
+        lastRemoteImg = img;
+        if (!drawCtx || !drawCanvas) return;
+        const w = drawCanvas.clientWidth, h = drawCanvas.clientHeight;
+        drawCtx.drawImage(img, 0, 0, w, h);
+      };
+      img.src = dataUrl;
+    }
+
+    // ════════════════════════════════════════════════════════════
+    // ─── LIENZO: mismo sistema de stickers que las cartas (imágenes,
+    // cuadros de texto con formato), vive arriba del dibujo a mano. Se
+    // sincroniza por Firebase igual que el dibujo, para que las imágenes y
+    // cuadros de texto le aparezcan al otro apenas abre la página (no solo
+    // al guardar como imagen o mandar por Telegram). Arranca siempre vacío
+    // si nadie puso nada todavía.
+    // ════════════════════════════════════════════════════════════
+    let canvasStickers = [];
+    let canvasSelectedStickerIdx = null;
+    let canvasSaveTimer = null;
+    // Igual que en las cartas: idx del sticker -> instancia de Tiptap viva,
+    // y cuál de esos editores tiene el foco ahora mismo (para que la barra
+    // de formato del lienzo aplique negrita/color/fuente ahí).
+    let canvasTiptapEditors = {};
+    let canvasActiveEditor = null;
+
+    function scheduleCanvasSave() {
+      // Guardado local instantáneo (funciona sin conexión y sirve de respaldo).
+      try { localStorage.setItem('fc_canvas_stickers', JSON.stringify(canvasStickers)); } catch (e) {}
+
+      clearTimeout(canvasSaveTimer);
+      canvasSaveTimer = setTimeout(async () => {
+        try {
+          await fetch(`${FIREBASE_DB_URL}/lienzo_stickers.json`, {
+            method: 'PUT',
+            body: JSON.stringify({ stickers: canvasStickers, ts: Date.now(), by: myIdentity || 'alguien' })
+          });
+        } catch (e) {
+          // Si falla, ya quedó guardado localmente; la próxima vez que haya
+          // conexión el "input"/drag siguiente reintenta el envío.
+        }
+      }, 400);
+    }
+
+    function restoreCanvasStickers() {
+      // Restauración local instantánea mientras llega la versión remota (más
+      // reciente y compartida) desde Firebase.
+      try {
+        const raw = localStorage.getItem('fc_canvas_stickers');
+        if (raw) {
+          canvasStickers = JSON.parse(raw) || [];
+          renderCanvasStickers();
+        }
+      } catch (e) {}
+
+      loadCanvasStickersRemote();
+      listenCanvasStickers();
+    }
+
+    async function loadCanvasStickersRemote() {
+      try {
+        const res = await fetch(`${FIREBASE_DB_URL}/lienzo_stickers.json`);
+        const data = await res.json();
+        if (data && Array.isArray(data.stickers)) {
+          canvasStickers = data.stickers;
+          canvasSelectedStickerIdx = null;
+          renderCanvasStickers();
+          try { localStorage.setItem('fc_canvas_stickers', JSON.stringify(canvasStickers)); } catch (e) {}
+        }
+      } catch (e) {}
+    }
+
+    function listenCanvasStickers() {
+      try {
+        const es = new EventSource(`${FIREBASE_DB_URL}/lienzo_stickers.json`);
+        es.addEventListener('put', (e) => {
+          try {
+            const payload = JSON.parse(e.data);
+            const data = payload.data;
+            if (!data || !Array.isArray(data.stickers)) return;
+            // Ignoramos el eco de nuestro propio guardado, por identidad (no por
+            // tiempo), así nunca se pierde una actualización real del otro.
+            if (data.by && myIdentity && data.by === myIdentity) return;
+            canvasStickers = data.stickers;
+            canvasSelectedStickerIdx = null;
+            renderCanvasStickers();
+            try { localStorage.setItem('fc_canvas_stickers', JSON.stringify(canvasStickers)); } catch (err) {}
+          } catch (err) {}
+        });
+        es.onerror = () => {}; // Firebase reconecta solo; si falla, la próxima apertura igual carga lo último.
+      } catch (e) {}
+    }
+
+    function addCanvasStickerToData(base64Src) {
+      canvasStickers.push({ type: 'image', src: base64Src, left: 30, top: 25, width: 35, rotation: 0 });
+      canvasSelectedStickerIdx = canvasStickers.length - 1;
+      renderCanvasStickers();
+      scheduleCanvasSave();
+    }
+
+    function addCanvasTextSticker(posLeft, posTop) {
+      canvasStickers.push({
+        type: 'text', content: '', placeholder: 'Escribí algo...',
+        left: (posLeft != null ? posLeft : 15), top: (posTop != null ? posTop : 38), width: 70, rotation: 0,
+        fontSize: 22, font: 'Lora', color: '#e8ddd0', align: 'center', bgMode: 'none'
+      });
+      const idx = canvasStickers.length - 1;
+      canvasSelectedStickerIdx = idx;
+      renderCanvasStickers();
+      scheduleCanvasSave();
+      return idx;
+    }
+
+    // Igual que addCanvasTextSticker pero para la carta (panel de admin): así
+    // ambos usan exactamente la misma herramienta de texto a pantalla completa.
+    function addAdminTextSticker(posLeft, posTop) {
+      currentStickers.push({
+        type: 'text', content: '', placeholder: 'Escribí algo...',
+        left: (posLeft != null ? posLeft : 15), top: (posTop != null ? posTop : 38), width: 70, rotation: 0,
+        fontSize: 22, font: 'Lora', color: '#e8ddd0', align: 'center', bgMode: 'none'
+      });
+      const idx = currentStickers.length - 1;
+      selectedStickerIdx = idx;
+      renderStickers(document.getElementById('live-stickers-layer'), currentStickers, true);
+      scheduleAutosave();
+      return idx;
+    }
+
+    function uploadCanvasStickerFile(input) {
+      deactivateCanvasDrawMode();
+      if (input.files && input.files[0]) {
+        const reader = new FileReader();
+        reader.onload = (e) => addCanvasStickerToData(e.target.result);
+        reader.readAsDataURL(input.files[0]);
+        input.value = '';
+      }
+    }
+
+    // Reutiliza el mismo mecanismo de selección guardada que usan los cuadros
+    // de texto de las cartas (los controles de la barra le roban el foco).
+    function execCanvasCmd(command, value = null) {
+      // Si el cuadro de texto activo del lienzo es un editor Tiptap, el
+      // comando se aplica ahí (misma lógica que las cartas). Si no (Tiptap
+      // no llegó a cargar), usamos el execCommand clásico como respaldo.
+      if (canvasActiveEditor && applyTiptapCommand(canvasActiveEditor, command, value)) {
+        scheduleCanvasSave();
+        return;
+      }
+      restoreSavedSelection();
+      document.execCommand(command, false, value);
+      syncCanvasTextStickersContent();
+      scheduleCanvasSave();
+    }
+
+    function syncCanvasTextStickersContent() {
+      canvasStickers.forEach((st, idx) => {
+        if (st.type === 'text') {
+          const ed = canvasTiptapEditors[idx];
+          if (ed && !ed.isDestroyed) { st.content = ed.getHTML(); return; }
+          const node = document.getElementById(`canvas-sticker-text-${idx}`);
+          if (node) st.content = node.innerHTML;
+        }
+      });
+    }
+
+    // Monta un editor Tiptap dentro de textDiv, para un sticker de texto del
+    // lienzo (idx = índice en canvasStickers). Mismo formato simple e inline
+    // que usan las cartas (negrita/cursiva/subrayado/color/fuente).
+    // ─── Estilo del texto: mismo criterio para el sticker final del lienzo
+    // y para el input de la herramienta de texto pantalla completa (así se
+    // ve igual mientras se escribe que una vez guardado). ───
+    function escapeHtml(str) {
+      return String(str).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+    }
+    function contrastColor(hex) {
+      try {
+        const [r, g, b] = hexToRgb(hex);
+        const luminance = (0.299 * r + 0.587 * g + 0.114 * b) / 255;
+        return luminance > 0.6 ? '#0d0b0f' : '#ffffff';
+      } catch (e) { return '#0d0b0f'; }
+    }
+    function hexToRgbaStr(hex, alpha) {
+      try {
+        const [r, g, b] = hexToRgb(hex);
+        return `rgba(${r}, ${g}, ${b}, ${alpha})`;
+      } catch (e) { return hex; }
+    }
+    function applyCanvasTextStyle(el, st) {
+      const color = st.color || '#e8ddd0';
+      const bgMode = st.bgMode || 'none';
+      el.style.fontSize = (st.fontSize || 22) + 'px';
+      el.style.fontFamily = `'${st.font || 'Lora'}', serif`;
+      el.style.textAlign = st.align || 'center';
+      el.classList.remove('sticker-bg-solid', 'sticker-bg-invert');
+      if (bgMode === 'solid') {
+        el.classList.add('sticker-bg-solid');
+        el.style.background = color;
+        el.style.color = contrastColor(color);
+      } else if (bgMode === 'invert') {
+        el.classList.add('sticker-bg-invert');
+        el.style.background = hexToRgbaStr(color, 0.5);
+        el.style.color = contrastColor(color);
+      } else {
+        el.style.background = 'transparent';
+        el.style.color = color;
+      }
+    }
+
+    function mountCanvasTextEditor(textDiv, st, idx) {
+      const { Editor, StarterKit, Underline, TextStyle, Color, FontFamily, Placeholder } = window.__TiptapLib;
+
+      const editor = new Editor({
+        element: textDiv,
+        content: st.content || '',
+        editorProps: {
+          attributes: { class: 'tiptap-carta-content' },
+          handlePaste: (view, event) => tiptapPastePlainText(view, event)
+        },
+        extensions: [
+          StarterKit.configure({
+            heading: false, blockquote: false, bulletList: false, orderedList: false,
+            listItem: false, codeBlock: false, horizontalRule: false, code: false, strike: false
+          }),
+          Underline,
+          TextStyle,
+          Color,
+          FontFamily,
+          Placeholder.configure({ placeholder: st.placeholder || 'Escribí algo...' })
+        ],
+        onUpdate: ({ editor }) => {
+          st.content = editor.getHTML();
+          scheduleCanvasSave();
+        },
+        onFocus: ({ editor }) => {
+          canvasActiveEditor = editor;
+        }
+      });
+
+      canvasTiptapEditors[idx] = editor;
+    }
+
+    // ════════════════════════════════════════════════════════════
+    // ─── HERRAMIENTA DE TEXTO A PANTALLA COMPLETA (lienzo, estilo IG Stories) ───
+    // Se activa tocando "Aa" o tocando el lienzo vacío (ver `start` en
+    // initDrawBoard). Mientras está abierta, ttState guarda el estilo en
+    // edición; recién se escribe al sticker real al tocar "Listo".
+    // ════════════════════════════════════════════════════════════
+    let ttState = null;
+    let ttViewportHandler = null;
+
+    const TT_FONTS = [
+      { name: 'Lora', fam: "'Lora', serif" },
+      { name: 'Inter', fam: "'Inter', sans-serif" },
+      { name: 'Playfair Display', fam: "'Playfair Display', serif" },
+      { name: 'Cormorant Garamond', fam: "'Cormorant Garamond', serif" },
+      { name: 'Cinzel', fam: "'Cinzel', serif" },
+      { name: 'Montserrat', fam: "'Montserrat', sans-serif" },
+      { name: 'Raleway', fam: "'Raleway', sans-serif" },
+      { name: 'Josefin Sans', fam: "'Josefin Sans', sans-serif" },
+      { name: 'Outfit', fam: "'Outfit', sans-serif" },
+      { name: 'Dancing Script', fam: "'Dancing Script', cursive" }
+    ];
+    const TT_COLORS = ['#e8ddd0', '#c9a96e', '#e05656', '#5fb3d9', '#ffffff', '#0d0b0f', '#7c3f6e', '#6ee7b7', '#f4a6c1', '#f2a65a', '#a78bfa', '#94a3b8'];
+    const TT_ALIGN_STATES = ['left', 'center', 'right'];
+    const TT_ALIGN_LINES = {
+      left: [[4, 20], [4, 15], [4, 18]],
+      center: [[4, 20], [7, 17], [6, 18]],
+      right: [[4, 20], [9, 20], [6, 20]]
+    };
+    const TT_BG_STATES = ['none', 'solid', 'invert'];
+
+    function plainTextFromStickerContent(html) {
+      if (!html) return '';
+      const tmp = document.createElement('div');
+      tmp.innerHTML = html;
+      const paras = Array.from(tmp.querySelectorAll('p'));
+      if (paras.length) return paras.map((p) => p.textContent || '').join('\n');
+      return tmp.textContent || '';
+    }
+
+    function placeCaretAtEnd(el) {
+      try {
+        const range = document.createRange();
+        range.selectNodeContents(el);
+        range.collapse(false);
+        const sel = window.getSelection();
+        sel.removeAllRanges();
+        sel.addRange(range);
+      } catch (e) {}
+    }
+
+    // idx null = crear un cuadro de texto nuevo (en la posición indicada, si
+    // se tocó el lienzo vacío) y abrir la herramienta sobre él.
+    // scope: 'canvas' (lienzo compartido) o 'admin' (carta): misma lógica e
+    // interfaz para las dos, solo cambia dónde se guarda el sticker.
+    function openTextTool(scope, idx, posLeft, posTop) {
+      const isCanvas = scope === 'canvas';
+      const isImage = scope === 'image';
+      if (isCanvas) deactivateCanvasDrawMode();
+
+      const stickers = isCanvas ? canvasStickers : (isImage ? imageStickers : currentStickers);
+      let isNew = false;
+      if (idx === null || idx === undefined) {
+        idx = isCanvas ? addCanvasTextSticker(posLeft, posTop) : (isImage ? addImageTextSticker(posLeft, posTop) : addAdminTextSticker(posLeft, posTop));
+        isNew = true;
+      }
+      const st = stickers[idx];
+      if (!st) return;
+
+      if (isCanvas) canvasSelectedStickerIdx = idx;
+      else if (isImage) imageSelectedStickerIdx = idx;
+      else selectedStickerIdx = idx;
+
+      ttState = {
+        scope, idx, isNew,
+        font: st.font || 'Lora',
+        color: st.color || '#e8ddd0',
+        align: st.align || 'center',
+        bgMode: st.bgMode || 'none',
+        fontSize: st.fontSize || 22
+      };
+
+      // La herramienta es un único overlay compartido: lo movemos al marco
+      // (lienzo, carta o foto) que corresponda antes de abrirlo, así se
+      // posiciona y hace zoom con position:absolute respecto del marco correcto.
+      const overlay = document.getElementById('canvas-text-tool');
+      const targetShellId = isCanvas ? 'canvas-stage-shell' : (isImage ? 'image-editor-drop' : 'letter-stage-shell');
+      const targetShell = document.getElementById(targetShellId);
+      if (overlay && targetShell && overlay.parentElement !== targetShell) targetShell.appendChild(overlay);
+
+      const input = document.getElementById('tt-input');
+      if (!overlay || !input) return;
+
+      input.textContent = plainTextFromStickerContent(st.content || '');
+      document.getElementById('tt-font-size').value = ttState.fontSize;
+      document.getElementById('tt-size-preview-val').textContent = Math.round(ttState.fontSize);
+
+      syncTextToolFontCarousel();
+      syncTextToolColorCarousel();
+      syncTextToolAlignIcon();
+      syncTextToolBgIcon();
+      applyTextToolStyles();
+      const wheelBtn = document.getElementById('tt-color-wheel-btn');
+      if (wheelBtn) wheelBtn.style.boxShadow = `0 0 0 2px ${ttState.color}`;
+
+      overlay.classList.add('open');
+      const shell = overlay.closest('.ig-stage-shell');
+      if (shell) shell.classList.add('editing');
+
+      setTimeout(() => { input.focus(); placeCaretAtEnd(input); }, 60);
+      setupTextToolKeyboardAvoidance();
+    }
+
+    // cancel=true: descarta los cambios (usado si alguna vez hace falta
+    // cerrar sin guardar; el botón "Listo" siempre guarda). El scope se lee
+    // de ttState, así que el botón "Listo" no necesita saber cuál es.
+    function closeTextTool(cancel) {
+      const overlay = document.getElementById('canvas-text-tool');
+      const input = document.getElementById('tt-input');
+      if (!overlay) return;
+
+      let scope = ttState ? ttState.scope : 'canvas';
+      const isCanvas = scope === 'canvas';
+      const isImage = scope === 'image';
+
+      if (ttState) {
+        const idx = ttState.idx;
+        const stickers = isCanvas ? canvasStickers : (isImage ? imageStickers : currentStickers);
+        const st = stickers[idx];
+        const plain = input ? input.textContent.replace(/\u00a0/g, ' ') : '';
+
+        if (st) {
+          if (!cancel && plain.trim() !== '') {
+            st.content = plain.split('\n').map((line) => `<p>${escapeHtml(line) || '<br>'}</p>`).join('');
+            st.font = ttState.font;
+            st.color = ttState.color;
+            st.align = ttState.align;
+            st.bgMode = ttState.bgMode;
+            st.fontSize = ttState.fontSize;
+          } else if (ttState.isNew || plain.trim() === '') {
+            // Se creó nuevo y quedó vacío (o se canceló): lo sacamos.
+            stickers.splice(idx, 1);
+            if (isCanvas) {
+              if (canvasSelectedStickerIdx === idx) canvasSelectedStickerIdx = null;
+              else if (canvasSelectedStickerIdx > idx) canvasSelectedStickerIdx--;
+            } else if (isImage) {
+              if (imageSelectedStickerIdx === idx) imageSelectedStickerIdx = null;
+              else if (imageSelectedStickerIdx > idx) imageSelectedStickerIdx--;
+            } else {
+              if (selectedStickerIdx === idx) selectedStickerIdx = null;
+              else if (selectedStickerIdx > idx) selectedStickerIdx--;
+            }
+          }
+        }
+      }
+
+      overlay.classList.remove('open');
+      const shell = overlay.closest('.ig-stage-shell');
+      if (shell && !shell.querySelector('.ig-panel.open')) shell.classList.remove('editing');
+      teardownTextToolKeyboardAvoidance();
+      if (input) input.blur();
+      ttState = null;
+
+      if (isCanvas) {
+        renderCanvasStickers();
+        scheduleCanvasSave();
+      } else if (isImage) {
+        renderImageStickers();
+      } else {
+        renderStickers(document.getElementById('live-stickers-layer'), currentStickers, true);
+        scheduleAutosave();
+        refreshWorkspaceBoundary();
+      }
+    }
+
+    // Tocar en cualquier parte alejada del campo de texto (el fondo oscurecido,
+    // el espacio vacío alrededor de los botones, etc.) cancela la entrada,
+    // igual que si se hubiera tocado "afuera" de un modal. Los controles
+    // interactivos quedan excluidos para no interferir con su uso normal.
+    function handleTextToolBackgroundTap(e) {
+      if (!ttState) return;
+      if (e.target.closest('.tt-icon-btn, .tt-done-btn, .text-tool-slider-wrap, .text-tool-input, .tt-font-carousel, .tt-color-carousel')) return;
+      closeTextTool(true);
+    }
+
+    function applyTextToolStyles() {
+      const input = document.getElementById('tt-input');
+      if (!input || !ttState) return;
+      applyCanvasTextStyle(input, ttState);
+    }
+
+    function syncTextToolFontCarousel() {
+      const wrap = document.getElementById('tt-font-carousel');
+      if (!wrap) return;
+      wrap.innerHTML = '';
+      TT_FONTS.forEach((f) => {
+        const btn = document.createElement('button');
+        btn.type = 'button';
+        btn.className = 'tt-font-btn' + (ttState && ttState.font === f.name ? ' active' : '');
+        btn.style.fontFamily = f.fam;
+        btn.title = f.name;
+        btn.textContent = 'Aa';
+        btn.onclick = () => selectTextToolFont(f.name);
+        wrap.appendChild(btn);
+      });
+    }
+    function selectTextToolFont(fontName) {
+      if (!ttState) return;
+      ttState.font = fontName;
+      applyTextToolStyles();
+      syncTextToolFontCarousel();
+    }
+
+    function syncTextToolColorCarousel() {
+      const wrap = document.getElementById('tt-color-carousel');
+      if (!wrap) return;
+      wrap.querySelectorAll('.tt-color-circle').forEach((c) => c.remove());
+      TT_COLORS.forEach((hex) => {
+        const btn = document.createElement('button');
+        btn.type = 'button';
+        btn.className = 'tt-color-circle' + (ttState && ttState.color.toLowerCase() === hex.toLowerCase() ? ' active' : '');
+        btn.style.background = hex;
+        btn.title = hex;
+        btn.onclick = () => selectTextToolColor(hex);
+        wrap.appendChild(btn);
+      });
+    }
+    function selectTextToolColor(hex) {
+      setTextToolColor(hex);
+      syncTextToolColorCarousel();
+    }
+    function setTextToolColor(hex) {
+      if (!ttState) return;
+      ttState.color = hex;
+      applyTextToolStyles();
+      const wheelBtn = document.getElementById('tt-color-wheel-btn');
+      if (wheelBtn) wheelBtn.style.boxShadow = `0 0 0 2px ${hex}`;
+    }
+    function openTextToolColorWheel() {
+      if (!ttState) return;
+      openColorPicker(ttState.color, (hex) => {
+        setTextToolColor(hex);
+        syncTextToolColorCarousel();
+      });
+    }
+
+    function cycleTextToolAlign() {
+      if (!ttState) return;
+      const i = TT_ALIGN_STATES.indexOf(ttState.align);
+      ttState.align = TT_ALIGN_STATES[(i + 1) % TT_ALIGN_STATES.length];
+      applyTextToolStyles();
+      syncTextToolAlignIcon();
+    }
+    function syncTextToolAlignIcon() {
+      const svg = document.getElementById('tt-align-icon');
+      if (!svg) return;
+      const lines = svg.querySelectorAll('line');
+      const coords = TT_ALIGN_LINES[ttState ? ttState.align : 'center'] || TT_ALIGN_LINES.center;
+      lines.forEach((ln, i) => {
+        if (coords[i]) { ln.setAttribute('x1', coords[i][0]); ln.setAttribute('x2', coords[i][1]); }
+      });
+    }
+
+    function cycleTextToolBg() {
+      if (!ttState) return;
+      const i = TT_BG_STATES.indexOf(ttState.bgMode);
+      ttState.bgMode = TT_BG_STATES[(i + 1) % TT_BG_STATES.length];
+      applyTextToolStyles();
+      syncTextToolBgIcon();
+    }
+    function syncTextToolBgIcon() {
+      const icon = document.getElementById('tt-bg-icon');
+      const btn = document.getElementById('tt-bg-btn');
+      if (!icon || !btn) return;
+      const mode = ttState ? ttState.bgMode : 'none';
+      btn.classList.toggle('active', mode !== 'none');
+      icon.classList.toggle('tt-bg-icon-invert', mode === 'invert');
+    }
+
+    function onTextToolFontSizeInput(val) {
+      if (!ttState) return;
+      ttState.fontSize = parseFloat(val);
+      applyTextToolStyles();
+      const label = document.getElementById('tt-size-preview-val');
+      if (label) label.textContent = Math.round(ttState.fontSize);
+      positionTextToolSizePreview(val);
+    }
+    function positionTextToolSizePreview(val) {
+      const slider = document.getElementById('tt-font-size');
+      const preview = document.getElementById('tt-size-preview');
+      if (!slider || !preview) return;
+      const min = parseFloat(slider.min), max = parseFloat(slider.max);
+      const pct = (parseFloat(val) - min) / (max - min);
+      // El slider está rotado -90°, así que el extremo mínimo queda abajo.
+      preview.style.top = ((1 - pct) * 100) + '%';
+    }
+    function showTextToolSizePreview() {
+      const preview = document.getElementById('tt-size-preview');
+      const slider = document.getElementById('tt-font-size');
+      if (preview) preview.classList.add('visible');
+      if (slider) positionTextToolSizePreview(slider.value);
+    }
+    function hideTextToolSizePreview() {
+      const preview = document.getElementById('tt-size-preview');
+      if (preview) preview.classList.remove('visible');
+    }
+
+    async function useTextToolEyedropper() {
+      if (!window.EyeDropper) {
+        alert('Tu navegador todavía no soporta el cuentagotas. Elegí un color de la lista.');
+        return;
+      }
+      try {
+        const ed = new window.EyeDropper();
+        const result = await ed.open();
+        if (result && result.sRGBHex) {
+          setTextToolColor(result.sRGBHex);
+          syncTextToolColorCarousel();
+        }
+      } catch (e) {
+        // El usuario canceló el cuentagotas: no hacemos nada.
+      }
+    }
+
+    // Equivalente web de un KeyboardAvoidingView: cuando aparece el teclado
+    // virtual, la barra de fuentes/colores se desplaza hacia arriba para
+    // quedar pegada justo encima de él.
+    function setupTextToolKeyboardAvoidance() {
+      const bar = document.getElementById('tt-bottom-bar');
+      if (!bar || !window.visualViewport) return;
+      const vv = window.visualViewport;
+      ttViewportHandler = () => {
+        const kb = Math.max(0, window.innerHeight - vv.height - vv.offsetTop);
+        bar.style.transform = kb > 4 ? `translateY(-${kb}px)` : '';
+      };
+      vv.addEventListener('resize', ttViewportHandler);
+      vv.addEventListener('scroll', ttViewportHandler);
+      ttViewportHandler();
+    }
+    function teardownTextToolKeyboardAvoidance() {
+      const bar = document.getElementById('tt-bottom-bar');
+      if (bar) bar.style.transform = '';
+      if (window.visualViewport && ttViewportHandler) {
+        window.visualViewport.removeEventListener('resize', ttViewportHandler);
+        window.visualViewport.removeEventListener('scroll', ttViewportHandler);
+      }
+      ttViewportHandler = null;
+    }
+
+    function refreshCanvasPropsPanel() {
+      const bar = document.getElementById('canvas-sticker-props-bar');
+      if (!bar) return;
+
+      if (canvasSelectedStickerIdx === null || !canvasStickers[canvasSelectedStickerIdx]) {
+        bar.classList.remove('visible');
+        updateTextToolButton('canvas');
+        return;
+      }
+
+      const idx = canvasSelectedStickerIdx;
+      const st = canvasStickers[idx];
+      bar.classList.add('visible');
+      updateTextToolButton('canvas');
+
+      const opacitySlider = document.getElementById('canvas-props-opacity');
+      opacitySlider.value = (st.opacity === undefined || st.opacity === null) ? 1 : st.opacity;
+      opacitySlider.oninput = (e) => {
+        st.opacity = parseFloat(e.target.value);
+        const wrapper = document.querySelector(`#canvas-stickers-layer .sticker-wrapper[data-idx="${idx}"]`);
+        if (wrapper) wrapper.style.opacity = st.opacity;
+      };
+      opacitySlider.onchange = () => scheduleCanvasSave();
+
+      const downBtn = document.getElementById('canvas-props-layer-down');
+      const upBtn = document.getElementById('canvas-props-layer-up');
+
+      downBtn.onclick = () => {
+        if (idx > 0) {
+          [canvasStickers[idx - 1], canvasStickers[idx]] = [canvasStickers[idx], canvasStickers[idx - 1]];
+          canvasSelectedStickerIdx = idx - 1;
+          syncCanvasTextStickersContent();
+          renderCanvasStickers();
+          scheduleCanvasSave();
+        }
+      };
+
+      upBtn.onclick = () => {
+        if (idx < canvasStickers.length - 1) {
+          [canvasStickers[idx + 1], canvasStickers[idx]] = [canvasStickers[idx], canvasStickers[idx + 1]];
+          canvasSelectedStickerIdx = idx + 1;
+          syncCanvasTextStickersContent();
+          renderCanvasStickers();
+          scheduleCanvasSave();
+        }
+      };
+    }
+
+    function renderCanvasStickers() {
+      const layerContainer = document.getElementById('canvas-stickers-layer');
+      if (!layerContainer) return;
+
+      // Destruimos las instancias de Tiptap anteriores antes de tirar el DOM
+      // abajo, para no dejar editores vivos sin contenedor (igual que en la carta).
+      Object.values(canvasTiptapEditors).forEach((ed) => { try { if (!ed.isDestroyed) ed.destroy(); } catch (e) {} });
+      canvasTiptapEditors = {};
+      canvasActiveEditor = null;
+
+      layerContainer.innerHTML = '';
+
+      canvasStickers.forEach((st, idx) => {
+        const wrapper = document.createElement('div');
+        wrapper.className = 'sticker-wrapper';
+        wrapper.dataset.idx = idx;
+        if (canvasSelectedStickerIdx === idx) wrapper.classList.add('selected');
+        wrapper.style.left = st.left + '%';
+        wrapper.style.top = st.top + '%';
+        wrapper.style.width = st.width + '%';
+        wrapper.style.transform = `rotate(${st.rotation || 0}deg)`;
+        wrapper.style.opacity = (st.opacity === undefined || st.opacity === null) ? 1 : st.opacity;
+
+        if (st.type === 'text') {
+          const textDiv = document.createElement('div');
+          textDiv.className = 'sticker-text-content';
+          textDiv.id = `canvas-sticker-text-${idx}`;
+          applyCanvasTextStyle(textDiv, st);
+
+          wrapper.appendChild(textDiv);
+
+          if (window.__TiptapLib) {
+            mountCanvasTextEditor(textDiv, st, idx);
+          } else {
+            // Tiptap no llegó a cargar (sin conexión, CDN caído, etc.): editor clásico de siempre.
+            textDiv.contentEditable = "true";
+            textDiv.innerHTML = st.content || '';
+            if (st.placeholder) textDiv.setAttribute('placeholder', st.placeholder);
+            textDiv.addEventListener('input', () => {
+              st.content = textDiv.innerHTML;
+              scheduleCanvasSave();
+            });
+          }
+        } else {
+          const img = document.createElement('img');
+          img.className = 'sticker-img';
+          img.src = st.src;
+          wrapper.appendChild(img);
+        }
+
+        const moveBtn = document.createElement('div');
+        moveBtn.className = 'sticker-control control-move';
+        moveBtn.innerHTML = '✥';
+        wrapper.appendChild(moveBtn);
+
+        const delBtn = document.createElement('div');
+        delBtn.className = 'sticker-control control-delete';
+        delBtn.innerHTML = '✕';
+        delBtn.onclick = (e) => {
+          e.stopPropagation();
+          canvasStickers.splice(idx, 1);
+          if (canvasSelectedStickerIdx === idx) canvasSelectedStickerIdx = null;
+          else if (canvasSelectedStickerIdx > idx) canvasSelectedStickerIdx--;
+          renderCanvasStickers();
+          scheduleCanvasSave();
+        };
+        wrapper.appendChild(delBtn);
+
+        const cloneBtn = document.createElement('div');
+        cloneBtn.className = 'sticker-control control-clone';
+        cloneBtn.innerHTML = '＋';
+        cloneBtn.onclick = (e) => {
+          e.stopPropagation();
+          syncCanvasTextStickersContent();
+          const cloned = JSON.parse(JSON.stringify(st));
+          cloned.left = Math.min(st.left + 5, 85);
+          cloned.top = Math.min(st.top + 5, 85);
+          canvasStickers.push(cloned);
+          canvasSelectedStickerIdx = canvasStickers.length - 1;
+          renderCanvasStickers();
+          scheduleCanvasSave();
+        };
+        wrapper.appendChild(cloneBtn);
+
+        const rotBtn = document.createElement('div');
+        rotBtn.className = 'sticker-control control-rotate';
+        rotBtn.innerHTML = '↻';
+        wrapper.appendChild(rotBtn);
+
+        const resBtn = document.createElement('div');
+        resBtn.className = 'sticker-control control-resize';
+        resBtn.innerHTML = '⤡';
+        wrapper.appendChild(resBtn);
+
+        const sideLeftBtn = document.createElement('div');
+        sideLeftBtn.className = 'sticker-control control-resize-side control-resize-side-left';
+        sideLeftBtn.innerHTML = '⋮';
+        sideLeftBtn.title = 'Ajustar ancho del recuadro';
+        wrapper.appendChild(sideLeftBtn);
+
+        const sideRightBtn = document.createElement('div');
+        sideRightBtn.className = 'sticker-control control-resize-side control-resize-side-right';
+        sideRightBtn.innerHTML = '⋮';
+        sideRightBtn.title = 'Ajustar ancho del recuadro';
+        wrapper.appendChild(sideRightBtn);
+
+        setupCanvasStickerDragAndTransform(wrapper, st, layerContainer, rotBtn, resBtn, idx, sideLeftBtn, sideRightBtn);
+
+        layerContainer.appendChild(wrapper);
+      });
+
+      refreshCanvasPropsPanel();
+    }
+
+    function setupCanvasStickerDragAndTransform(wrapper, stickerData, layerContainer, rotBtn, resBtn, idx, sideLeftBtn, sideRightBtn) {
+      wrapper.addEventListener('dragstart', (e) => e.preventDefault());
+
+      // 1. MOVER (DRAG)
+      wrapper.addEventListener('mousedown', startMove);
+      wrapper.addEventListener('touchstart', startMove, { passive: false });
+
+      function startMove(e) {
+        if (moveToolActiveCanvas) return; // herramienta "mover página": no tocar elementos
+        if (e.touches && e.touches.length > 1) return; // dos dedos: lo maneja el pellizco
+
+        const isMoveControl = e.target.closest('.control-move');
+        const isOtherControl = e.target.closest('.sticker-control') && !isMoveControl;
+        const isText = (stickerData.type === 'text');
+        const textEl = isText ? wrapper.querySelector('.sticker-text-content') : null;
+        const isActivelyEditing = isText && textEl && (document.activeElement === textEl || textEl.contains(document.activeElement));
+
+        if (isOtherControl) return;
+
+        // Si el cuadro de texto ya tiene el foco (se está escribiendo), no
+        // interceptamos: dejamos que el navegador mueva el cursor, marque
+        // selección, etc., con su comportamiento normal.
+        if (isActivelyEditing) return;
+
+        e.preventDefault();
+
+        const clientX = e.touches ? e.touches[0].clientX : e.clientX;
+        const clientY = e.touches ? e.touches[0].clientY : e.clientY;
+        const startX = clientX;
+        const startY = clientY;
+        const DRAG_THRESHOLD = 6; // px: por debajo de esto es un toque/clic, no un arrastre
+
+        let dragging = false;
+        let containerRect = null;
+        let initialLeftPx = 0;
+        let initialTopPx = 0;
+        const deleteZone = document.getElementById('canvas-delete-zone');
+
+        function beginDrag() {
+          dragging = true;
+          syncCanvasTextStickersContent();
+
+          canvasSelectedStickerIdx = idx;
+          document.querySelectorAll('#canvas-stickers-layer .sticker-wrapper').forEach(w => w.classList.remove('selected'));
+          wrapper.classList.add('selected');
+          wrapper.classList.add('active');
+          refreshCanvasPropsPanel();
+
+          containerRect = layerContainer.getBoundingClientRect();
+          initialLeftPx = (stickerData.left / 100) * containerRect.width;
+          initialTopPx = (stickerData.top / 100) * containerRect.height;
+        }
+
+        function doMove(moveEvent) {
+          const mX = moveEvent.touches ? moveEvent.touches[0].clientX : moveEvent.clientX;
+          const mY = moveEvent.touches ? moveEvent.touches[0].clientY : moveEvent.clientY;
+
+          if (!dragging) {
+            if (Math.hypot(mX - startX, mY - startY) < DRAG_THRESHOLD) return;
+            beginDrag();
+          }
+
+          const deltaX = mX - startX;
+          const deltaY = mY - startY;
+
+          stickerData.left = ((initialLeftPx + deltaX) / containerRect.width) * 100;
+          stickerData.top = ((initialTopPx + deltaY) / containerRect.height) * 100;
+
+          wrapper.style.left = stickerData.left + '%';
+          wrapper.style.top = stickerData.top + '%';
+
+          if (deleteZone) {
+            deleteZone.classList.add('visible');
+            const zoneRect = deleteZone.getBoundingClientRect();
+            const nearDelete = Math.hypot(mX - (zoneRect.left + zoneRect.width / 2), mY - (zoneRect.top + zoneRect.height / 2)) < 55;
+            deleteZone.classList.toggle('armed', nearDelete);
+            wrapper.style.opacity = nearDelete ? '0.35' : ((stickerData.opacity === undefined || stickerData.opacity === null) ? 1 : stickerData.opacity);
+          }
+        }
+
+        function stopMove(upEvent) {
+          window.removeEventListener('mousemove', doMove);
+          window.removeEventListener('mouseup', stopMove);
+          window.removeEventListener('touchmove', doMove);
+          window.removeEventListener('touchend', stopMove);
+
+          if (dragging) {
+            wrapper.classList.remove('active');
+            if (deleteZone && deleteZone.classList.contains('armed')) {
+              deleteZone.classList.remove('visible', 'armed');
+              canvasStickers.splice(idx, 1);
+              if (canvasSelectedStickerIdx === idx) canvasSelectedStickerIdx = null;
+              else if (canvasSelectedStickerIdx > idx) canvasSelectedStickerIdx--;
+              renderCanvasStickers();
+              scheduleCanvasSave();
+              return;
+            }
+            if (deleteZone) deleteZone.classList.remove('visible', 'armed');
+            scheduleCanvasSave();
+            return;
+          }
+
+          // No hubo arrastre: fue un toque/clic simple. Seleccionamos el
+          // cuadro y, si es de texto, lo abrimos para escribir con el
+          // cursor puesto justo donde tocó la persona.
+          canvasSelectedStickerIdx = idx;
+          document.querySelectorAll('#canvas-stickers-layer .sticker-wrapper').forEach(w => w.classList.remove('selected'));
+          wrapper.classList.add('selected');
+          refreshCanvasPropsPanel();
+
+          if (isText && textEl) {
+            focusTextAtPoint(textEl, startX, startY);
+          }
+        }
+
+        window.addEventListener('mousemove', doMove);
+        window.addEventListener('mouseup', stopMove);
+        window.addEventListener('touchmove', doMove, { passive: false });
+        window.addEventListener('touchend', stopMove);
+      }
+
+      // 1b. PELLIZCAR CON DOS DEDOS: agranda/achica y rota a la vez
+      wrapper.addEventListener('touchstart', startPinch, { passive: false });
+
+      function startPinch(e) {
+        if (moveToolActiveCanvas) return;
+        if (!e.touches || e.touches.length !== 2) return;
+        e.preventDefault();
+        e.stopPropagation();
+
+        canvasSelectedStickerIdx = idx;
+        document.querySelectorAll('#canvas-stickers-layer .sticker-wrapper').forEach(w => w.classList.remove('selected'));
+        wrapper.classList.add('selected');
+        refreshCanvasPropsPanel();
+
+        const t0 = e.touches[0], t1 = e.touches[1];
+        const startDist = Math.hypot(t1.clientX - t0.clientX, t1.clientY - t0.clientY);
+        const startAngle = Math.atan2(t1.clientY - t0.clientY, t1.clientX - t0.clientX) * 180 / Math.PI;
+        const initialWidthPercent = stickerData.width;
+        const initialFontSize = stickerData.fontSize || 22;
+        const initialRotation = stickerData.rotation || 0;
+
+        function doPinch(moveEvt) {
+          if (!moveEvt.touches || moveEvt.touches.length < 2) return;
+          moveEvt.preventDefault();
+          const a = moveEvt.touches[0], b = moveEvt.touches[1];
+          const dist = Math.hypot(b.clientX - a.clientX, b.clientY - a.clientY);
+          const angle = Math.atan2(b.clientY - a.clientY, b.clientX - a.clientX) * 180 / Math.PI;
+
+          let newWidthPercent = initialWidthPercent * (dist / startDist);
+          const maxWidthPercent = stickerData.type === 'text' ? 2000 : 100;
+          if (newWidthPercent < 5) newWidthPercent = 5;
+          if (newWidthPercent > maxWidthPercent) newWidthPercent = maxWidthPercent;
+          stickerData.width = newWidthPercent;
+          wrapper.style.width = stickerData.width + '%';
+
+          if (stickerData.type === 'text') {
+            let newFontSize = initialFontSize * (newWidthPercent / initialWidthPercent);
+            if (newFontSize < 6) newFontSize = 6;
+            stickerData.fontSize = newFontSize;
+            const textEl = wrapper.querySelector('.sticker-text-content');
+            if (textEl) textEl.style.fontSize = newFontSize + 'px';
+            const slider = document.getElementById('canvas-font-size');
+            if (slider && canvasSelectedStickerIdx === idx) { slider.value = newFontSize; const lbl = document.getElementById('canvas-font-size-value'); if (lbl) lbl.textContent = Math.round(newFontSize) + 'px'; }
+          }
+
+          stickerData.rotation = initialRotation + (angle - startAngle);
+          wrapper.style.transform = `rotate(${stickerData.rotation}deg)`;
+        }
+
+        function stopPinch() {
+          window.removeEventListener('touchmove', doPinch);
+          window.removeEventListener('touchend', stopPinch);
+          window.removeEventListener('touchcancel', stopPinch);
+          scheduleCanvasSave();
+        }
+
+        window.addEventListener('touchmove', doPinch, { passive: false });
+        window.addEventListener('touchend', stopPinch);
+        window.addEventListener('touchcancel', stopPinch);
+      }
+
+      // 2. REDIMENSIONAR
+      resBtn.addEventListener('mousedown', startResize);
+      resBtn.addEventListener('touchstart', startResize, { passive: false });
+
+      function startResize(e) {
+        e.stopPropagation();
+        e.preventDefault();
+
+        const wrapperRect = wrapper.getBoundingClientRect();
+        const centerX = wrapperRect.left + wrapperRect.width / 2;
+        const centerY = wrapperRect.top + wrapperRect.height / 2;
+
+        const startClientX = e.touches ? e.touches[0].clientX : e.clientX;
+        const startClientY = e.touches ? e.touches[0].clientY : e.clientY;
+        const startRadius = Math.hypot(startClientX - centerX, startClientY - centerY);
+        const initialWidthPercent = stickerData.width;
+        const initialFontSize = stickerData.fontSize || 22;
+
+        function doResize(moveEvent) {
+          const mX = moveEvent.touches ? moveEvent.touches[0].clientX : moveEvent.clientX;
+          const mY = moveEvent.touches ? moveEvent.touches[0].clientY : moveEvent.clientY;
+
+          const currentRadius = Math.hypot(mX - centerX, mY - centerY);
+          const ratio = currentRadius / startRadius;
+
+          let newWidthPercent = initialWidthPercent * ratio;
+          const maxWidthPercent = stickerData.type === 'text' ? 2000 : 100;
+          if (newWidthPercent < 5) newWidthPercent = 5;
+          if (newWidthPercent > maxWidthPercent) newWidthPercent = maxWidthPercent;
+
+          stickerData.width = newWidthPercent;
+          wrapper.style.width = stickerData.width + '%';
+
+          if (stickerData.type === 'text') {
+            let newFontSize = initialFontSize * (newWidthPercent / initialWidthPercent);
+            if (newFontSize < 6) newFontSize = 6;
+            stickerData.fontSize = newFontSize;
+            const textEl = wrapper.querySelector('.sticker-text-content');
+            if (textEl) textEl.style.fontSize = newFontSize + 'px';
+          }
+        }
+
+        function stopResize() {
+          window.removeEventListener('mousemove', doResize);
+          window.removeEventListener('mouseup', stopResize);
+          window.removeEventListener('touchmove', doResize);
+          window.removeEventListener('touchend', stopResize);
+          scheduleCanvasSave();
+        }
+
+        window.addEventListener('mousemove', doResize);
+        window.addEventListener('mouseup', stopResize);
+        window.addEventListener('touchmove', doResize, { passive: false });
+        window.addEventListener('touchend', stopResize);
+      }
+
+      // 2b. REDIMENSIONAR ANCHO DESDE LOS LADOS (solo texto): cambia cuántas
+      // palabras entran por línea sin tocar el tamaño de letra.
+      if (sideLeftBtn) {
+        sideLeftBtn.addEventListener('mousedown', (e) => startResizeSide(e, 'left'));
+        sideLeftBtn.addEventListener('touchstart', (e) => startResizeSide(e, 'left'), { passive: false });
+      }
+      if (sideRightBtn) {
+        sideRightBtn.addEventListener('mousedown', (e) => startResizeSide(e, 'right'));
+        sideRightBtn.addEventListener('touchstart', (e) => startResizeSide(e, 'right'), { passive: false });
+      }
+
+      function startResizeSide(e, side) {
+        e.stopPropagation();
+        e.preventDefault();
+
+        const containerRect = layerContainer.getBoundingClientRect();
+        const startClientX = e.touches ? e.touches[0].clientX : e.clientX;
+        const initialWidthPercent = stickerData.width;
+        const initialLeftPercent = stickerData.left;
+
+        function doResizeSide(moveEvent) {
+          const mX = moveEvent.touches ? moveEvent.touches[0].clientX : moveEvent.clientX;
+          const deltaPercent = ((mX - startClientX) / containerRect.width) * 100;
+
+          let newWidth, newLeft;
+          if (side === 'right') {
+            newWidth = initialWidthPercent + deltaPercent;
+            newLeft = initialLeftPercent;
+          } else {
+            newWidth = initialWidthPercent - deltaPercent;
+            newLeft = initialLeftPercent + deltaPercent;
+          }
+
+          if (newWidth < 12) { newWidth = 12; }
+          if (newWidth > 400) { newWidth = 400; }
+
+          stickerData.width = newWidth;
+          stickerData.left = newLeft;
+          wrapper.style.width = newWidth + '%';
+          wrapper.style.left = newLeft + '%';
+        }
+
+        function stopResizeSide() {
+          window.removeEventListener('mousemove', doResizeSide);
+          window.removeEventListener('mouseup', stopResizeSide);
+          window.removeEventListener('touchmove', doResizeSide);
+          window.removeEventListener('touchend', stopResizeSide);
+          scheduleCanvasSave();
+        }
+
+        window.addEventListener('mousemove', doResizeSide);
+        window.addEventListener('mouseup', stopResizeSide);
+        window.addEventListener('touchmove', doResizeSide, { passive: false });
+        window.addEventListener('touchend', stopResizeSide);
+      }
+
+      // 3. ROTAR
+      rotBtn.addEventListener('mousedown', startRotate);
+      rotBtn.addEventListener('touchstart', startRotate, { passive: false });
+
+      function startRotate(e) {
+        e.stopPropagation();
+        e.preventDefault();
+
+        const wrapperRect = wrapper.getBoundingClientRect();
+        const centerX = wrapperRect.left + wrapperRect.width / 2;
+        const centerY = wrapperRect.top + wrapperRect.height / 2;
+
+        function doRotate(moveEvent) {
+          const mX = moveEvent.touches ? moveEvent.touches[0].clientX : moveEvent.clientX;
+          const mY = moveEvent.touches ? moveEvent.touches[0].clientY : moveEvent.clientY;
+
+          const angleRad = Math.atan2(mY - centerY, mX - centerX);
+          let angleDeg = (angleRad * 180) / Math.PI;
+
+          angleDeg = (angleDeg + 90) % 360;
+
+          stickerData.rotation = angleDeg;
+          wrapper.style.transform = `rotate(${stickerData.rotation}deg)`;
+        }
+
+        function stopRotate() {
+          window.removeEventListener('mousemove', doRotate);
+          window.removeEventListener('mouseup', stopRotate);
+          window.removeEventListener('touchmove', doRotate);
+          window.removeEventListener('touchend', stopRotate);
+          scheduleCanvasSave();
+        }
+
+        window.addEventListener('mousemove', doRotate);
+        window.addEventListener('mouseup', stopRotate);
+        window.addEventListener('touchmove', doRotate, { passive: false });
+        window.addEventListener('touchend', stopRotate);
+      }
+    }
+
+    // Clic afuera de un sticker del lienzo: deselecciona
+    document.addEventListener('click', (e) => {
+      if (e.target.closest('#canvas-text-tool')) return; // la herramienta de texto se maneja sola (botón "Listo")
+      if (!e.target.closest('#canvas-stickers-layer') && !e.target.closest('.ig-rail') && !e.target.closest('.ig-rail-left') && !e.target.closest('.ig-panel') && !e.target.closest('#canvas-sticker-props-bar')) {
+        syncCanvasTextStickersContent();
+        canvasSelectedStickerIdx = null;
+        canvasActiveEditor = null;
+        document.querySelectorAll('#canvas-stickers-layer .sticker-wrapper').forEach(w => w.classList.remove('selected'));
+        refreshCanvasPropsPanel();
+        // Tocar lejos del texto/sticker vuelve al lienzo: cerramos cualquier
+        // herramienta (texto, pincel, etc.) que haya quedado abierta.
+        const shell = document.getElementById('canvas-stage-shell');
+        if (shell) shell.querySelectorAll('.ig-panel.open').forEach((p) => closeIgPanel(p.id));
+      }
+    });
+
+    // ─── Generar una imagen compuesta (dibujo + stickers) del lienzo ───
+    async function renderCanvasComposite() {
+      canvasSelectedStickerIdx = null;
+      document.querySelectorAll('#canvas-stickers-layer .sticker-wrapper').forEach(w => w.classList.remove('selected'));
+      if (document.activeElement) document.activeElement.blur();
+      await new Promise((r) => setTimeout(r, 60));
+
+      const target = document.getElementById('canvas-stage');
+      if (!target || typeof html2canvas === 'undefined') return null;
+
+      try {
+        const canvas = await html2canvas(target, { backgroundColor: '#0a080d', scale: 2, useCORS: true });
+        return canvas.toDataURL('image/png');
+      } catch (err) {
+        console.error('No se pudo generar la imagen del lienzo:', err);
+        return null;
+      } finally {
+        refreshCanvasPropsPanel();
+      }
+    }
+
+    async function saveCanvasAsImage() {
+      const dataUrl = await renderCanvasComposite();
+      if (!dataUrl) { alert('No se pudo generar la imagen. Probá de nuevo.'); return; }
+      const a = document.createElement('a');
+      a.href = dataUrl;
+      a.download = `framecorreo-dibujo-${Date.now()}.png`;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+    }
+
+    function toggleCanvasSendMenu() {
+      const menu = document.getElementById('canvas-send-menu');
+      if (menu) menu.classList.toggle('visible');
+    }
+
+    function initCanvasSendMenu() {
+      document.addEventListener('click', (e) => {
+        const menu = document.getElementById('canvas-send-menu');
+        const btn = document.querySelector('.canvas-send-btn');
+        if (!menu) return;
+        if (!menu.contains(e.target) && e.target !== btn && !(btn && btn.contains(e.target))) {
+          menu.classList.remove('visible');
+        }
+      });
+    }
+
+    // Envía la imagen compuesta del lienzo como foto de Telegram al chat
+    // de la persona elegida (Pame o Fran).
+    async function sendCanvasToTelegram(target) {
+      const menu = document.getElementById('canvas-send-menu');
+      if (menu) menu.classList.remove('visible');
+
+      if (!TELEGRAM_ENABLED) {
+        alert('El envío por Telegram todavía no está configurado.');
+        return;
+      }
+      const chatId = target === 'fran' ? TELEGRAM_CHAT_FRAN : TELEGRAM_CHAT_PAME;
+      if (!chatId || chatId.includes('CHAT_ID_DE')) {
+        alert('Falta configurar el chat de Telegram de destino.');
+        return;
+      }
+
+      const dataUrl = await renderCanvasComposite();
+      if (!dataUrl) { alert('No se pudo generar la imagen para enviar.'); return; }
+
+      try {
+        const blob = await (await fetch(dataUrl)).blob();
+        const formData = new FormData();
+        formData.append('chat_id', chatId);
+        formData.append('photo', blob, 'dibujo.png');
+        formData.append('caption', buildCanvasCaption(target));
+
+        const res = await fetch(`https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendPhoto`, {
+          method: 'POST',
+          body: formData
+        });
+        if (!res.ok) throw new Error('Telegram sendPhoto falló');
+
+        showCanvasSendFeedback(target);
+      } catch (e) {
+        alert('No se pudo enviar por Telegram, revisá la conexión.');
+      }
+    }
+
+    // El mensaje cambia según quién esté logueado y a quién le llega: si te lo
+    // mandás a vos mismo (p. ej. para guardarlo), el texto es reflexivo; si se
+    // lo mandás al otro, usa tu nombre en tercera persona.
+    function buildCanvasCaption(target) {
+      if (myIdentity && target === myIdentity) {
+        return '💌 Guardaste un dibujo en Framecorreo';
+      }
+      return `💌 ${myName()} te mandó un dibujo por Framecorreo`;
+    }
+
+    function showCanvasSendFeedback(target) {
+      const btn = document.querySelector('.canvas-send-btn');
+      if (!btn) return;
+      const original = btn.innerHTML;
+      btn.innerHTML = '✔️';
+      setTimeout(() => { btn.innerHTML = original; }, 2200);
+    }
+
+    // ════════════════════════════════════════════════════════════
+    // ─── TOQUES: avisale al otro con un botón ───
+    // ════════════════════════════════════════════════════════════
+    const TOQUE_MESSAGES = {
+      extraño: { emoji: '💭', text: 'te extraño' },
+      hablame: { emoji: '💬', text: 'hablame' },
+      toque:   { emoji: '👉', text: 'te mandaron un toque' }
+    };
+    let lastToqueTs = Date.now(); // no notificar toques viejos al abrir
+
+    // ─── TELEGRAM: completá estos 3 datos (ver instrucciones que te pasé) ───
+    const TELEGRAM_BOT_TOKEN = "8883767588:AAGv-7Zb4KT2olGBbuXNXbL06wXc7c43hUk";       // ej: "7123456789:AAHk3jX9..."
+    const TELEGRAM_CHAT_FRAN = "5933575501";    // ej: "111111111"
+    const TELEGRAM_CHAT_PAME = "8930510565";    // ej: "222222222"
+    const TELEGRAM_ENABLED = !TELEGRAM_BOT_TOKEN.includes("TU_TOKEN_ACA");
+
+    function initTouchFab() {
+      const fab = document.getElementById('touch-fab');
+      const menu = document.getElementById('touch-menu');
+      fab.addEventListener('click', () => {
+        menu.classList.toggle('visible');
+        if (Notification && Notification.permission === 'default') {
+          Notification.requestPermission();
+        }
+      });
+      document.addEventListener('click', (e) => {
+        if (!menu.contains(e.target) && e.target !== fab) menu.classList.remove('visible');
+      });
+    }
+
+    async function sendToque(type) {
+      document.getElementById('touch-menu').classList.remove('visible');
+      const msg = TOQUE_MESSAGES[type] || TOQUE_MESSAGES.toque;
+      try {
+        await fetch(`${FIREBASE_DB_URL}/toques.json`, {
+          method: 'POST',
+          body: JSON.stringify({ type, from: myIdentity || 'alguien', ts: Date.now() })
+        });
+        sendTelegramToque(type);
+        showToqueSentFeedback(msg);
+      } catch (e) {
+        alert('No se pudo enviar el toque, revisá la conexión.');
+      }
+    }
+
+    // Arma el texto del mensaje de Telegram según el tipo de toque y el
+    // nombre de quien está logueado en este momento. El toque simple ya no
+    // usa el emoji de dedo (👉), solo el texto; "te extraño" y "hablame"
+    // mantienen su emoji propio.
+    function buildToqueTelegramText(type) {
+      const name = myName();
+      switch (type) {
+        case 'extraño':
+          return `💭 ${name} te extraña`;
+        case 'hablame':
+          return `💬 ${name} quiere que le hables`;
+        default:
+          return `${name} te mandó un toque`;
+      }
+    }
+
+    // Versión en primera persona del mismo toque, para la confirmación que
+    // le llega a quien lo mandó (ej: "Tocaste a Pame").
+    function buildToqueSelfTelegramText(type) {
+      const to = otherName();
+      switch (type) {
+        case 'extraño':
+          return `💭 Le dijiste a ${to} que la extrañás`;
+        case 'hablame':
+          return `💬 Le pediste a ${to} que te hable`;
+        default:
+          return `Tocaste a ${to}`;
+      }
+    }
+
+    async function sendTelegramMessage(chatId, text) {
+      if (!TELEGRAM_ENABLED) return;
+      if (!chatId || chatId.includes('CHAT_ID_DE')) return;
+      try {
+        await fetch(`https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ chat_id: chatId, text })
+        });
+      } catch (e) {
+        // Si falla Telegram, la acción igual quedó guardada en Firebase.
+      }
+    }
+
+    // Le manda el toque por Telegram al chat del OTRO (para que le llegue
+    // como notificación incluso con la app cerrada), y también una
+    // confirmación al chat de quien lo mandó ("Tocaste a Pame" / "Tocaste
+    // a Fran"), para que quede registro de que se envió.
+    async function sendTelegramToque(type) {
+      if (!TELEGRAM_ENABLED) return; // todavía no completaste el token/chat_id
+      const recipientChat = myIdentity === 'fran' ? TELEGRAM_CHAT_PAME : TELEGRAM_CHAT_FRAN;
+      const senderChat = myIdentity === 'fran' ? TELEGRAM_CHAT_FRAN : TELEGRAM_CHAT_PAME;
+      sendTelegramMessage(recipientChat, buildToqueTelegramText(type));
+      sendTelegramMessage(senderChat, buildToqueSelfTelegramText(type));
+    }
+
+    function showToqueSentFeedback(msg) {
+      const fab = document.getElementById('touch-fab');
+      fab.textContent = msg.emoji;
+      fab.classList.add('pulse');
+      setTimeout(() => { fab.textContent = '👋'; fab.classList.remove('pulse'); }, 2600);
+    }
+
+    function initToques() {
+      try {
+        const es = new EventSource(`${FIREBASE_DB_URL}/toques.json`);
+        es.addEventListener('put', (e) => {
+          try {
+            const payload = JSON.parse(e.data);
+            if (payload.path === '/') return; // snapshot inicial completo: lo ignoramos
+            const toque = payload.data;
+            if (!toque || !toque.ts) return;
+            if (toque.ts <= lastToqueTs) return;
+            if (toque.from === myIdentity) return; // no notificarme a mí mismo
+            lastToqueTs = toque.ts;
+            handleIncomingToque(toque);
+          } catch (err) {}
+        });
+      } catch (e) {}
+    }
+
+    function handleIncomingToque(toque) {
+      const msg = TOQUE_MESSAGES[toque.type] || TOQUE_MESSAGES.toque;
+      const fromName = toque.from === 'fran' ? 'Fran' : (toque.from === 'pame' ? 'Pame' : 'alguien');
+
+      showToqueToast(msg, fromName);
+      playToqueSound();
+
+      if (window.Notification && Notification.permission === 'granted') {
+        try {
+          new Notification('Framecorreo 💌', {
+            body: `${fromName}: ${msg.text}`,
+            icon: 'icon-192.png'
+          });
+        } catch (e) {}
+      }
+    }
+
+    function showToqueToast(msg, fromName) {
+      const toast = document.getElementById('toque-toast');
+      document.getElementById('toque-toast-emoji').textContent = msg.emoji;
+      document.getElementById('toque-toast-text').textContent = msg.text;
+      document.getElementById('toque-toast-from').textContent = fromName;
+      toast.classList.add('visible');
+      setTimeout(() => toast.classList.remove('visible'), 4200);
+    }
+
+    function playToqueSound() {
+      try {
+        const ctx = new (window.AudioContext || window.webkitAudioContext)();
+        const o = ctx.createOscillator();
+        const g = ctx.createGain();
+        o.type = 'sine';
+        o.frequency.setValueAtTime(660, ctx.currentTime);
+        o.frequency.exponentialRampToValueAtTime(880, ctx.currentTime + 0.15);
+        g.gain.setValueAtTime(0.001, ctx.currentTime);
+        g.gain.exponentialRampToValueAtTime(0.12, ctx.currentTime + 0.03);
+        g.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.5);
+        o.connect(g); g.connect(ctx.destination);
+        o.start(); o.stop(ctx.currentTime + 0.5);
+      } catch (e) {}
+    }
+  </script>
+
+  <div id="update-toast" class="update-toast"></div>
+
+  <!-- ─── Pop-up de foto: se abre encima de cualquier pantalla al escribir
+       el código de una imagen guardada con "/img". Tocar afuera (el fondo,
+       no la tarjeta) la cierra. ─── -->
+  <div id="image-popup-overlay" class="image-popup-overlay" onclick="if (event.target === this) closeImagePopup()">
+    <div class="image-popup-card">
+      <button type="button" class="image-popup-close" onclick="closeImagePopup()" title="Cerrar">✕</button>
+      <div class="image-popup-media" id="image-popup-media">
+        <img id="image-popup-img" alt="" />
+        <div class="stickers-layer" id="image-popup-stickers-layer"></div>
+      </div>
+      <div class="image-popup-caption" id="image-popup-caption"></div>
+    </div>
+  </div>
+</body>
+</html>
