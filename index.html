@@ -539,18 +539,24 @@
       .gallery-grid { grid-template-columns: repeat(2, 1fr); gap: 0.7rem; }
     }
 
-    .gallery-card-thumb { background: #14111a; border: 1px solid #2c2238; border-radius: 8px; padding: 0.85rem; cursor: pointer; transition: transform 0.2s, border-color 0.2s; position: relative; display: flex; flex-direction: column; }
+    .gallery-card-thumb { background: #14111a; border: 1px solid #2c2238; border-radius: 8px; padding: 0.85rem; cursor: pointer; transition: transform 0.2s, border-color 0.2s; position: relative; display: flex; flex-direction: column; min-width: 0; }
     .gallery-card-thumb:hover { transform: translateY(-2px); border-color: var(--accent); }
 
     .thumb-header-row { display: flex; align-items: center; justify-content: space-between; padding-right: 3.6rem; }
     .thumb-code { font-family: 'Space Mono', monospace; font-size: 0.92rem; color: var(--accent-soft); display: block; }
     .thumb-type-icon { font-size: 0.92rem; display: inline-flex; align-items: center; justify-content: center; line-height: 1; min-width: 1.4em; text-align: center; }
     .thumb-tag { font-size: 0.68rem; letter-spacing: 0.15em; text-transform: uppercase; color: var(--text-muted); opacity: 0.75; margin-top: 0.45rem; min-height: 1em; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-    .thumb-title { font-size: 1rem; font-weight: 500; color: var(--text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; margin-top: 0.2rem; margin-bottom: 0.7rem; }
+    .thumb-title { font-size: 1rem; font-weight: 500; color: var(--text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; margin-top: 0.2rem; margin-bottom: 0.7rem; min-width: 0; }
 
     .thumb-preview-wrap { position: relative; width: 100%; aspect-ratio: 4 / 5; border-radius: 4px; overflow: hidden; background: #1a1522; flex-shrink: 0; }
     .gallery-thumb-preview { width: 100%; height: 100%; object-fit: cover; display: block; }
     .thumb-preview-placeholder { width: 100%; height: 100%; display: flex; align-items: center; justify-content: center; font-size: 1.8rem; opacity: 0.3; }
+
+    /* Los links (redirects) no tienen foto real, solo un ícono: el
+       recuadro de preview no necesita ocupar todo el alto 4:5 de una
+       foto/carta, así que lo reducimos para que la tarjeta quede compacta. */
+    .thumb-preview-wrap.url-preview-wrap { aspect-ratio: auto; height: 46px; }
+    .thumb-preview-wrap.url-preview-wrap .thumb-preview-placeholder { font-size: 1.3rem; }
 
     .thumb-footer-row { display: flex; align-items: center; justify-content: flex-start; gap: 0.5rem; margin-top: 0.65rem; }
     .thumb-edited { font-size: 0.68rem; color: var(--text-muted); opacity: 0.6; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; text-align: left; }
@@ -2925,6 +2931,18 @@
       if (loadingEl) loadingEl.classList.toggle('visible', loading);
     }
 
+    // ─── Red de seguridad para la carga infinita en celular ───
+    // Cuando un código es un redirect a un link que abre otra app (por
+    // ejemplo la app de YouTube) en vez de navegar a una página web, el
+    // sistema operativo cambia de app sin descargar esta pestaña/PWA. Si
+    // el usuario vuelve acá, la pantalla puede haber quedado con el
+    // círculo de carga prendido para siempre (ver unlock()). Apagamos el
+    // estado de carga cada vez que la pestaña vuelve a ser visible.
+    document.addEventListener('visibilitychange', () => {
+      if (document.visibilityState === 'visible') setLoadingState(false);
+    });
+    window.addEventListener('pageshow', () => setLoadingState(false));
+
     // ─── ERROR BLOCK ───
     function showErrorBlock(msg) {
       const block = document.getElementById('error-block');
@@ -3072,6 +3090,16 @@
 
         const redir = redirRes.status === 'fulfilled' ? redirRes.value : null;
         if (redir && redir.url) {
+          // En celular, algunos links (ej. los que abren la app de YouTube en
+          // vez de una página web) no descargan esta pestaña: el sistema
+          // simplemente cambia de app y esta queda "pausada" atrás con el
+          // círculo de carga prendido. Si el usuario vuelve, se queda viendo
+          // una carga infinita para siempre. Por las dudas, apagamos el
+          // estado de carga ANTES de intentar la navegación (no depende de
+          // que la página se descargue) y además hay un listener de
+          // visibilitychange/pageshow más abajo que la vuelve a apagar si
+          // hiciera falta al volver a esta pestaña.
+          setLoadingState(false);
           window.location.href = redir.url;
           return;
         }
@@ -3590,8 +3618,8 @@
           <span class="thumb-type-icon">🔗</span>
         </div>
         <div class="thumb-tag">Redirect</div>
-        <div class="thumb-title" style="font-size:0.85rem; word-break:break-all;">${data.url || ''}</div>
-        <div class="thumb-preview-wrap"><div class="thumb-preview-placeholder">🔗</div></div>
+        <div class="thumb-title" style="font-size:0.85rem;" title="${(data.url || '').replace(/"/g, '&quot;')}">${data.url || ''}</div>
+        <div class="thumb-preview-wrap url-preview-wrap"><div class="thumb-preview-placeholder">🔗</div></div>
         <div class="thumb-footer-row"><span class="thumb-edited">${editedLabel}</span></div>
       `;
 
