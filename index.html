@@ -535,6 +535,10 @@
 
     .gallery-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 1rem; margin-top: 0.6rem; margin-bottom: 1.8rem; }
 
+    @media (max-width: 480px) {
+      .gallery-grid { grid-template-columns: repeat(2, 1fr); gap: 0.7rem; }
+    }
+
     .gallery-card-thumb { background: #14111a; border: 1px solid #2c2238; border-radius: 8px; padding: 0.85rem; cursor: pointer; transition: transform 0.2s, border-color 0.2s; position: relative; display: flex; flex-direction: column; }
     .gallery-card-thumb:hover { transform: translateY(-2px); border-color: var(--accent); }
 
@@ -2224,8 +2228,28 @@
   <script>
     const BASE_URL_RAW = "https://cartas-pame-default-rtdb.firebaseio.com";
     const FIREBASE_DB_URL = BASE_URL_RAW.endsWith('/') ? BASE_URL_RAW.slice(0, -1) : BASE_URL_RAW;
-    
-    const ADMIN_KEY = "admin123"; 
+
+    // Wrapper de fetch con límite de tiempo: sin esto, si el celular dice
+    // tener wifi pero en realidad no hay internet (o la señal es muy mala),
+    // el fetch a Firebase puede quedar "colgado" sin resolver nunca ni tirar
+    // error, y la pantalla se queda cargando para siempre sin ninguna pista
+    // de qué pasó. Con AbortController, si a los 12s no hubo respuesta,
+    // cortamos el pedido nosotros mismos y lo tratamos como error de red.
+    function fetchWithTimeout(url, options = {}, timeoutMs = 12000) {
+      const controller = new AbortController();
+      const timer = setTimeout(() => controller.abort(), timeoutMs);
+      return fetch(url, { ...options, signal: controller.signal })
+        .finally(() => clearTimeout(timer));
+    }
+
+    // Mensaje homogéneo para cualquier error de red (sin conexión, timeout,
+    // Firebase caído, etc.), para que el usuario nunca se quede sin saber
+    // por qué algo no cargó.
+    function networkErrorMessage(e) {
+      if (e && e.name === 'AbortError') return 'Sin conexión a internet (tardó demasiado). Probá de nuevo.';
+      return 'Ups, hubo un problema de conexión. ¿Probamos de nuevo?';
+    }
+
     let currentAdminView = false;
     let lastUnlockInput = '';
     let autosaveTimer = null;
@@ -2796,6 +2820,20 @@
     });
 
     // ─── LOADING STATE ───
+    // "pageshow" con event.persisted=true se dispara cuando el navegador
+    // restaura la página desde el bfcache (por ejemplo, al tocar "atrás"
+    // después de que "/url" te mandó a otro sitio con window.location.href).
+    // Como esa navegación nunca llega a hacer setLoadingState(false) (la
+    // página se va antes), sin esto el botón y el spinner quedaban
+    // congelados en "Cargando…" para siempre al volver. Lo mismo puede
+    // pasar si quedó abierto un bloque de error viejo.
+    window.addEventListener('pageshow', (event) => {
+      if (event.persisted) {
+        setLoadingState(false);
+        hideErrorBlock();
+      }
+    });
+
     function setLoadingState(loading) {
       const btn = document.getElementById('unlock-btn');
       if (btn) {
@@ -2857,14 +2895,14 @@
     }
 
     // Atajo secreto: tocar el gatito de arriba del campo de código carga
-    // sola la contraseña de admin, pero SOLO si el perfil activo es el de
-    // Fran (ver myIdentity, más abajo). Para Pame el toque no hace nada
-    // visible, para no delatar que el atajo existe.
+    // solo "/c" (el comando que abre el editor), pero SOLO si el perfil
+    // activo es el de Fran (ver myIdentity, más abajo). Para Pame el toque
+    // no hace nada visible, para no delatar que el atajo existe.
     function handleCatIconTap() {
       if (myIdentity !== 'fran') return;
       const input = document.getElementById('code-input');
       if (!input) return;
-      input.value = ADMIN_KEY;
+      input.value = '/c';
       input.focus();
     }
 
@@ -2932,19 +2970,6 @@
         return;
       }
 
-      // El panel de admin solo se abre para el perfil de Fran: si alguien
-      // más (Pame) tipea la contraseña, no pasa nada especial y el código
-      // sigue de largo hacia la búsqueda normal de carta (que no va a
-      // encontrar nada, sin dar ninguna pista de que existía un admin).
-      if (input === ADMIN_KEY.toLowerCase() && myIdentity === 'fran') {
-        currentAdminView = true;
-        switchView('admin-view');
-        resetEditorForm();
-        attachAutosaveListeners();
-        await loadGallery();
-        return;
-      }
-
       currentAdminView = false;
       setLoadingState(true);
 
@@ -2957,9 +2982,9 @@
       // las tres, no la suma.
       try {
         const [redirRes, imgRes, cartaRes] = await Promise.allSettled([
-          fetch(`${FIREBASE_DB_URL}/redirects/${input}.json`).then(r => r.ok ? r.json() : null),
-          fetch(`${FIREBASE_DB_URL}/imagenes/${input}.json`).then(r => r.ok ? r.json() : null),
-          fetch(`${FIREBASE_DB_URL}/cartas/${input}.json`).then(r => r.ok ? r.json() : null)
+          fetchWithTimeout(`${FIREBASE_DB_URL}/redirects/${input}.json`).then(r => r.ok ? r.json() : null),
+          fetchWithTimeout(`${FIREBASE_DB_URL}/imagenes/${input}.json`).then(r => r.ok ? r.json() : null),
+          fetchWithTimeout(`${FIREBASE_DB_URL}/cartas/${input}.json`).then(r => r.ok ? r.json() : null)
         ]);
 
         const redir = redirRes.status === 'fulfilled' ? redirRes.value : null;
@@ -2984,7 +3009,7 @@
       } catch (e) {
         console.error("Error capturado en unlock:", e);
         if (!currentAdminView) {
-          showErrorBlock('Ups, hubo un problema de conexión. ¿Probamos de nuevo?');
+          showErrorBlock(networkErrorMessage(e));
         }
       }
       setLoadingState(false);
@@ -2999,7 +3024,7 @@
       const msgEl = document.getElementById('error-msg');
       setLoadingState(true);
       try {
-        await fetch(`${FIREBASE_DB_URL}/redirects/${code}.json`, {
+        await fetchWithTimeout(`${FIREBASE_DB_URL}/redirects/${code}.json`, {
           method: 'PUT',
           body: JSON.stringify({ url, createdAt: Date.now() })
         });
@@ -3011,7 +3036,9 @@
       } catch (e) {
         if (msgEl) {
           msgEl.style.color = '';
-          msgEl.textContent = 'No se pudo guardar el redirect (revisá la conexión).';
+          msgEl.textContent = e && e.name === 'AbortError'
+            ? 'Sin conexión a internet (tardó demasiado). Probá de nuevo.'
+            : 'No se pudo guardar el redirect (revisá la conexión).';
         }
       }
       setLoadingState(false);
@@ -3033,17 +3060,25 @@
       setLoadingState(true);
       try {
         if (rest.toLowerCase() === 'del') {
-          await fetch(`${FIREBASE_DB_URL}/tip.json`, { method: 'DELETE' });
+          await fetchWithTimeout(`${FIREBASE_DB_URL}/tip.json`, { method: 'DELETE' });
           renderTip('');
+        } else if (/^tg(\s|$)/i.test(rest)) {
+          // "/tip tg" (mensaje por defecto) o "/tip tg <texto>" (mensaje
+          // personalizado): NO toca el tip de Firebase, solo manda un
+          // aviso por Telegram a los dos chats (Fran y Pame).
+          const customText = rest.replace(/^tg\s*/i, '').trim();
+          const tgText = customText || 'Hay un nuevo tip en Framecorreo';
+          sendTelegramMessage(TELEGRAM_CHAT_FRAN, tgText);
+          sendTelegramMessage(TELEGRAM_CHAT_PAME, tgText);
         } else if (rest) {
-          await fetch(`${FIREBASE_DB_URL}/tip.json`, {
+          await fetchWithTimeout(`${FIREBASE_DB_URL}/tip.json`, {
             method: 'PUT',
             body: JSON.stringify({ text: rest, from: myIdentity, ts: Date.now() })
           });
           renderTip(rest);
         }
       } catch (e) {
-        // Si falla la red, no rompemos el flujo: el próximo /tip lo va a reintentar.
+        document.getElementById('error-msg').textContent = networkErrorMessage(e);
       }
       setLoadingState(false);
     }
@@ -3320,9 +3355,9 @@
 
       try {
         const [cartasRes, urlsRes, imgsRes] = await Promise.all([
-          fetch(`${FIREBASE_DB_URL}/cartas.json`),
-          fetch(`${FIREBASE_DB_URL}/redirects.json`),
-          fetch(`${FIREBASE_DB_URL}/imagenes.json`)
+          fetchWithTimeout(`${FIREBASE_DB_URL}/cartas.json`),
+          fetchWithTimeout(`${FIREBASE_DB_URL}/redirects.json`),
+          fetchWithTimeout(`${FIREBASE_DB_URL}/imagenes.json`)
         ]);
 
         allCartasData = cartasRes.ok ? ((await cartasRes.json()) || {}) : {};
@@ -3353,6 +3388,7 @@
         renderGalleryGrids();
       } catch (err) {
         console.error(err);
+        if (grid) grid.innerHTML = `<div class="gallery-empty">${networkErrorMessage(err)}</div>`;
       }
     }
 
