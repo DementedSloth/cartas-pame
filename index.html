@@ -1694,6 +1694,7 @@
       transform: scale(0.85) translateY(14px); transition: transform 0.3s cubic-bezier(.22,1,.36,1);
     }
     .image-popup-overlay.visible .image-popup-card { transform: scale(1) translateY(0); }
+    .image-popup-stage { position: relative; width: 100%; }
     .image-popup-media {
       position: relative; width: 100%; aspect-ratio: 4/5; max-height: 72vh;
       overflow: hidden; background: #000;
@@ -1731,12 +1732,71 @@
     }
     .image-editor-drop-icon { font-size: 2.6rem; }
     .image-editor-drop.has-image .image-editor-drop-inner { display: none; }
+
+    /* El "stage" envuelve foto + pie de foto + info: es el contenedor
+       posicionado (position:relative) sobre el que la capa de stickers
+       (position:absolute; inset:0) se estira, así los stickers se pueden
+       ubicar en cualquiera de los tres bloques. */
+    .image-editor-stage { position: relative; width: 100%; }
+    .image-editor-drop { margin-bottom: 1.1rem; }
+
+    .image-editor-caption-row { display: flex; align-items: center; gap: 0.6rem; }
     .image-editor-caption-input {
-      width: 100%; background: var(--surface); border: 1px solid var(--border); border-radius: 12px;
+      flex: 1; min-width: 0; background: var(--surface); border: 1px solid var(--border); border-radius: 12px;
       padding: 0.9rem 1rem; font-family: 'Cormorant Garamond', serif; font-style: italic; font-size: 1.05rem;
       color: var(--text); outline: none;
     }
     .image-editor-caption-input::placeholder { color: var(--text-muted); opacity: 0.7; }
+
+    /* ─── Botón de info (ⓘ) al lado del pie de foto ─── */
+    .image-info-toggle-btn {
+      position: relative; flex-shrink: 0; width: 32px; height: 32px; border-radius: 50%;
+      background: var(--accent); border: 1px solid var(--gold); color: #fff;
+      display: flex; align-items: center; justify-content: center; cursor: pointer; z-index: 1;
+    }
+    .image-info-toggle-icon {
+      font-family: 'Cormorant Garamond', serif; font-style: italic; font-weight: 700; font-size: 1.05rem;
+    }
+    /* Aro tipo radar/sonar que "llama la atención" para que toquen el botón.
+       Solo se usa en el pop-up (ver .image-info-toggle-btn.attention); en el
+       editor de Fran el botón queda quieto. */
+    .image-info-toggle-btn.attention::before,
+    .image-info-toggle-btn.attention::after {
+      content: ''; position: absolute; inset: -6px; border-radius: 50%;
+      border: 2px solid var(--gold); animation: infoRadarPulse 1.8s ease-out infinite; pointer-events: none;
+    }
+    .image-info-toggle-btn.attention::after { animation-delay: 0.6s; }
+    .image-info-toggle-btn.attention.opened::before,
+    .image-info-toggle-btn.attention.opened::after { animation: none; opacity: 0; }
+    @keyframes infoRadarPulse {
+      0% { transform: scale(0.8); opacity: 0.9; }
+      100% { transform: scale(2.1); opacity: 0; }
+    }
+
+    .image-editor-info-panel {
+      max-height: 0; overflow: hidden; transition: max-height 0.3s ease, margin-top 0.3s ease; margin-top: 0;
+    }
+    .image-editor-info-panel.open { max-height: 260px; margin-top: 0.9rem; }
+    .image-editor-info-input {
+      width: 100%; min-height: 110px; resize: vertical; background: var(--surface);
+      border: 1px solid var(--border); border-radius: 12px; padding: 0.9rem 1rem;
+      font-family: 'Cormorant Garamond', serif; font-style: italic; font-size: 1.02rem;
+      color: var(--text); outline: none; box-sizing: border-box;
+    }
+    .image-editor-info-input::placeholder { color: var(--text-muted); opacity: 0.7; }
+
+    /* ─── Mismo bloque de info, versión de solo lectura dentro del pop-up ─── */
+    .image-popup-caption-row { display: flex; align-items: center; gap: 0.5rem; padding: 0.9rem 1.2rem 0; }
+    .image-popup-caption-row .image-popup-caption { flex: 1; padding: 0 0 1.1rem; }
+    .image-popup-caption-row .image-info-toggle-btn { margin-bottom: 1.1rem; }
+    .image-popup-info-panel {
+      max-height: 0; overflow: hidden; transition: max-height 0.35s ease;
+    }
+    .image-popup-info-panel.open { max-height: 320px; }
+    .image-popup-info-text {
+      padding: 0 1.2rem 1.1rem; font-family: 'Cormorant Garamond', serif; font-style: italic;
+      font-size: 1.02rem; line-height: 1.55; color: var(--text-muted); white-space: pre-wrap;
+    }
   </style>
 </head>
 <body>
@@ -2048,11 +2108,29 @@
 
         <input type="file" id="img-editor-file" accept="image/*" style="display:none;" onchange="handleImageEditorFileChange(this)" />
         <input type="file" id="img-sticker-file" accept="image/*" style="display:none;" onchange="uploadImageStickerFile(this)" />
-        <div class="image-editor-drop" id="image-editor-drop" onclick="if (!event.target.closest('.stickers-layer') && !event.target.closest('.ig-rail')) document.getElementById('img-editor-file').click()">
-          <img id="image-editor-preview" alt="" style="display:none;" />
-          <div class="image-editor-drop-inner" id="image-editor-drop-inner">
-            <span class="image-editor-drop-icon">📷</span>
-            <span>Subir foto</span>
+
+        <!-- "Stage" común a foto + pie de foto + info: la capa de stickers
+             (ver abajo) cubre TODO este bloque, así los stickers se pueden
+             posicionar tanto sobre la foto como sobre la info, no solo
+             sobre la imagen (ver renderImageStickers / image-stickers-layer). -->
+        <div class="image-editor-stage" id="image-editor-stage">
+          <div class="image-editor-drop" id="image-editor-drop" onclick="if (!event.target.closest('.stickers-layer') && !event.target.closest('.ig-rail') && !event.target.closest('.text-tool-overlay')) document.getElementById('img-editor-file').click()">
+            <img id="image-editor-preview" alt="" style="display:none;" />
+            <div class="image-editor-drop-inner" id="image-editor-drop-inner">
+              <span class="image-editor-drop-icon">📷</span>
+              <span>Subir foto</span>
+            </div>
+          </div>
+
+          <div class="image-editor-caption-row">
+            <input type="text" id="img-caption" class="image-editor-caption-input" placeholder="Pie de foto (opcional)" autocomplete="off" />
+            <button type="button" class="image-info-toggle-btn" id="image-editor-info-btn" title="Mostrar/ocultar info" onclick="event.stopPropagation(); toggleImageEditorInfo()">
+              <span class="image-info-toggle-icon">i</span>
+            </button>
+          </div>
+
+          <div class="image-editor-info-panel" id="image-editor-info-panel">
+            <textarea id="img-info" class="image-editor-info-input" placeholder="Info adicional (opcional). Pame la va a ver igual que vos, pero solo vos la podés editar."></textarea>
           </div>
 
           <!-- Mismo sistema de stickers que el editor de cartas (arrastrar,
@@ -2067,8 +2145,6 @@
 
           <div class="delete-drop-zone" id="image-delete-zone"><span>✕</span></div>
         </div>
-
-        <input type="text" id="img-caption" class="image-editor-caption-input" placeholder="Pie de foto (opcional)" autocomplete="off" />
 
         <div class="tb-group" style="width:100%;">
           <input list="img-codes-list" id="img-code" class="adm-code-input" placeholder="Código" autocomplete="off" style="font-size:1.1rem; padding:1rem;" />
@@ -2251,6 +2327,10 @@
     }
 
     let currentAdminView = false;
+    // Si la carta actual se abrió desde la galería (en vez de tipeando el
+    // código o desde el editor), "volver" tiene que llevar de nuevo a la
+    // galería y no al menú principal del admin (ver goBackFromLetter).
+    let cameFromGallery = false;
     let lastUnlockInput = '';
     let autosaveTimer = null;
     let currentStickers = [];
@@ -2942,6 +3022,7 @@
       // cartas, sin tener que tipear la contraseña de admin.
       if (myIdentity === 'fran' && /^\/c$/i.test(rawInput)) {
         currentAdminView = true;
+        cameFromGallery = false;
         switchView('admin-view');
         resetEditorForm();
         attachAutosaveListeners();
@@ -2962,6 +3043,7 @@
       // pasar primero por el editor, solo para Fran.
       if (myIdentity === 'fran' && /^\/g$/i.test(rawInput)) {
         currentAdminView = true;
+        cameFromGallery = false;
         resetEditorForm();
         attachAutosaveListeners();
         switchView('gallery-view');
@@ -2971,6 +3053,7 @@
       }
 
       currentAdminView = false;
+      cameFromGallery = false;
       setLoadingState(true);
 
       // Los tres candidatos posibles para un código (redirect, foto o
@@ -3691,6 +3774,7 @@
           return;
         }
         currentAdminView = true;
+        cameFromGallery = true;
         // La carta ya está en memoria (loadGallery la trajo entera): no
         // hace falta volver a pedirla a Firebase para mostrarla.
         renderLetterView(code, carta);
@@ -4001,7 +4085,13 @@
 
     function goBackFromLetter() {
       if (currentAdminView) {
-        switchView('admin-view');
+        if (cameFromGallery) {
+          cameFromGallery = false;
+          switchView('gallery-view');
+          loadGallery();
+        } else {
+          switchView('admin-view');
+        }
       } else {
         switchView('login-view');
         document.getElementById('code-input').value = '';
@@ -5060,14 +5150,42 @@
       const overlay = document.getElementById('image-popup-overlay');
       const imgEl = document.getElementById('image-popup-img');
       const capEl = document.getElementById('image-popup-caption');
+      const capRow = document.querySelector('.image-popup-caption-row');
+      const infoBtn = document.getElementById('image-popup-info-btn');
+      const infoPanel = document.getElementById('image-popup-info-panel');
+      const infoText = document.getElementById('image-popup-info-text');
       if (!overlay || !imgEl || !capEl) return;
       imgEl.src = data.image;
       imgEl.alt = data.caption || 'Foto';
       capEl.textContent = data.caption || '';
+
+      // El botón de info (con la animación tipo radar) solo aparece si hay
+      // algo cargado desde el perfil de Fran; Pame lo ve exactamente igual
+      // pero sin poder editarlo (el editor de fotos es exclusivo de Fran).
+      const hasInfo = !!(data.info && data.info.trim());
+      if (infoText) infoText.textContent = data.info || '';
+      if (infoBtn) {
+        infoBtn.style.display = hasInfo ? 'flex' : 'none';
+        infoBtn.classList.remove('opened');
+      }
+      if (infoPanel) infoPanel.classList.remove('open');
+      if (capRow) capRow.style.display = (data.caption || hasInfo) ? 'flex' : 'none';
+
       // Stickers en modo solo-lectura: reutiliza la misma función genérica
-      // que ya usa la vista final de la carta (isEditable=false).
+      // que ya usa la vista final de la carta (isEditable=false). La capa
+      // cubre foto + pie + info (ver .image-popup-stage), así se ven bien
+      // ubicados los que se hayan puesto sobre la info.
       renderStickers(document.getElementById('image-popup-stickers-layer'), data.stickers || [], false);
       overlay.classList.add('visible');
+    }
+
+    function toggleImagePopupInfo() {
+      const panel = document.getElementById('image-popup-info-panel');
+      const btn = document.getElementById('image-popup-info-btn');
+      if (!panel || !btn) return;
+      const willOpen = !panel.classList.contains('open');
+      panel.classList.toggle('open', willOpen);
+      btn.classList.toggle('opened', willOpen);
     }
 
     function closeImagePopup() {
@@ -5087,6 +5205,16 @@
       if (code && data) {
         document.getElementById('img-code').value = code;
         document.getElementById('img-caption').value = data.caption || '';
+        const infoField = document.getElementById('img-info');
+        if (infoField) infoField.value = data.info || '';
+        // Si ya tenía info cargada, dejamos el panel abierto de entrada para
+        // que se vea al editar (si no, arranca cerrado, ver resetImageEditorForm).
+        if (data.info) {
+          const panel = document.getElementById('image-editor-info-panel');
+          const btn = document.getElementById('image-editor-info-btn');
+          if (panel) panel.classList.add('open');
+          if (btn) btn.classList.add('opened');
+        }
         if (data.image) {
           pendingImageDataUrl = data.image;
           const preview = document.getElementById('image-editor-preview');
@@ -5111,13 +5239,32 @@
       imageSelectedStickerIdx = null;
       const codeEl = document.getElementById('img-code');
       const capEl = document.getElementById('img-caption');
+      const infoEl = document.getElementById('img-info');
+      const infoPanel = document.getElementById('image-editor-info-panel');
+      const infoBtn = document.getElementById('image-editor-info-btn');
       const preview = document.getElementById('image-editor-preview');
       const drop = document.getElementById('image-editor-drop');
       if (codeEl) codeEl.value = '';
       if (capEl) capEl.value = '';
+      if (infoEl) infoEl.value = '';
+      if (infoPanel) infoPanel.classList.remove('open');
+      if (infoBtn) infoBtn.classList.remove('opened');
       if (preview) { preview.src = ''; preview.style.display = 'none'; }
       if (drop) drop.classList.remove('has-image');
       renderImageStickers();
+    }
+
+    // Botón "i" del editor: solo esconde/muestra el textarea de info, sin
+    // animación de radar (esa es para llamar la atención de quien mira la
+    // foto ya guardada, ver toggleImagePopupInfo).
+    function toggleImageEditorInfo() {
+      const panel = document.getElementById('image-editor-info-panel');
+      const btn = document.getElementById('image-editor-info-btn');
+      if (!panel || !btn) return;
+      const willOpen = !panel.classList.contains('open');
+      panel.classList.toggle('open', willOpen);
+      btn.classList.toggle('opened', willOpen);
+      if (willOpen) setTimeout(() => document.getElementById('img-info')?.focus(), 300);
     }
 
     function handleImageEditorFileChange(input) {
@@ -5142,11 +5289,12 @@
       if (!pendingImageDataUrl) { alert('Subí una foto primero.'); return; }
 
       const caption = document.getElementById('img-caption').value.trim();
+      const info = (document.getElementById('img-info')?.value || '').trim();
 
       try {
         await fetch(`${FIREBASE_DB_URL}/imagenes/${code}.json`, {
           method: 'PUT',
-          body: JSON.stringify({ image: pendingImageDataUrl, caption, stickers: imageStickers, createdAt: Date.now(), updatedAt: Date.now() })
+          body: JSON.stringify({ image: pendingImageDataUrl, caption, info, stickers: imageStickers, createdAt: Date.now(), updatedAt: Date.now() })
         });
         resetImageEditorForm();
         switchView('login-view');
@@ -7575,11 +7723,24 @@
   <div id="image-popup-overlay" class="image-popup-overlay" onclick="if (event.target === this) closeImagePopup()">
     <div class="image-popup-card">
       <button type="button" class="image-popup-close" onclick="closeImagePopup()" title="Cerrar">✕</button>
-      <div class="image-popup-media" id="image-popup-media">
-        <img id="image-popup-img" alt="" />
+      <div class="image-popup-stage" id="image-popup-stage">
+        <div class="image-popup-media" id="image-popup-media">
+          <img id="image-popup-img" alt="" />
+        </div>
+        <div class="image-popup-caption-row">
+          <div class="image-popup-caption" id="image-popup-caption"></div>
+          <button type="button" class="image-info-toggle-btn attention" id="image-popup-info-btn" title="Info" onclick="toggleImagePopupInfo()">
+            <span class="image-info-toggle-icon">i</span>
+          </button>
+        </div>
+        <div class="image-popup-info-panel" id="image-popup-info-panel">
+          <div class="image-popup-info-text" id="image-popup-info-text"></div>
+        </div>
+        <!-- La capa de stickers cubre todo el stage (foto + pie + info), no
+             solo la foto, así los que se hayan posicionado sobre la info
+             también se ven en el lugar correcto. -->
         <div class="stickers-layer" id="image-popup-stickers-layer"></div>
       </div>
-      <div class="image-popup-caption" id="image-popup-caption"></div>
     </div>
   </div>
 </body>
