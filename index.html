@@ -542,9 +542,9 @@
     .gallery-card-thumb { background: #14111a; border: 1px solid #2c2238; border-radius: 8px; padding: 0.85rem; cursor: pointer; transition: transform 0.2s, border-color 0.2s; position: relative; display: flex; flex-direction: column; min-width: 0; }
     .gallery-card-thumb:hover { transform: translateY(-2px); border-color: var(--accent); }
 
-    .thumb-header-row { display: flex; align-items: center; justify-content: space-between; padding-right: 3.6rem; }
-    .thumb-code { font-family: 'Space Mono', monospace; font-size: 0.92rem; color: var(--accent-soft); display: block; }
-    .thumb-type-icon { font-size: 0.92rem; display: inline-flex; align-items: center; justify-content: center; line-height: 1; min-width: 1.4em; text-align: center; }
+    .thumb-header-row { display: flex; align-items: center; justify-content: space-between; gap: 0.4rem; }
+    .thumb-code { font-family: 'Space Mono', monospace; font-size: 0.92rem; color: var(--accent-soft); display: block; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .thumb-type-icon { font-size: 0.92rem; display: inline-flex; align-items: center; justify-content: center; line-height: 1; min-width: 1.4em; flex-shrink: 0; text-align: center; }
     .thumb-tag { font-size: 0.68rem; letter-spacing: 0.15em; text-transform: uppercase; color: var(--text-muted); opacity: 0.75; margin-top: 0.45rem; min-height: 1em; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
     .thumb-title { font-size: 1rem; font-weight: 500; color: var(--text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; margin-top: 0.2rem; margin-bottom: 0.7rem; min-width: 0; }
 
@@ -566,11 +566,15 @@
     .status-unseen { color: var(--text-muted); opacity: 0.75; }
     .status-seen { color: var(--wa-blue); }
 
-    /* Editar/Borrar: ocultos por defecto, visibles al hacer hover (mouse) o siempre en pantallas táctiles (sin hover),
-       salvo que la grilla esté en modo selección, donde se ocultan a favor de los checkboxes */
-    .thumb-edit-btn, .thumb-delete-btn { position: absolute; top: 0.6rem; width: 28px; height: 28px; background: #251c30; border: 1px solid #3d2e4f; border-radius: 4px; display: flex; align-items: center; justify-content: center; font-size: 0.8rem; cursor: pointer; transition: background 0.2s, border-color 0.2s, opacity 0.15s; z-index: 2; opacity: 0; pointer-events: none; }
-    .thumb-edit-btn { right: 0.6rem; }
-    .thumb-delete-btn { right: 3.15rem; }
+    /* Editar/Borrar: ahora van ANCLADOS AL RECUADRO DE PREVIEW (la imagen),
+       no a toda la tarjeta. Así nunca les tapan el código, el tag ni el
+       título, sin importar cuánto midan esos textos. Ocultos por defecto,
+       visibles al hacer hover (mouse) o siempre en pantallas táctiles (sin
+       hover), salvo que la grilla esté en modo selección, donde se ocultan
+       a favor de los checkboxes. */
+    .thumb-edit-btn, .thumb-delete-btn { position: absolute; top: 0.5rem; width: 28px; height: 28px; background: rgba(20,15,26,0.85); border: 1px solid rgba(61,46,79,0.9); border-radius: 4px; display: flex; align-items: center; justify-content: center; font-size: 0.8rem; cursor: pointer; transition: background 0.2s, border-color 0.2s, opacity 0.15s; z-index: 3; opacity: 0; pointer-events: none; }
+    .thumb-edit-btn { right: 0.5rem; }
+    .thumb-delete-btn { right: 3.05rem; }
     .thumb-edit-btn:hover { background: var(--accent); border-color: var(--accent-soft); }
     .thumb-delete-btn:hover { background: #6b2a2a; border-color: #df7a7a; }
     .gallery-card-thumb:hover .thumb-edit-btn,
@@ -581,9 +585,10 @@
     .gallery-grid.selection-mode .thumb-edit-btn,
     .gallery-grid.selection-mode .thumb-delete-btn { opacity: 0 !important; pointer-events: none !important; }
 
-    /* Selección en masa (long-press / mantener pulsado) */
+    /* Selección en masa (long-press / mantener pulsado): también anclada al
+       recuadro de preview, arriba a la izquierda. */
     .thumb-select-check {
-      position: absolute; top: 0.6rem; left: 0.6rem; width: 24px; height: 24px; border-radius: 50%;
+      position: absolute; top: 0.5rem; left: 0.5rem; width: 24px; height: 24px; border-radius: 50%;
       border: 2px solid rgba(255,255,255,0.5); background: rgba(13,10,18,0.65);
       display: none; align-items: center; justify-content: center; font-size: 0.8rem; color: #fff;
       z-index: 3; cursor: pointer;
@@ -754,7 +759,17 @@
 
     /* ─── CAPA DE STICKERS E IMÁGENES ─── */
     .stickers-layer { position: absolute; inset: 0; pointer-events: none; overflow: visible; z-index: 5; }
-    .sticker-wrapper { position: absolute; transform-origin: center center; cursor: default; pointer-events: auto; user-select: none; touch-action: none; }
+    /* touch-action:pan-y (no "none"): así, si al scrollear una carta larga el
+       dedo pasa por arriba de un sticker, el navegador puede seguir
+       scrolleando verticalmente en vez de quedar "pegado" al sticker. El
+       arrastre en sí lo sigue resolviendo JS a mano (ver setupStickerDragAndTransform),
+       que ahora decide recién al detectar el primer movimiento si es un
+       arrastre real o si hay que soltarle el gesto al scroll nativo. */
+    .sticker-wrapper { position: absolute; transform-origin: center center; cursor: default; pointer-events: auto; user-select: none; touch-action: pan-y; }
+    /* Los controles (mover/rotar/redimensionar) sí necesitan capturar el
+       gesto entero en cualquier dirección sin que el scroll se los gane:
+       son un "asa" chica y explícita, no el cuerpo grande del sticker. */
+    .sticker-control { touch-action: none; }
     #letter-view .sticker-wrapper { cursor: default; }
     .sticker-img { width: 100%; height: auto; display: block; pointer-events: none; }
     
@@ -3623,6 +3638,8 @@
         <div class="thumb-footer-row"><span class="thumb-edited">${editedLabel}</span></div>
       `;
 
+      const previewWrap = thumb.querySelector('.thumb-preview-wrap');
+
       const editBtn = document.createElement('div');
       editBtn.className = 'thumb-edit-btn';
       editBtn.innerHTML = '✏️';
@@ -3634,7 +3651,7 @@
         if (!trimmed) return;
         handleAddRedirectCommand(code, trimmed).then(() => loadGallery());
       };
-      thumb.appendChild(editBtn);
+      previewWrap.appendChild(editBtn);
 
       const deleteBtn = document.createElement('div');
       deleteBtn.className = 'thumb-delete-btn';
@@ -3650,7 +3667,7 @@
           alert('No se pudo eliminar. Probá de nuevo.');
         }
       };
-      thumb.appendChild(deleteBtn);
+      previewWrap.appendChild(deleteBtn);
 
       return thumb;
     }
@@ -3676,6 +3693,8 @@
         <div class="thumb-footer-row"><span class="thumb-edited">${editedLabel}</span></div>
       `;
 
+      const previewWrap = thumb.querySelector('.thumb-preview-wrap');
+
       const editBtn = document.createElement('div');
       editBtn.className = 'thumb-edit-btn';
       editBtn.innerHTML = '✏️';
@@ -3683,7 +3702,7 @@
         e.stopPropagation();
         openImageEditor(code, data);
       };
-      thumb.appendChild(editBtn);
+      previewWrap.appendChild(editBtn);
 
       const deleteBtn = document.createElement('div');
       deleteBtn.className = 'thumb-delete-btn';
@@ -3699,7 +3718,7 @@
           alert('No se pudo eliminar. Probá de nuevo.');
         }
       };
-      thumb.appendChild(deleteBtn);
+      previewWrap.appendChild(deleteBtn);
 
       return thumb;
     }
@@ -3863,7 +3882,7 @@
         setupEditorForEdit(code, carta);
       };
 
-      thumb.appendChild(editBtn);
+      previewWrap.appendChild(editBtn);
 
       const deleteBtn = document.createElement('div');
       deleteBtn.className = 'thumb-delete-btn';
@@ -3875,7 +3894,7 @@
         deleteLetter(code);
       };
 
-      thumb.appendChild(deleteBtn);
+      previewWrap.appendChild(deleteBtn);
 
       const selectCheck = document.createElement('div');
       selectCheck.className = 'thumb-select-check';
@@ -3885,7 +3904,7 @@
         if (!selectionMode) enterSelectionMode(code, thumb);
         else toggleBulkSelect(code, thumb);
       };
-      thumb.appendChild(selectCheck);
+      previewWrap.appendChild(selectCheck);
 
       attachLongPress(thumb, code);
 
@@ -4537,7 +4556,15 @@
         // selección, etc., con su comportamiento normal.
         if (isActivelyEditing) return;
 
-        e.preventDefault();
+        // Con el dedo, si el toque arranca directo sobre el cuerpo del
+        // sticker (no sobre el asa "✥"), todavía no confirmamos el
+        // arrastre: puede ser alguien pasando el dedo por ahí de camino a
+        // scrollear una carta larga. Esperamos al primer movimiento real
+        // para decidir (ver doMove) en vez de bloquear el scroll de entrada
+        // con preventDefault. Con mouse, o si el toque arrancó directo en
+        // el asa de mover, no hay ese conflicto: interceptamos enseguida.
+        const deferForTouch = !!e.touches && !isMoveControl;
+        if (!deferForTouch) e.preventDefault();
 
         const clientX = e.touches ? e.touches[0].clientX : e.clientX;
         const clientY = e.touches ? e.touches[0].clientY : e.clientY;
@@ -4569,14 +4596,27 @@
         function doMove(moveEvent) {
           const mX = moveEvent.touches ? moveEvent.touches[0].clientX : moveEvent.clientX;
           const mY = moveEvent.touches ? moveEvent.touches[0].clientY : moveEvent.clientY;
-
-          if (!dragging) {
-            if (Math.hypot(mX - startX, mY - startY) < DRAG_THRESHOLD) return;
-            beginDrag();
-          }
-
           const deltaX = mX - startX;
           const deltaY = mY - startY;
+
+          if (!dragging) {
+            if (Math.hypot(deltaX, deltaY) < DRAG_THRESHOLD) return;
+            // Movimiento mayormente vertical y arrancó sobre el cuerpo del
+            // sticker (no el asa): es un scroll, no un arrastre. Soltamos el
+            // gesto entero y dejamos que el scroll nativo de la carta siga
+            // su curso con total normalidad.
+            if (deferForTouch && Math.abs(deltaY) > Math.abs(deltaX)) {
+              window.removeEventListener('mousemove', doMove);
+              window.removeEventListener('mouseup', stopMove);
+              window.removeEventListener('touchmove', doMove);
+              window.removeEventListener('touchend', stopMove);
+              return;
+            }
+            if (deferForTouch) moveEvent.preventDefault();
+            beginDrag();
+          } else if (deferForTouch) {
+            moveEvent.preventDefault();
+          }
 
           stickerData.left = ((initialLeftPx + deltaX) / containerRect.width) * 100;
           stickerData.top = ((initialTopPx + deltaY) / containerRect.height) * 100;
@@ -5109,9 +5149,20 @@
         }
       } catch (e) {}
 
-      navigator.serviceWorker.register('sw.js').then((reg) => {
+      // updateViaCache: 'none' es clave: le dice al navegador que NUNCA use
+      // la caché HTTP para pedir sw.js (ni siquiera con un header de cache
+      // corto de por medio). Sin esto, aunque llamemos a reg.update() a
+      // mano, el navegador puede seguir sirviendo una copia cacheada de
+      // sw.js y no enterarse de que hay una versión nueva hasta que esa
+      // caché HTTP expire por su cuenta — eso es lo que hacía que a veces
+      // tardara tanto en aparecerle la actualización a Pame.
+      navigator.serviceWorker.register('sw.js', { updateViaCache: 'none' }).then((reg) => {
         // Caso 1: ya había un SW esperando cuando abrimos la app.
         if (reg.waiting) applyUpdateSilently(reg.waiting);
+
+        // Pedimos de una si hay algo nuevo, apenas termina de registrarse,
+        // en vez de esperar a que la pestaña cambie de visibilidad.
+        reg.update();
 
         // Caso 2: se está instalando uno nuevo mientras la app está abierta.
         reg.addEventListener('updatefound', () => {
@@ -5126,10 +5177,17 @@
           });
         });
 
-        // Revisa si hay versión nueva cada vez que la app vuelve a primer plano.
+        // Revisa si hay versión nueva cada vez que la app vuelve a primer plano...
         document.addEventListener('visibilitychange', () => {
           if (document.visibilityState === 'visible') reg.update();
         });
+
+        // ...y además cada 60s mientras queda abierta y visible, para no
+        // depender solo de que alguien la minimice y la vuelva a abrir
+        // (si la dejás abierta de fondo mucho rato, igual se entera pronto).
+        setInterval(() => {
+          if (document.visibilityState === 'visible') reg.update();
+        }, 60000);
       }).catch(() => {
         // Si falla (por ejemplo abriendo el archivo local sin servidor), no rompe nada.
       });
