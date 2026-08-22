@@ -2,8 +2,16 @@
 // 1) Permite que el navegador ofrezca "Instalar app".
 // 2) Deja el terreno listo para notificaciones push reales en el futuro
 //    (hoy los toques se muestran mientras la app está abierta; ver index.html).
+//
+// Sobre la demora en que le llegue una actualización a alguien: además de
+// subir CACHE_NAME acá, index.html ahora registra este archivo con
+// `updateViaCache: 'none'`, así el navegador nunca sirve una copia
+// cacheada de ESTE ARCHIVO (sw.js) al chequear si hay versión nueva, y
+// además pide `reg.update()` apenas carga y cada 60s (no solo al volver
+// a abrir la app). Entre las tres cosas, una actualización nueva debería
+// notarse en, como mucho, un minuto.
 
-const CACHE_NAME = 'framecorreo-v18'; // subir esta versión en cada deploy: v3, v4, v5, v6, v7, v8, v9...
+const CACHE_NAME = 'framecorreo-v19'; // subir esta versión en cada deploy: v3, v4, v5, v6, v7, v8, v9, v10...
 const APP_SHELL = [
   './',
   './index.html',
