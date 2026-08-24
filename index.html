@@ -349,6 +349,30 @@
     }
     .profile-modal-close:hover { color: var(--text); }
 
+    /* ─── "¿Cómo estás?": Pame cuenta su situación en vez de escribir un
+       código. No lista nada de antemano (nada de spoilers): solo un campo
+       de texto libre. Si matchea con alguna carta pendiente, se abre sola;
+       si no, le queda avisado a Fran por Telegram. Reusa el mismo patrón
+       visual del modal de perfil. ─── */
+    .mood-link {
+      background: transparent; border: none; color: var(--text-muted); opacity: 0.55;
+      font-size: 0.78rem; font-family: 'Inter', sans-serif; letter-spacing: 0.02em;
+      cursor: pointer; margin-top: 0.9rem; padding: 0.3rem; text-decoration: underline;
+      text-decoration-color: transparent; transition: opacity 0.2s, text-decoration-color 0.2s;
+    }
+    .mood-link:hover { opacity: 0.9; text-decoration-color: currentColor; }
+    .mood-modal-box textarea {
+      width: 100%; min-height: 74px; resize: vertical; margin-bottom: 1rem;
+      background: var(--bg); border: 1px solid var(--border); border-radius: 6px;
+      color: var(--text); font-family: 'Inter', sans-serif; font-size: 0.9rem;
+      padding: 0.7rem 0.8rem; box-sizing: border-box;
+    }
+    .mood-modal-box textarea:focus { outline: none; border-color: var(--accent-soft); }
+    .mood-modal-status {
+      font-size: 0.82rem; color: var(--text-muted); min-height: 1.4em; margin-bottom: 0.6rem;
+    }
+    .mood-modal-status.success { color: #7adf7a; }
+
     .form-btn { width: 100%; margin-top: 1.5rem; padding: 1rem; background: transparent; border: 1px solid var(--accent); border-radius: 6px; color: var(--accent-soft); font-family: 'Inter', sans-serif; font-size: 0.85rem; font-weight: 500; letter-spacing: 0.25em; text-transform: uppercase; cursor: pointer; transition: background 0.2s, color 0.2s, box-shadow 0.2s; }
     .form-btn:hover { background: var(--accent); color: var(--text); box-shadow: 0 8px 24px -8px rgba(124,63,110,0.6); }
     .form-btn:disabled { opacity: 0.5; cursor: not-allowed; background: transparent; }
@@ -1864,11 +1888,26 @@
           </div>
 
           <div class="home-tip" id="home-tip"></div>
+
+          <button type="button" class="mood-link" id="mood-link" onclick="openMoodModal()" style="display:none;">¿preferís contarme cómo estás?</button>
+
         </div>
 
       </div>
 
 
+    </div>
+
+    <div class="profile-modal-overlay" id="mood-modal-overlay">
+      <div class="profile-modal-box mood-modal-box">
+        <p>¿Cómo estás ahora?</p>
+        <textarea id="mood-input" placeholder="Contame con tus palabras..." autocomplete="off"></textarea>
+        <div class="mood-modal-status" id="mood-modal-status"></div>
+        <div class="profile-modal-btns">
+          <button type="button" class="profile-modal-btn" onclick="submitMood()">Contarle</button>
+        </div>
+        <button type="button" class="profile-modal-close" onclick="closeMoodModal()">Cerrar</button>
+      </div>
     </div>
 
     <div id="admin-view" class="view-section">
@@ -3318,6 +3357,102 @@
     function notifyPameWrongCode(code) {
       if (myIdentity !== 'pame') return;
       sendTelegramMessage(TELEGRAM_CHAT_FRAN, `❓ Pame escribió el código "${code}" y no encontró nada`);
+    }
+
+    // ════════════════════════════════════════════════════════════
+    // ─── "¿CÓMO ESTÁS?": Pame cuenta su situación con sus palabras,
+    // en vez de necesitar un código. No se le muestra ninguna lista de
+    // cartas ni de situaciones disponibles (nada de spoilers): si lo que
+    // escribió matchea con el tag ("PARA LEER CUANDO...") de alguna carta
+    // que todavía no abrió y ya está disponible, se abre sola. Si no
+    // encuentra nada, le queda avisado a Fran por Telegram con el texto
+    // tal cual lo escribió, para que él sepa y pueda armarle algo.
+    // ════════════════════════════════════════════════════════════
+
+    function updateMoodLinkVisibility() {
+      const link = document.getElementById('mood-link');
+      if (link) link.style.display = (myIdentity === 'pame') ? 'inline-block' : 'none';
+    }
+
+    function openMoodModal() {
+      const input = document.getElementById('mood-input');
+      const status = document.getElementById('mood-modal-status');
+      if (input) input.value = '';
+      if (status) { status.textContent = ''; status.className = 'mood-modal-status'; }
+      document.getElementById('mood-modal-overlay').classList.add('visible');
+      setTimeout(() => input && input.focus(), 50);
+    }
+
+    function closeMoodModal() {
+      document.getElementById('mood-modal-overlay').classList.remove('visible');
+    }
+
+    // La URL de tu Worker de Cloudflare (ver instrucciones aparte para
+    // crearlo). Reemplazá esto por la URL real una vez que lo despliegues;
+    // hasta entonces, esta función simplemente no encuentra nada y avisa
+    // a Fran igual, sin romper la app.
+    const MOOD_WORKER_URL = "https://TU-WORKER.tu-subdominio.workers.dev";
+
+    async function submitMood() {
+      const input = document.getElementById('mood-input');
+      const status = document.getElementById('mood-modal-status');
+      const text = (input ? input.value : '').trim();
+      if (!text) return;
+
+      status.className = 'mood-modal-status';
+      status.textContent = 'Buscando...';
+
+      const today = new Date().toISOString().split('T')[0];
+
+      try {
+        const res = await fetchWithTimeout(`${FIREBASE_DB_URL}/cartas.json`);
+        const all = res.ok ? ((await res.json()) || {}) : {};
+
+        // Candidatas: cartas sin ver todavía, no borradores, y ya
+        // disponibles (si son programadas, que ya haya llegado la fecha).
+        const candidates = Object.entries(all)
+          .filter(([code, carta]) => carta
+            && !((carta.views || 0) > 0)
+            && carta.dateType !== 'undefined'
+            && !(carta.dateType === 'scheduled' && carta.releaseDate && today < carta.releaseDate)
+            && getCartaTagText(carta))
+          .map(([code, carta]) => ({ code, tag: getCartaTagText(carta) }));
+
+        let matchedCode = null;
+
+        if (candidates.length > 0) {
+          // Le mandamos al Worker SOLO el texto de Pame y la lista de tags
+          // candidatas (nunca datos de más) para que la IA decida cuál, si
+          // alguna, describe lo que está sintiendo. Si el Worker todavía no
+          // está desplegado o falla la conexión, seguimos de largo con
+          // matchedCode en null (no rompe la app, solo no encuentra nada).
+          try {
+            const aiRes = await fetchWithTimeout(MOOD_WORKER_URL, {
+              method: 'POST',
+              body: JSON.stringify({ text, candidates })
+            });
+            if (aiRes.ok) {
+              const data = await aiRes.json();
+              if (data && data.code && all[data.code]) matchedCode = data.code;
+            }
+          } catch (e) {
+            // Sin conexión al Worker: seguimos, no encontramos nada por IA.
+          }
+        }
+
+        if (matchedCode) {
+          closeMoodModal();
+          currentAdminView = false;
+          renderLetterView(matchedCode, all[matchedCode]);
+          return;
+        }
+
+        sendTelegramMessage(TELEGRAM_CHAT_FRAN, `💭 Pame contó cómo está: "${text}" — no encontré ninguna carta para eso todavía.`);
+        status.classList.add('success');
+        status.textContent = 'Por ahora no tengo nada para eso, pero se lo conté a Fran 💌';
+      } catch (e) {
+        status.textContent = 'Uy, no se pudo conectar. ¿Probamos de nuevo en un rato?';
+      }
     }
 
     function renderLetterView(code, carta) {
@@ -4908,6 +5043,7 @@
       } else {
         loadMyProfile();
       }
+      updateMoodLinkVisibility();
     }
 
     // Trae las fotos de perfil de Fran y Pame (local primero, después la nube)
@@ -4943,6 +5079,7 @@
       try { localStorage.setItem('fc_identity', who); } catch (e) {}
       document.getElementById('identity-overlay').classList.remove('visible');
       loadMyProfile();
+      updateMoodLinkVisibility();
     }
 
     function otherName() {
