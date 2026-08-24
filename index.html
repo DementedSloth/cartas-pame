@@ -109,6 +109,7 @@
     .home-card-icon img { width: 64px; height: 64px; display: block; margin: 0 auto; border-radius: 18px; }
     .home-card-title { font-family: 'Lora', serif; font-size: 1.9rem; font-style: italic; color: var(--text); margin-bottom: 0.5rem; }
     .home-card-sub { font-size: 0.85rem; color: var(--text-muted); margin-bottom: 1.6rem; letter-spacing: 0.02em; }
+    .home-card-sub strong { color: var(--text); font-weight: 700; }
     .home-card .code-entry-wrap { max-width: none; margin: 0; }
     .home-card .error-msg:not(:empty) { margin-top: 1rem; }
     .home-card .error-block { text-align: left; }
@@ -206,13 +207,22 @@
     }
     .code-entry-input::placeholder { color: var(--text-muted); opacity: 0.55; font-style: italic; }
     .code-entry-submit {
-      flex-shrink: 0; width: 40px; height: 40px; border-radius: 50%;
+      position: relative; flex-shrink: 0; width: 40px; height: 40px; border-radius: 50%;
       background: var(--accent); border: none; color: var(--text);
       display: flex; align-items: center; justify-content: center; cursor: pointer;
       transition: background 0.2s, transform 0.15s;
     }
     .code-entry-submit:hover { background: var(--accent-soft); transform: scale(1.05); }
     .code-entry-submit:disabled { opacity: 0.4; cursor: not-allowed; transform: none; }
+    /* Mismo anillo tipo radar que el botón de info de las fotos (ver
+       .image-info-toggle-btn.attention): se prende SOLO después de elegir
+       una sugerencia del popup, para dejar en claro que falta enviar. */
+    .code-entry-submit.attention::before,
+    .code-entry-submit.attention::after {
+      content: ''; position: absolute; inset: -6px; border-radius: 50%;
+      border: 2px solid var(--gold); animation: infoRadarPulse 1.8s ease-out infinite; pointer-events: none;
+    }
+    .code-entry-submit.attention::after { animation-delay: 0.6s; }
 
     /* ─── Indicador de "Cargando…" al abrir una carta por código ─── */
     .code-loading {
@@ -1878,10 +1888,10 @@
         <div class="home-card">
           <div class="home-card-icon"><img src="icon-192.png" alt="Framecorreo" onclick="handleCatIconTap()" style="cursor:pointer;" /></div>
           <div class="home-card-title">Framecorreo</div>
-          <div class="home-card-sub">Ingresá un código o contame como estás. Quizás haya una carta para eso.</div>
+          <div class="home-card-sub">Ingresá un código, o escribí <strong>lo que quieras</strong> contándome cómo estás — quizás haya una carta para eso.</div>
 
           <div class="code-entry-wrap" id="code-entry-wrap">
-            <input id="code-input" class="code-entry-input" type="text" placeholder="Código" autocomplete="off" spellcheck="false" />
+            <input id="code-input" class="code-entry-input" type="text" placeholder="Código o contame cómo estás..." autocomplete="off" spellcheck="false" />
             <button class="code-entry-submit" id="unlock-btn" onclick="unlock()" title="Abrir carta" aria-label="Abrir carta">
               <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>
             </button>
@@ -3066,6 +3076,11 @@
       document.getElementById('error-msg').textContent = '';
       hideErrorBlock();
 
+      // El radar del botón de enviar solo tiene que estar prendido entre
+      // que se elige una sugerencia y que se manda: apenas se manda (sea
+      // por esa sugerencia o por cualquier otra cosa) se apaga.
+      document.getElementById('unlock-btn')?.classList.remove('attention');
+
       if (!input) return;
       lastUnlockInput = input;
 
@@ -3472,6 +3487,18 @@
         setLoadingState(false);
 
         if (matchedCodes.length > 0) {
+          // Avisado a Fran en silencio, con qué le sugerimos, tal cual lo
+          // escribió: Pame nunca se entera de que esto pasó. Si el perfil
+          // activo es el de Fran (probando la función en el suyo), no se
+          // manda nada.
+          if (myIdentity === 'pame') {
+            const suggestionsDesc = matchedCodes
+              .map((code) => candidates.find((c) => c.code === code))
+              .filter(Boolean)
+              .map((c) => c.type === 'imagen' ? `🖼️ imagen "${c.title}" (${c.code})` : `💌 "${c.title}" (${c.code})`)
+              .join(', ');
+            sendTelegramMessage(TELEGRAM_CHAT_FRAN, `💭 Pame escribió: "${text}" — le sugerí: ${suggestionsDesc}`);
+          }
           showSuggestionsModal(matchedCodes, allCartas, allImagenes);
           return;
         }
@@ -3508,7 +3535,7 @@
         const item = document.createElement('button');
         item.type = 'button';
         item.className = 'suggestion-item';
-        item.onclick = () => selectSuggestion(code);
+        item.onclick = () => selectSuggestion(code, carta || img, !!carta);
 
         let emoji, bodyHtml, statusHtml = '';
 
@@ -3545,13 +3572,29 @@
     }
 
     // Elegir una sugerencia NUNCA abre la carta/imagen directo: solo
-    // completa el código en el campo. La persona decide si la envía.
-    function selectSuggestion(code) {
+    // completa el código en el campo. La persona decide si la envía. Eso
+    // sí, apenas toca la sugerencia (aunque todavía no mandó nada), le
+    // queda avisado a Fran en silencio qué eligió, y se prende el radar
+    // en el botón de enviar para que sea obvio que falta ese último paso.
+    function selectSuggestion(code, data, isCarta) {
       closeSuggestionsModal();
       const input = document.getElementById('code-input');
       if (input) {
         input.value = code;
         input.focus();
+      }
+
+      const submitBtn = document.getElementById('unlock-btn');
+      if (submitBtn) submitBtn.classList.add('attention');
+
+      if (myIdentity === 'pame' && data) {
+        if (isCarta) {
+          const title = getCartaTitleRaw(data);
+          sendTelegramMessage(TELEGRAM_CHAT_FRAN, `💌 Pame abrió la carta "${title}" desde las sugerencias (código "${code}")`);
+        } else {
+          const caption = data.caption || '';
+          sendTelegramMessage(TELEGRAM_CHAT_FRAN, `🖼️ Pame abrió la imagen "${caption}" desde las sugerencias (código "${code}")`);
+        }
       }
     }
 
