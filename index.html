@@ -349,29 +349,37 @@
     }
     .profile-modal-close:hover { color: var(--text); }
 
-    /* ─── "¿Cómo estás?": Pame cuenta su situación en vez de escribir un
-       código. No lista nada de antemano (nada de spoilers): solo un campo
-       de texto libre. Si matchea con alguna carta pendiente, se abre sola;
-       si no, le queda avisado a Fran por Telegram. Reusa el mismo patrón
-       visual del modal de perfil. ─── */
-    .mood-link {
-      background: transparent; border: none; color: var(--text-muted); opacity: 0.55;
-      font-size: 0.78rem; font-family: 'Inter', sans-serif; letter-spacing: 0.02em;
-      cursor: pointer; margin-top: 0.9rem; padding: 0.3rem; text-decoration: underline;
-      text-decoration-color: transparent; transition: opacity 0.2s, text-decoration-color 0.2s;
+    /* ─── POPUP DE SUGERENCIAS: cuando lo que se escribió en el campo de
+       código no es un código válido (o son varias palabras, es decir
+       "contame cómo estás" en vez de un código), buscamos coincidencias
+       por significado (con IA) entre cartas e imágenes pendientes y las
+       mostramos acá, tipo bandeja de entrada de email. Elegir una NO abre
+       nada directo: solo completa el código en el campo, para que sea la
+       persona quien decida enviarlo. ─── */
+    .suggestions-modal-box { max-width: 420px; }
+    .suggestions-list {
+      max-height: 50vh; overflow-y: auto; margin-bottom: 1rem;
+      display: flex; flex-direction: column; gap: 0.5rem;
     }
-    .mood-link:hover { opacity: 0.9; text-decoration-color: currentColor; }
-    .mood-modal-box textarea {
-      width: 100%; min-height: 74px; resize: vertical; margin-bottom: 1rem;
-      background: var(--bg); border: 1px solid var(--border); border-radius: 6px;
-      color: var(--text); font-family: 'Inter', sans-serif; font-size: 0.9rem;
-      padding: 0.7rem 0.8rem; box-sizing: border-box;
+    .suggestion-item {
+      display: flex; align-items: flex-start; gap: 0.7rem; width: 100%;
+      background: var(--bg); border: 1px solid var(--border); border-radius: 8px;
+      padding: 0.7rem 0.85rem; cursor: pointer; text-align: left;
+      font-family: inherit; transition: border-color 0.15s, background 0.15s;
     }
-    .mood-modal-box textarea:focus { outline: none; border-color: var(--accent-soft); }
-    .mood-modal-status {
-      font-size: 0.82rem; color: var(--text-muted); min-height: 1.4em; margin-bottom: 0.6rem;
+    .suggestion-item:hover { border-color: var(--accent-soft); background: rgba(255,255,255,0.03); }
+    .suggestion-emoji { font-size: 1.15rem; flex-shrink: 0; line-height: 1.4; }
+    .suggestion-body { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 0.3rem; }
+    .suggestion-text { font-family: 'Lora', serif; font-size: 0.92rem; color: var(--text); line-height: 1.35; }
+    .suggestion-text strong { font-weight: 700; }
+    .suggestion-meta { display: flex; align-items: center; gap: 0.5rem; flex-wrap: wrap; }
+    .suggestion-code { font-family: 'Space Mono', monospace; font-size: 0.66rem; color: var(--text-muted); opacity: 0.65; }
+    .suggestion-status {
+      font-size: 0.64rem; letter-spacing: 0.04em; text-transform: uppercase;
+      padding: 0.1rem 0.4rem; border-radius: 3px; line-height: 1.5;
     }
-    .mood-modal-status.success { color: #7adf7a; }
+    .suggestion-status.unread { color: var(--accent-soft); border: 1px solid var(--accent-soft); }
+    .suggestion-status.read { color: var(--text-muted); opacity: 0.6; border: 1px solid var(--border); }
 
     .form-btn { width: 100%; margin-top: 1.5rem; padding: 1rem; background: transparent; border: 1px solid var(--accent); border-radius: 6px; color: var(--accent-soft); font-family: 'Inter', sans-serif; font-size: 0.85rem; font-weight: 500; letter-spacing: 0.25em; text-transform: uppercase; cursor: pointer; transition: background 0.2s, color 0.2s, box-shadow 0.2s; }
     .form-btn:hover { background: var(--accent); color: var(--text); box-shadow: 0 8px 24px -8px rgba(124,63,110,0.6); }
@@ -1870,7 +1878,7 @@
         <div class="home-card">
           <div class="home-card-icon"><img src="icon-192.png" alt="Framecorreo" onclick="handleCatIconTap()" style="cursor:pointer;" /></div>
           <div class="home-card-title">Framecorreo</div>
-          <div class="home-card-sub">Ingresá un código</div>
+          <div class="home-card-sub">Ingresá un código o contame como estás. Quizás haya una carta para eso.</div>
 
           <div class="code-entry-wrap" id="code-entry-wrap">
             <input id="code-input" class="code-entry-input" type="text" placeholder="Código" autocomplete="off" spellcheck="false" />
@@ -1889,8 +1897,6 @@
 
           <div class="home-tip" id="home-tip"></div>
 
-          <button type="button" class="mood-link" id="mood-link" onclick="openMoodModal()" style="display:none;">¿preferís contarme cómo estás?</button>
-
         </div>
 
       </div>
@@ -1898,15 +1904,11 @@
 
     </div>
 
-    <div class="profile-modal-overlay" id="mood-modal-overlay">
-      <div class="profile-modal-box mood-modal-box">
-        <p>¿Cómo estás ahora?</p>
-        <textarea id="mood-input" placeholder="Contame con tus palabras..." autocomplete="off"></textarea>
-        <div class="mood-modal-status" id="mood-modal-status"></div>
-        <div class="profile-modal-btns">
-          <button type="button" class="profile-modal-btn" onclick="submitMood()">Contarle</button>
-        </div>
-        <button type="button" class="profile-modal-close" onclick="closeMoodModal()">Cerrar</button>
+    <div class="profile-modal-overlay" id="suggestions-modal-overlay">
+      <div class="profile-modal-box suggestions-modal-box">
+        <p>¿Alguna de estas?</p>
+        <div class="suggestions-list" id="suggestions-list"></div>
+        <button type="button" class="profile-modal-close" onclick="closeSuggestionsModal()">Cerrar</button>
       </div>
     </div>
 
@@ -3126,6 +3128,19 @@
 
       currentAdminView = false;
       cameFromGallery = false;
+
+      // Los códigos siempre son una sola palabra sin espacios. Si lo que
+      // se escribió tiene más de una palabra, asumimos directamente que
+      // es una persona contando cómo está (no un código), y saltamos
+      // derecho a la búsqueda de sugerencias por IA — ver
+      // runSuggestionSearch más abajo.
+      const isSingleWord = !/\s/.test(rawInput);
+
+      if (!isSingleWord) {
+        await runSuggestionSearch(rawInput, false);
+        return;
+      }
+
       setLoadingState(true);
 
       // Los tres candidatos posibles para un código (redirect, foto o
@@ -3166,10 +3181,20 @@
           return;
         }
 
-        if (cartaRes.status === 'fulfilled') {
+        if (cartaRes.status !== 'fulfilled') {
+          throw cartaRes.reason;
+        }
+
+        if (cartaRes.value) {
           renderLetterView(input, cartaRes.value);
         } else {
-          throw cartaRes.reason;
+          // No existe ningún redirect/imagen/carta con ese código exacto.
+          // Puede ser una palabra suelta contando cómo está ("triste",
+          // "feliz"...) en vez de un código mal tipeado: probamos con IA
+          // antes de darla por perdida.
+          setLoadingState(false);
+          await runSuggestionSearch(rawInput, true);
+          return;
         }
       } catch (e) {
         console.error("Error capturado en unlock:", e);
@@ -3360,72 +3385,73 @@
     }
 
     // ════════════════════════════════════════════════════════════
-    // ─── "¿CÓMO ESTÁS?": Pame cuenta su situación con sus palabras,
-    // en vez de necesitar un código. No se le muestra ninguna lista de
-    // cartas ni de situaciones disponibles (nada de spoilers): si lo que
-    // escribió matchea con el tag ("PARA LEER CUANDO...") de alguna carta
-    // que todavía no abrió y ya está disponible, se abre sola. Si no
-    // encuentra nada, le queda avisado a Fran por Telegram con el texto
-    // tal cual lo escribió, para que él sepa y pueda armarle algo.
+    // ─── BÚSQUEDA POR TEXTO LIBRE: si lo que se escribió en el campo
+    // de código no es un código válido, probamos encontrar coincidencias
+    // por significado (con IA) entre las cartas y las imágenes
+    // pendientes, y se las mostramos como sugerencias — tipo bandeja de
+    // entrada de email, con estado de leído/no leído — para elegir. Ver
+    // unlock(): decide cuándo llamar acá según si lo escrito es una sola
+    // palabra (probablemente un código mal tipeado o una sola palabra
+    // suelta como "triste") o varias (probablemente contando cómo está).
+    // Elegir una sugerencia NUNCA abre la carta/imagen directo: solo
+    // completa el código en el campo, así la persona decide si la manda.
+    // Nada de esto le avisa nunca a Pame ni le muestra ninguna lista de
+    // cartas de antemano (nada de spoilers): si no se encuentra nada, le
+    // queda avisado a Fran por Telegram en silencio, tal cual lo escribió.
     // ════════════════════════════════════════════════════════════
-
-    function updateMoodLinkVisibility() {
-      const link = document.getElementById('mood-link');
-      if (link) link.style.display = (myIdentity === 'pame') ? 'inline-block' : 'none';
-    }
-
-    function openMoodModal() {
-      const input = document.getElementById('mood-input');
-      const status = document.getElementById('mood-modal-status');
-      if (input) input.value = '';
-      if (status) { status.textContent = ''; status.className = 'mood-modal-status'; }
-      document.getElementById('mood-modal-overlay').classList.add('visible');
-      setTimeout(() => input && input.focus(), 50);
-    }
-
-    function closeMoodModal() {
-      document.getElementById('mood-modal-overlay').classList.remove('visible');
-    }
 
     // La URL de tu Worker de Cloudflare (ver instrucciones aparte para
     // crearlo). Reemplazá esto por la URL real una vez que lo despliegues;
-    // hasta entonces, esta función simplemente no encuentra nada y avisa
-    // a Fran igual, sin romper la app.
-    const MOOD_WORKER_URL = "https://framecorreo-mood.francoagosta34.workers.dev/";
+    // hasta entonces, esta función simplemente no encuentra nada, sin
+    // romper la app.
+    const MOOD_WORKER_URL = "https://framecorreo-mood.francoagosta34.workers.dev";
 
-    async function submitMood() {
-      const input = document.getElementById('mood-input');
-      const status = document.getElementById('mood-modal-status');
-      const text = (input ? input.value : '').trim();
-      if (!text) return;
-
-      status.className = 'mood-modal-status';
-      status.textContent = 'Buscando...';
-
+    async function runSuggestionSearch(text, isSingleWord) {
+      setLoadingState(true);
       const today = new Date().toISOString().split('T')[0];
 
       try {
-        const res = await fetchWithTimeout(`${FIREBASE_DB_URL}/cartas.json`);
-        const all = res.ok ? ((await res.json()) || {}) : {};
+        const [cartasRes, imagenesRes] = await Promise.allSettled([
+          fetchWithTimeout(`${FIREBASE_DB_URL}/cartas.json`).then(r => r.ok ? r.json() : null),
+          fetchWithTimeout(`${FIREBASE_DB_URL}/imagenes.json`).then(r => r.ok ? r.json() : null)
+        ]);
 
-        // Candidatas: cartas sin ver todavía, no borradores, y ya
-        // disponibles (si son programadas, que ya haya llegado la fecha).
-        const candidates = Object.entries(all)
+        const allCartas = (cartasRes.status === 'fulfilled' && cartasRes.value) || {};
+        const allImagenes = (imagenesRes.status === 'fulfilled' && imagenesRes.value) || {};
+
+        // Candidatas: cartas no borradores y ya disponibles (si son
+        // programadas, que ya haya llegado la fecha). A diferencia de la
+        // búsqueda por código exacto, acá SÍ incluimos cartas ya leídas
+        // (el popup de sugerencias es como una bandeja de entrada: muestra
+        // el estado). Mandamos tag Y título: el tag suele ser genérico
+        // ("Para leer cuando"), la info real está en el título.
+        const cartaCandidates = Object.entries(allCartas)
           .filter(([code, carta]) => carta
-            && !((carta.views || 0) > 0)
             && carta.dateType !== 'undefined'
             && !(carta.dateType === 'scheduled' && carta.releaseDate && today < carta.releaseDate)
-            && getCartaTagText(carta))
-          .map(([code, carta]) => ({ code, tag: getCartaTagText(carta) }));
+            && (getCartaTagText(carta) || getCartaTitleRaw(carta)))
+          .map(([code, carta]) => ({
+            code,
+            type: 'carta',
+            tag: getCartaTagText(carta),
+            title: getCartaTitleRaw(carta)
+          }));
 
-        let matchedCode = null;
+        // También buscamos entre los pies de foto de las imágenes.
+        const imageCandidates = Object.entries(allImagenes)
+          .filter(([code, img]) => img && img.caption)
+          .map(([code, img]) => ({ code, type: 'imagen', title: img.caption }));
+
+        const candidates = cartaCandidates.concat(imageCandidates);
+
+        let matchedCodes = [];
 
         if (candidates.length > 0) {
-          // Le mandamos al Worker SOLO el texto de Pame y la lista de tags
-          // candidatas (nunca datos de más) para que la IA decida cuál, si
-          // alguna, describe lo que está sintiendo. Si el Worker todavía no
-          // está desplegado o falla la conexión, seguimos de largo con
-          // matchedCode en null (no rompe la app, solo no encuentra nada).
+          // Le mandamos al Worker SOLO el texto escrito y la lista de
+          // candidatas (nunca datos de más) para que la IA decida cuáles,
+          // si alguna, encajan. Si el Worker todavía no está desplegado o
+          // falla la conexión, seguimos de largo sin matches (no rompe la
+          // app, solo no encuentra nada).
           try {
             const aiRes = await fetchWithTimeout(MOOD_WORKER_URL, {
               method: 'POST',
@@ -3433,25 +3459,99 @@
             });
             if (aiRes.ok) {
               const data = await aiRes.json();
-              if (data && data.code && all[data.code]) matchedCode = data.code;
+              if (data && Array.isArray(data.codes)) {
+                const validCodes = new Set(candidates.map(c => c.code));
+                matchedCodes = data.codes.filter(c => validCodes.has(c));
+              }
             }
           } catch (e) {
             // Sin conexión al Worker: seguimos, no encontramos nada por IA.
           }
         }
 
-        if (matchedCode) {
-          closeMoodModal();
-          currentAdminView = false;
-          renderLetterView(matchedCode, all[matchedCode]);
+        setLoadingState(false);
+
+        if (matchedCodes.length > 0) {
+          showSuggestionsModal(matchedCodes, allCartas, allImagenes);
           return;
         }
 
-        sendTelegramMessage(TELEGRAM_CHAT_FRAN, `💭 Pame contó cómo está: "${text}" — no encontré ninguna carta para eso todavía.`);
-        status.classList.add('success');
-        status.textContent = 'Por ahora no tengo nada para eso, pero se lo conté a Fran 💌';
+        document.getElementById('error-msg').textContent = isSingleWord ? 'Código incorrecto' : 'No se encontraron coincidencias';
+
+        // Avisado a Fran en silencio: Pame nunca se entera de que esto
+        // pasó ni de qué escribió. Si el perfil activo es el de Fran
+        // (probando la función en el suyo), no se manda nada.
+        if (myIdentity === 'pame') {
+          if (isSingleWord) {
+            sendTelegramMessage(TELEGRAM_CHAT_FRAN, `❓ Pame escribió el código "${text}" y no encontré nada`);
+          } else {
+            sendTelegramMessage(TELEGRAM_CHAT_FRAN, `💭 Pame contó cómo está: "${text}" — no encontré nada para eso todavía.`);
+          }
+        }
       } catch (e) {
-        status.textContent = 'Uy, no se pudo conectar. ¿Probamos de nuevo en un rato?';
+        console.error("Error capturado en runSuggestionSearch:", e);
+        setLoadingState(false);
+        showErrorBlock(networkErrorMessage(e));
+      }
+    }
+
+    function showSuggestionsModal(codes, allCartas, allImagenes) {
+      const list = document.getElementById('suggestions-list');
+      if (!list) return;
+      list.innerHTML = '';
+
+      codes.forEach((code) => {
+        const carta = allCartas[code];
+        const img = !carta ? allImagenes[code] : null;
+        if (!carta && !img) return;
+
+        const item = document.createElement('button');
+        item.type = 'button';
+        item.className = 'suggestion-item';
+        item.onclick = () => selectSuggestion(code);
+
+        let emoji, bodyHtml, statusHtml = '';
+
+        if (carta) {
+          emoji = '💌';
+          const tag = getCartaTagText(carta);
+          const title = getCartaTitleRaw(carta);
+          bodyHtml = (tag ? escapeHtml(tag) + ' ' : '') + '<strong>' + escapeHtml(title) + '</strong>';
+          const read = (carta.views || 0) > 0;
+          statusHtml = `<span class="suggestion-status ${read ? 'read' : 'unread'}">${read ? 'Leída' : 'Sin leer'}</span>`;
+        } else {
+          emoji = '🖼️';
+          bodyHtml = '<strong>Imagen</strong>' + (img.caption ? ' ' + escapeHtml(img.caption) : '');
+        }
+
+        item.innerHTML = `
+          <span class="suggestion-emoji">${emoji}</span>
+          <span class="suggestion-body">
+            <span class="suggestion-text">${bodyHtml}</span>
+            <span class="suggestion-meta">
+              <span class="suggestion-code">#${escapeHtml(code)}</span>
+              ${statusHtml}
+            </span>
+          </span>
+        `;
+        list.appendChild(item);
+      });
+
+      document.getElementById('suggestions-modal-overlay').classList.add('visible');
+    }
+
+    function closeSuggestionsModal() {
+      document.getElementById('suggestions-modal-overlay').classList.remove('visible');
+    }
+
+    // Elegir una sugerencia NUNCA abre la carta/imagen directo: solo
+    // completa el código en el campo. La persona decide si la envía.
+    function selectSuggestion(code) {
+      closeSuggestionsModal();
+      const input = document.getElementById('code-input');
+      if (input) {
+        input.value = code;
+        input.focus();
       }
     }
 
@@ -5043,7 +5143,6 @@
       } else {
         loadMyProfile();
       }
-      updateMoodLinkVisibility();
     }
 
     // Trae las fotos de perfil de Fran y Pame (local primero, después la nube)
@@ -5079,7 +5178,6 @@
       try { localStorage.setItem('fc_identity', who); } catch (e) {}
       document.getElementById('identity-overlay').classList.remove('visible');
       loadMyProfile();
-      updateMoodLinkVisibility();
     }
 
     function otherName() {
