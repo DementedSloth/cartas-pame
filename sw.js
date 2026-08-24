@@ -11,7 +11,7 @@
 // a abrir la app). Entre las tres cosas, una actualización nueva debería
 // notarse en, como mucho, un minuto.
 
-const CACHE_NAME = 'framecorreo-v20'; // subir esta versión en cada deploy: v3, v4, v5, v6, v7, v8, v9, v10...
+const CACHE_NAME = 'framecorreo-v21'; // subir esta versión en cada deploy: v3, v4, v5, v6, v7, v8, v9, v10...
 const APP_SHELL = [
   './',
   './index.html',
